@@ -197,8 +197,8 @@ export interface Database {
           mp_preference_id: string | null
           mp_external_ref: string | null
           created_at: string
-          patients?: patientsRow
-          organizations?: organizationsRow & { org_settings?: org_settingsRow }
+          patients?: patientsRow | null
+          organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
         }
         Insert: {
           id?: string

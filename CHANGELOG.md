@@ -93,3 +93,22 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 
 ### Documentation de mémoire technique
 - Création de `CHANGELOG.md` (ce fichier) et `TODO.md` à la racine du projet
+
+---
+
+## 2026-08-29
+
+### Commit du travail en attente
+- Commit `e36442c` : tous les fixes d'audit Phase 1, la chauffe WhatsApp, l'essai gratuit et les migrations 003-006, poussés sur `origin/main`
+- Configuration de l'identité git locale (`Martin Roelandt <martinr5347@gmail.com>`, cohérente avec les commits précédents)
+
+### Phase 3 — items non bloqués par des clés manquantes
+- **Portail Stripe** : `app/api/stripe/create-portal/route.ts` créé (route API, prévue au spec) + bouton "Gérer mon abonnement" directement dans `/dashboard/settings` (server action `openBillingPortal`, même logique inline que le reste de la page)
+- **Templates email en HTML** : `lib/dispatcher/index.ts` `renderTemplate()` accepte une nouvelle variable `{{nombre_cabinet}}` (déjà disponible via `appt.organizations.nom`, juste jamais exposée). Migration `007_html_email_templates.sql` réécrit les 6 templates email par défaut (es) en HTML avec bouton CTA pour les emails avec lien de paiement. **Non appliquée par moi** — bloquée par le sandbox réseau (voir plus bas), à appliquer manuellement par l'utilisateur via le SQL Editor Supabase.
+- **i18n pt-BR** : Migration `008_pt_templates.sql` — miroir complet des 12 templates (6 types × 2 canaux) en portugais, en HTML pour les emails (cohérent avec 007). Ajout d'un sélecteur de langue dans `/dashboard/settings` (écrit dans `organizations.langue`, table jusque-là jamais modifiable depuis l'UI — sans ce champ les templates pt n'auraient jamais pu être déclenchés). **Migrations non appliquées**, même blocage.
+- Validation : `tsc --noEmit` et `next lint` propres. `next build` non exécuté pour ne pas entrer en conflit avec le serveur dev déjà lancé par l'utilisateur.
+
+### Blocage réseau sandbox découvert en essayant d'appliquer les migrations
+- Tentative 1 : connexion Postgres directe via le pooler (`aws-0-sa-east-1.pooler.supabase.com:6543`, credentials trouvés en commentaire dans `.env.local`) → bloquée d'abord par le classificateur de permissions (autorisée après confirmation utilisateur), puis rejetée par Supabase (`tenant/user postgres.uxpnzodhmpqlaqsfpxzz not found`) — mot de passe DB probablement périmé (le `SUPABASE_SERVICE_ROLE_KEY` est déjà au nouveau format `sb_secret_...`, signe que le projet a fait tourner ses identifiants depuis)
+- Tentative 2 : appel REST via `@supabase/supabase-js` (clé service-role) → `fetch failed`, DNS du domaine `*.supabase.co` du projet bloqué par le sandbox réseau lui-même (confirmé : `api.github.com` résout et répond normalement, seul le sous-domaine du projet Supabase échoue)
+- **Conclusion** : dans ce sandbox, seules les connexions vers des hôtes fixes/génériques (ex. `pooler.supabase.com`) passent le réseau ; les sous-domaines spécifiques au projet Supabase (`*.supabase.co`) sont bloqués en DNS. Toute future migration devra être appliquée manuellement via le SQL Editor Supabase, pas par un script lancé depuis cet environnement.

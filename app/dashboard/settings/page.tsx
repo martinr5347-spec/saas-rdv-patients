@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
+import { getStripe } from '@/lib/payments/stripe'
 
 async function updateSettings(formData: FormData) {
   'use server'
@@ -47,7 +48,43 @@ async function updateSettings(formData: FormData) {
     })
     .eq('organization_id', profile.organization_id)
 
+  const langue = formData.get('langue')
+  if (langue === 'es' || langue === 'pt') {
+    await supabase.from('organizations').update({ langue }).eq('id', profile.organization_id)
+  }
+
   redirect('/dashboard/settings')
+}
+
+async function openBillingPortal() {
+  'use server'
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return
+
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id')
+    .eq('organization_id', profile.organization_id)
+    .maybeSingle()
+
+  if (!subscription?.stripe_customer_id) return
+
+  const session = await getStripe().billingPortal.sessions.create({
+    customer: subscription.stripe_customer_id,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings`,
+  })
+
+  if (session.url) redirect(session.url)
 }
 
 export default async function SettingsPage() {
@@ -68,9 +105,34 @@ export default async function SettingsPage() {
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
 
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id, statut')
+    .eq('organization_id', profile?.organization_id ?? '')
+    .maybeSingle()
+
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('langue')
+    .eq('id', profile?.organization_id ?? '')
+    .maybeSingle()
+
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Paramètres du cabinet</h1>
+      {subscription?.stripe_customer_id && (
+        <div className="bg-white p-6 rounded-xl shadow flex items-center justify-between">
+          <div>
+            <p className="font-medium">Abonnement</p>
+            <p className="text-sm text-gray-600">Statut : {subscription.statut}</p>
+          </div>
+          <form action={openBillingPortal}>
+            <button type="submit" className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50">
+              Gérer mon abonnement
+            </button>
+          </form>
+        </div>
+      )}
       <form action={updateSettings} className="bg-white p-6 rounded-xl shadow space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -89,6 +151,13 @@ export default async function SettingsPage() {
             <label className="block text-sm font-medium">Montant acompte</label>
             <input name="monto_acompte" type="number" step="0.01" defaultValue={settings?.monto_acompte} className="mt-1 w-full rounded-md border px-3 py-2" />
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Langue des messages patients</label>
+          <select name="langue" defaultValue={organization?.langue ?? 'es'} className="mt-1 w-full rounded-md border px-3 py-2">
+            <option value="es">Español</option>
+            <option value="pt">Português</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium">URL Calendly</label>

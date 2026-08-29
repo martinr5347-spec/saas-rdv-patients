@@ -30,6 +30,7 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
     .replace(/\{\{link_pago\}\}/g, appt.link_pago ?? '')
     .replace(/\{\{monto_acompte\}\}/g, monto)
     .replace(/\{\{monnaie\}\}/g, settings?.monnaie ?? 'PEN')
+    .replace(/\{\{nombre_cabinet\}\}/g, org?.nom ?? '')
 }
 
 async function loadTemplate(

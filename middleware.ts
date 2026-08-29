@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 const AUTH_ROUTES = ['/login', '/register']
-const WEBHOOK_AND_CRON_PREFIXES = ['/api/webhooks/', '/api/cron/', '/api/auth/register', '/api/stripe/']
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -56,12 +55,20 @@ export async function middleware(request: NextRequest) {
 
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('statut')
+      .select('statut, trial_ends_at')
       .eq('organization_id', profile.organization_id)
       .maybeSingle()
 
-    if (!subscription || subscription.statut !== 'active') {
-      return NextResponse.redirect(new URL('/subscribe', request.url))
+    const isTrialExpired =
+      subscription?.statut === 'trial' &&
+      (!subscription.trial_ends_at || new Date(subscription.trial_ends_at) < new Date())
+
+    const isAllowed = subscription?.statut === 'active' || (subscription?.statut === 'trial' && !isTrialExpired)
+
+    if (!isAllowed) {
+      const url = new URL('/subscribe', request.url)
+      if (isTrialExpired) url.searchParams.set('expired', '1')
+      return NextResponse.redirect(url)
     }
   }
 

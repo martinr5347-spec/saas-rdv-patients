@@ -11,6 +11,10 @@ export async function createPaymentLink(params: {
   const client = new MercadoPagoConfig({ accessToken: params.accessToken })
   const preference = new Preference(client)
 
+  // MercadoPago rejette auto_return si back_urls.success n'est pas une URL publique
+  // (ex: localhost en dev) — on ne l'active que pour une vraie URL https publique.
+  const isPublicHttpsUrl = /^https:\/\/(?!localhost|127\.0\.0\.1)/.test(params.successUrl)
+
   const result = await preference.create({
     body: {
       items: [
@@ -26,7 +30,7 @@ export async function createPaymentLink(params: {
       external_reference: params.externalRef,
       notification_url: params.notificationUrl,
       back_urls: { success: params.successUrl },
-      auto_return: 'approved',
+      ...(isPublicHttpsUrl ? { auto_return: 'approved' as const } : {}),
     },
   })
 

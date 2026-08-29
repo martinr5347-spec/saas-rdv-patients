@@ -1,28 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
-import { getStripe } from '@/lib/payments/stripe'
-
-const priceByPlan: Record<string, string | undefined> = {
-  fondateur: process.env.STRIPE_PRICE_FONDATEUR,
-  standard: process.env.STRIPE_PRICE_STANDARD,
-}
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, nom, plan = 'fondateur' } = body
+    const { email, password, nom } = body
 
     if (!email || !password || !nom) {
       return NextResponse.json({ error: 'Email, mot de passe et nom sont requis' }, { status: 400 })
-    }
-
-    if (!['fondateur', 'standard'].includes(plan)) {
-      return NextResponse.json({ error: 'Plan invalide' }, { status: 400 })
-    }
-
-    const priceId = priceByPlan[plan]
-    if (!priceId) {
-      return NextResponse.json({ error: 'Configuration Stripe incomplète' }, { status: 500 })
     }
 
     const supabase = createServiceRoleClient()
@@ -48,10 +34,11 @@ export async function POST(req: Request) {
 
     if (orgError || !org) {
       console.error('Erreur création organization:', orgError)
+      await supabase.auth.admin.deleteUser(userId)
       return NextResponse.json({ error: 'Erreur création cabinet' }, { status: 500 })
     }
 
-    await Promise.all([
+    const [userResult, settingsResult, subscriptionResult] = await Promise.all([
       supabase.from('users').insert({
         id: userId,
         organization_id: org.id,
@@ -64,33 +51,27 @@ export async function POST(req: Request) {
       }),
       supabase.from('subscriptions').insert({
         organization_id: org.id,
-        plan,
         statut: 'pending',
       }),
     ])
 
-    const customer = await getStripe().customers.create({
-      email,
-      name: nom,
-      metadata: { organization_id: org.id },
-    })
-
-    await supabase.from('subscriptions').update({ stripe_customer_id: customer.id }).eq('organization_id', org.id)
-
-    const session = await getStripe().checkout.sessions.create({
-      customer: customer.id,
-      mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=1`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscribe`,
-      metadata: { organization_id: org.id, user_id: userId },
-    })
-
-    if (!session.url) {
-      return NextResponse.json({ error: 'Erreur création session Stripe' }, { status: 500 })
+    const setupError = userResult.error || settingsResult.error || subscriptionResult.error
+    if (setupError) {
+      console.error('Erreur initialisation compte:', setupError)
+      await supabase.from('organizations').delete().eq('id', org.id)
+      await supabase.auth.admin.deleteUser(userId)
+      return NextResponse.json({ error: 'Erreur création cabinet' }, { status: 500 })
     }
 
-    return NextResponse.json({ url: session.url })
+    const sessionClient = createClient()
+    const { error: signInError } = await sessionClient.auth.signInWithPassword({ email, password })
+
+    if (signInError) {
+      console.error('Erreur connexion après inscription:', signInError)
+      return NextResponse.json({ error: 'Compte créé, merci de vous connecter manuellement' }, { status: 200 })
+    }
+
+    return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('Erreur inscription:', err)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

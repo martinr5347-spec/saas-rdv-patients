@@ -1,31 +1,24 @@
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
-let transporter: nodemailer.Transporter | null = null
+let resend: Resend | null = null
 
-function getTransporter() {
-  if (transporter) return transporter
+function getResend() {
+  if (resend) return resend
 
-  const host = process.env.AWS_SES_SMTP_HOST
-  const user = process.env.AWS_SES_SMTP_USER
-  const pass = process.env.AWS_SES_SMTP_PASSWORD
-
-  if (!host || !user || !pass) {
-    throw new Error('Configuration Amazon SES incomplète')
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('Configuration Resend incomplète')
   }
 
-  transporter = nodemailer.createTransport({
-    host,
-    port: 587,
-    secure: false,
-    auth: { user, pass },
-  })
-
-  return transporter
+  resend = new Resend(apiKey)
+  return resend
 }
 
 export async function sendEmail(to: string, subject: string, html: string) {
   if (!to) throw new Error('Destinataire email manquant')
   const from = process.env.EMAIL_FROM
   if (!from) throw new Error('EMAIL_FROM manquant')
-  await getTransporter().sendMail({ from, to, subject, html })
+
+  const { error } = await getResend().emails.send({ from, to, subject, html })
+  if (error) throw new Error(error.message)
 }

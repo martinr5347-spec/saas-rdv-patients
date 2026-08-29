@@ -50,12 +50,15 @@ export async function POST(req: Request) {
         metadata: { organization_id: profile.organization_id },
       })
       customerId = customer.id
-      await supabase.from('subscriptions').upsert({
-        organization_id: profile.organization_id,
-        stripe_customer_id: customerId,
-        plan,
-        statut: 'pending',
-      })
+      await supabase.from('subscriptions').upsert(
+        {
+          organization_id: profile.organization_id,
+          stripe_customer_id: customerId,
+          plan,
+          statut: 'pending',
+        },
+        { onConflict: 'organization_id' }
+      )
     }
 
     const session = await getStripe().checkout.sessions.create({

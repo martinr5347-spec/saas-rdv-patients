@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { verifyMercadoPagoWebhook } from '@/lib/payments/mercadopago'
-import { dispatch } from '@/lib/dispatcher'
+import { dispatch, alertAdminEmail } from '@/lib/dispatcher'
 
 export async function POST(req: Request) {
   const url = new URL(req.url)
@@ -41,7 +41,9 @@ export async function POST(req: Request) {
     .maybeSingle()
 
   if (!appointment) {
-    return NextResponse.json({ error: 'Appointment not found' }, { status: 404 })
+    console.error('MercadoPago webhook: appointment introuvable pour', externalRef)
+    await alertAdminEmail('Webhook MercadoPago : RDV introuvable', `<p>external_reference : ${externalRef}</p>`)
+    return NextResponse.json({ ok: true, error: 'Appointment not found' })
   }
 
   if (appointment.statut === 'pagado') {
@@ -63,6 +65,10 @@ export async function POST(req: Request) {
       received: transactionAmount,
       appointmentId: appointment.id,
     })
+    await alertAdminEmail(
+      'Alerte : montant MercadoPago inattendu',
+      `<p>Appointment : ${appointment.id}</p><p>Attendu : ${appointment.monto_acompte}</p><p>Reçu : ${transactionAmount}</p>`
+    )
     return NextResponse.json({ ok: true, warning: 'amount mismatch' })
   }
 
@@ -73,6 +79,7 @@ export async function POST(req: Request) {
 
   if (updateError) {
     console.error('MercadoPago webhook: erreur update appointment', updateError)
+    await alertAdminEmail('Webhook MercadoPago : erreur mise à jour RDV', `<pre>${updateError.message}</pre>`)
     return NextResponse.json({ ok: true })
   }
 

@@ -16,5 +16,4 @@ values
   (null, 'recordatorio', 'whatsapp', 'es', null, 'Hola {{nom_patient}}, recordatorio: cita el {{fecha_cita}} a las {{hora_cita}}.')
 on conflict (organization_id, type, canal, langue) do update set
   sujet = excluded.sujet,
-  corps = excluded.corps,
-  updated_at = now();
+  corps = excluded.corps;

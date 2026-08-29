@@ -70,9 +70,10 @@ export interface Database {
           stripe_customer_id: string | null
           stripe_sub_id: string | null
           plan: string
-          statut: 'pending' | 'active' | 'past_due' | 'canceled'
+          statut: 'pending' | 'trial' | 'active' | 'past_due' | 'canceled'
           periode_debut: string | null
           periode_fin: string | null
+          trial_ends_at: string | null
           created_at: string
         }
         Insert: {
@@ -81,9 +82,10 @@ export interface Database {
           stripe_customer_id?: string | null
           stripe_sub_id?: string | null
           plan?: string
-          statut?: 'pending' | 'active' | 'past_due' | 'canceled'
+          statut?: 'pending' | 'trial' | 'active' | 'past_due' | 'canceled'
           periode_debut?: string | null
           periode_fin?: string | null
+          trial_ends_at?: string | null
           created_at?: string
         }
         Update: {
@@ -92,9 +94,10 @@ export interface Database {
           stripe_customer_id?: string | null
           stripe_sub_id?: string | null
           plan?: string
-          statut?: 'pending' | 'active' | 'past_due' | 'canceled'
+          statut?: 'pending' | 'trial' | 'active' | 'past_due' | 'canceled'
           periode_debut?: string | null
           periode_fin?: string | null
+          trial_ends_at?: string | null
           created_at?: string
         }
         Relationships: [
@@ -110,6 +113,7 @@ export interface Database {
           monto_acompte: number
           calendly_url: string | null
           unipile_account_id: string | null
+          unipile_connected_at: string | null
           mp_access_token: string | null
           mp_notification_url: string | null
           canal_email: boolean
@@ -125,6 +129,7 @@ export interface Database {
           monto_acompte?: number
           calendly_url?: string | null
           unipile_account_id?: string | null
+          unipile_connected_at?: string | null
           mp_access_token?: string | null
           mp_notification_url?: string | null
           canal_email?: boolean
@@ -140,6 +145,7 @@ export interface Database {
           monto_acompte?: number
           calendly_url?: string | null
           unipile_account_id?: string | null
+          unipile_connected_at?: string | null
           mp_access_token?: string | null
           mp_notification_url?: string | null
           canal_email?: boolean

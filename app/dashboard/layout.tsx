@@ -21,9 +21,20 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nom, role')
+    .select('nom, role, organization_id')
     .eq('id', user?.id ?? '')
     .maybeSingle()
+
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('statut, trial_ends_at')
+    .eq('organization_id', profile?.organization_id ?? '')
+    .maybeSingle()
+
+  const trialDaysLeft =
+    subscription?.statut === 'trial' && subscription.trial_ends_at
+      ? Math.max(0, Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+      : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -64,6 +75,18 @@ export default async function DashboardLayout({
           </div>
         </div>
       </header>
+      {trialDaysLeft !== null && (
+        <div className="bg-blue-50 border-b border-blue-100">
+          <div className="max-w-6xl mx-auto px-4 py-2 text-sm text-blue-800 flex items-center justify-center gap-2">
+            <span>
+              Essai gratuit : {trialDaysLeft} {trialDaysLeft > 1 ? 'jours restants' : 'jour restant'}
+            </span>
+            <Link href="/subscribe" className="font-medium underline hover:text-blue-900">
+              Passer au plan payant
+            </Link>
+          </div>
+        </div>
+      )}
       <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
     </div>
   )

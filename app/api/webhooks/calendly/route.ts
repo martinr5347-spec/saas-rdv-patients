@@ -2,11 +2,23 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { createPaymentLink } from '@/lib/payments/mercadopago'
-import { dispatch } from '@/lib/dispatcher'
+import { dispatch, alertAdminEmail } from '@/lib/dispatcher'
 import { toTenantDate, toTenantTime } from '@/lib/utils/timezone'
 
-function verifyCalendlySignature(body: string, signature: string, secret: string) {
-  const expected = createHmac('sha256', secret).update(body).digest('hex')
+// Calendly signe au format "t=<timestamp>,v1=<hmac>" sur le contenu "<timestamp>.<body>",
+// exactement comme Stripe. Le header s'appelle Calendly-Webhook-Signature (pas de préfixe "x-").
+function verifyCalendlySignature(body: string, header: string, secret: string) {
+  const parts = Object.fromEntries(
+    header.split(',').map((p) => {
+      const [key, value] = p.split('=')
+      return [key, value]
+    })
+  )
+  const timestamp = parts.t
+  const signature = parts.v1
+  if (!timestamp || !signature) return false
+
+  const expected = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
   const sigBuffer = Buffer.from(signature)
   const expectedBuffer = Buffer.from(expected)
   if (sigBuffer.length !== expectedBuffer.length) return false
@@ -24,7 +36,12 @@ function normalizeCalendlyUrl(url: string) {
 
 function matchCalendlyUrl(calendlyUrl: string, candidates: string[]) {
   const normalized = normalizeCalendlyUrl(calendlyUrl)
-  return candidates.some((c) => normalizeCalendlyUrl(c).includes(normalized) || normalized.includes(normalizeCalendlyUrl(c)))
+  if (!normalized) return false
+  return candidates
+    .filter((c) => c.length > 0)
+    .map((c) => normalizeCalendlyUrl(c))
+    .filter((c) => c.length > 0)
+    .some((c) => c.includes(normalized) || normalized.includes(c))
 }
 
 export async function POST(req: Request) {
@@ -32,7 +49,7 @@ export async function POST(req: Request) {
   const secret = process.env.WEBHOOK_SECRET_CALENDLY
 
   if (secret) {
-    const signature = req.headers.get('x-calendly-signature') ?? req.headers.get('x-calendly-webhook-signature')
+    const signature = req.headers.get('calendly-webhook-signature')
     if (!signature || !verifyCalendlySignature(body, signature, secret)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
@@ -65,7 +82,8 @@ export async function POST(req: Request) {
   const calendlyEventId = extractUuidFromUri(eventUri) ?? extractUuidFromUri(eventTypeUri)
   if (!calendlyEventId) {
     console.error('Calendly webhook: event id introuvable', { eventUri, eventTypeUri })
-    return NextResponse.json({ error: 'Event id missing' }, { status: 400 })
+    await alertAdminEmail('Webhook Calendly : event id introuvable', `<pre>${JSON.stringify({ eventUri, eventTypeUri })}</pre>`)
+    return NextResponse.json({ ok: true, error: 'Event id missing' })
   }
 
   const supabase = createServiceRoleClient()
@@ -91,7 +109,11 @@ export async function POST(req: Request) {
 
   if (!orgWithSettings) {
     console.error('Calendly webhook: tenant introuvable pour', { eventTypeUri, eventTypeUrl, eventTypeSchedulingUrl })
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+    await alertAdminEmail(
+      'Webhook Calendly : cabinet introuvable',
+      `<pre>${JSON.stringify({ eventTypeUri, eventTypeUrl, eventTypeSchedulingUrl })}</pre>`
+    )
+    return NextResponse.json({ ok: true, error: 'Tenant not found' })
   }
 
   const organizationId = orgWithSettings.organization_id
@@ -106,7 +128,12 @@ export async function POST(req: Request) {
       : ''
 
   if (!patientName || (!patientEmail && !patientPhone)) {
-    return NextResponse.json({ error: 'Missing patient data' }, { status: 400 })
+    console.error('Calendly webhook: données patient manquantes', { patientName, patientEmail, patientPhone })
+    await alertAdminEmail(
+      'Webhook Calendly : données patient manquantes',
+      `<pre>${JSON.stringify({ patientName, patientEmail, patientPhone, calendlyEventId })}</pre>`
+    )
+    return NextResponse.json({ ok: true, error: 'Missing patient data' })
   }
 
   const fechaCita = toTenantDate(startTime, fuseau)
@@ -147,7 +174,8 @@ export async function POST(req: Request) {
 
     if (patientError || !newPatient) {
       console.error('Calendly webhook: erreur création patient', patientError)
-      return NextResponse.json({ error: 'Patient creation failed' }, { status: 500 })
+      await alertAdminEmail('Webhook Calendly : erreur création patient', `<pre>${String(patientError?.message)}</pre>`)
+      return NextResponse.json({ ok: true, error: 'Patient creation failed' })
     }
     patientId = newPatient.id
   }
@@ -171,7 +199,8 @@ export async function POST(req: Request) {
 
   if (apptError || !appointment) {
     console.error('Calendly webhook: erreur création appointment', apptError)
-    return NextResponse.json({ error: 'Appointment creation failed' }, { status: 500 })
+    await alertAdminEmail('Webhook Calendly : erreur création RDV', `<pre>${String(apptError?.message)}</pre>`)
+    return NextResponse.json({ ok: true, error: 'Appointment creation failed' })
   }
 
   let linkPago: string | null = null

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 
 async function updateSettings(formData: FormData) {
   'use server'
@@ -16,6 +17,19 @@ async function updateSettings(formData: FormData) {
 
   if (!profile?.organization_id) return
 
+  const { data: current } = await supabase
+    .from('org_settings')
+    .select('unipile_account_id, unipile_connected_at')
+    .eq('organization_id', profile.organization_id)
+    .maybeSingle()
+
+  const unipileAccountId = String(formData.get('unipile_account_id') ?? '')
+  const unipileConnectedAt = resolveUnipileConnectedAt(
+    current?.unipile_account_id ?? null,
+    unipileAccountId,
+    current?.unipile_connected_at ?? null
+  )
+
   await supabase
     .from('org_settings')
     .update({
@@ -24,7 +38,8 @@ async function updateSettings(formData: FormData) {
       delai_rappel_h: Number(formData.get('delai_rappel_h')),
       monto_acompte: Number(formData.get('monto_acompte')),
       calendly_url: String(formData.get('calendly_url') ?? ''),
-      unipile_account_id: String(formData.get('unipile_account_id') ?? ''),
+      unipile_account_id: unipileAccountId,
+      unipile_connected_at: unipileConnectedAt,
       mp_access_token: String(formData.get('mp_access_token') ?? ''),
       mp_notification_url: String(formData.get('mp_notification_url') ?? ''),
       canal_email: formData.get('canal_email') === 'on',

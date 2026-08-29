@@ -3,6 +3,7 @@ import { sendEmail } from './channels/email'
 import { sendWhatsApp } from './channels/whatsapp'
 import { NotificationJob } from './types'
 import { Database } from '@/types/database'
+import { getDailyLimit, startOfTodayIso, MIN_SECONDS_BETWEEN_MESSAGES } from './warming'
 
 type Appointment = Database['public']['Tables']['appointments']['Row']
 type OrgSettings = Database['public']['Tables']['org_settings']['Row']
@@ -62,18 +63,62 @@ async function loadTemplate(
   return defaultTemplate
 }
 
-async function alertAdmin(job: NotificationJob, canal: string, errorMessage: string) {
+export async function alertAdminEmail(subject: string, html: string) {
   try {
     const adminEmail = process.env.ADMIN_EMAIL ?? process.env.EMAIL_FROM
     if (!adminEmail) return
-    await sendEmail(
-      adminEmail,
-      `Erreur dispatcher ${job.type}`,
-      `<p>Canal : ${canal}</p><p>Appointment : ${job.appointmentId}</p><p>Erreur : ${errorMessage}</p>`
-    )
+    await sendEmail(adminEmail, subject, html)
   } catch (e) {
-    console.error('alertAdmin failed:', e)
+    console.error('alertAdminEmail failed:', e)
   }
+}
+
+async function alertAdmin(job: NotificationJob, canal: string, errorMessage: string) {
+  await alertAdminEmail(
+    `Erreur dispatcher ${job.type}`,
+    `<p>Canal : ${canal}</p><p>Appointment : ${job.appointmentId}</p><p>Erreur : ${errorMessage}</p>`
+  )
+}
+
+async function checkWhatsappWarming(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  organizationId: string,
+  connectedAt: string | null
+): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const limit = getDailyLimit(connectedAt)
+
+  const { count } = await supabase
+    .from('notifications')
+    .select('id, appointments!inner(organization_id)', { count: 'exact', head: true })
+    .eq('canal', 'whatsapp')
+    .eq('statut', 'sent')
+    .eq('appointments.organization_id', organizationId)
+    .gte('sent_at', startOfTodayIso())
+
+  const sentToday = count ?? 0
+  if (sentToday >= limit) {
+    return { allowed: false, reason: `Chauffe WhatsApp : quota journalier atteint (${sentToday}/${limit})` }
+  }
+
+  const { data: lastSent } = await supabase
+    .from('notifications')
+    .select('sent_at, appointments!inner(organization_id)')
+    .eq('canal', 'whatsapp')
+    .eq('statut', 'sent')
+    .eq('appointments.organization_id', organizationId)
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (lastSent?.sent_at) {
+    const secondsSinceLast = (Date.now() - new Date(lastSent.sent_at).getTime()) / 1000
+    if (secondsSinceLast < MIN_SECONDS_BETWEEN_MESSAGES) {
+      const wait = Math.ceil(MIN_SECONDS_BETWEEN_MESSAGES - secondsSinceLast)
+      return { allowed: false, reason: `Chauffe WhatsApp : délai minimum entre messages non respecté (${wait}s restants)` }
+    }
+  }
+
+  return { allowed: true }
 }
 
 async function sendPraticienAlert(appt: AppointmentWithRelations, job: NotificationJob) {
@@ -162,6 +207,22 @@ export async function dispatch(job: NotificationJob) {
 
     const body = renderTemplate(template.corps, typedAppt)
     const subject = template.sujet ?? job.type
+
+    if (canal === 'whatsapp') {
+      const warmingCheck = await checkWhatsappWarming(supabase, job.organizationId, settings?.unipile_connected_at ?? null)
+      if (!warmingCheck.allowed) {
+        console.warn(`dispatch whatsapp throttled: ${warmingCheck.reason}`)
+        await supabase.from('notifications').insert({
+          appointment_id: job.appointmentId,
+          canal,
+          type: job.type,
+          statut: 'failed',
+          error_message: warmingCheck.reason,
+          sent_at: null,
+        })
+        continue
+      }
+    }
 
     let statut: 'sent' | 'failed' = 'failed'
     let errorMessage: string | undefined

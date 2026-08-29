@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 
 export async function GET() {
   const supabase = createClient()
@@ -48,6 +49,18 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const { data: current } = await supabase
+    .from('org_settings')
+    .select('unipile_account_id, unipile_connected_at')
+    .eq('organization_id', profile.organization_id)
+    .maybeSingle()
+
+  const unipileConnectedAt = resolveUnipileConnectedAt(
+    current?.unipile_account_id ?? null,
+    body.unipile_account_id,
+    current?.unipile_connected_at ?? null
+  )
+
   const { data, error } = await supabase
     .from('org_settings')
     .update({
@@ -57,6 +70,7 @@ export async function PATCH(req: Request) {
       monto_acompte: body.monto_acompte,
       calendly_url: body.calendly_url,
       unipile_account_id: body.unipile_account_id,
+      unipile_connected_at: unipileConnectedAt,
       mp_access_token: body.mp_access_token,
       mp_notification_url: body.mp_notification_url,
       canal_email: body.canal_email,

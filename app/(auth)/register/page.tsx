@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nom, setNom] = useState('')
-  const [plan, setPlan] = useState('fondateur')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -19,7 +20,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, nom, plan }),
+      body: JSON.stringify({ email, password, nom }),
     })
 
     const data = await res.json()
@@ -30,12 +31,8 @@ export default function RegisterPage() {
       return
     }
 
-    if (data.url) {
-      window.location.href = data.url
-    } else {
-      setError('Redirection Stripe manquante')
-      setLoading(false)
-    }
+    router.refresh()
+    router.push('/dashboard')
   }
 
   return (
@@ -78,23 +75,12 @@ export default function RegisterPage() {
               className="mt-1 w-full rounded-md border px-3 py-2"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium">Plan</label>
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
-            >
-              <option value="fondateur">Fondateur — 49,99€/mois</option>
-              <option value="standard">Standard — 69,99€/mois</option>
-            </select>
-          </div>
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Inscription...' : "Payer et s'inscrire"}
+            {loading ? 'Inscription...' : "S'inscrire"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-600">

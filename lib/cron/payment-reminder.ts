@@ -27,16 +27,8 @@ export async function handlePaymentReminders() {
 
     if (!avisoPassed || paymentPassed) continue
 
-    const { data: alreadySent } = await supabase
-      .from('notifications')
-      .select('id')
-      .eq('appointment_id', appt.id)
-      .eq('type', 'aviso')
-      .eq('statut', 'sent')
-      .maybeSingle()
-
-    if (alreadySent) continue
-
+    // dispatch() vérifie déjà l'idempotence par canal (email/whatsapp) avant chaque envoi —
+    // un pré-check ici bloquerait la relance d'un canal en échec si un autre a déjà réussi.
     try {
       await dispatch({
         appointmentId: appt.id,

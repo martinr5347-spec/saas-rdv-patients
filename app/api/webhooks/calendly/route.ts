@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   const { data: allSettings } = await supabase
     .from('org_settings')
-    .select('organization_id, organizations(fuseau, langue), monto_acompte, mp_access_token, mp_notification_url, calendly_url')
+    .select('organization_id, organizations(fuseau, langue), monto_acompte, monnaie, mp_access_token, mp_notification_url, calendly_url')
     .not('calendly_url', 'is', null)
 
   const orgWithSettings = (allSettings ?? []).find((s) =>
@@ -218,6 +218,7 @@ export async function POST(req: Request) {
         accessToken,
         externalRef,
         amount: montoAcompte,
+        currency: orgWithSettings.monnaie || 'PEN',
         patientName,
         notificationUrl,
         successUrl,

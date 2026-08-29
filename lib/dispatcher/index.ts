@@ -4,6 +4,7 @@ import { sendWhatsApp } from './channels/whatsapp'
 import { NotificationJob } from './types'
 import { Database } from '@/types/database'
 import { getDailyLimit, startOfTodayIso, MIN_SECONDS_BETWEEN_MESSAGES } from './warming'
+import { formatDisplayDate, formatDisplayTime } from '@/lib/utils/timezone'
 
 type Appointment = Database['public']['Tables']['appointments']['Row']
 type OrgSettings = Database['public']['Tables']['org_settings']['Row']
@@ -22,11 +23,14 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
   const settings = org?.org_settings
 
   const monto = typeof appt.monto_acompte === 'number' ? appt.monto_acompte.toFixed(2) : appt.monto_acompte
+  const langue = org?.langue ?? 'es'
+  const fechaCita = appt.fecha_cita ? formatDisplayDate(appt.fecha_cita, langue) : ''
+  const horaCita = appt.hora_cita ? formatDisplayTime(appt.hora_cita) : ''
 
   return corps
     .replace(/\{\{nom_patient\}\}/g, patient?.nom ?? '')
-    .replace(/\{\{fecha_cita\}\}/g, appt.fecha_cita ?? '')
-    .replace(/\{\{hora_cita\}\}/g, appt.hora_cita ?? '')
+    .replace(/\{\{fecha_cita\}\}/g, fechaCita)
+    .replace(/\{\{hora_cita\}\}/g, horaCita)
     .replace(/\{\{link_pago\}\}/g, appt.link_pago ?? '')
     .replace(/\{\{monto_acompte\}\}/g, monto)
     .replace(/\{\{monnaie\}\}/g, settings?.monnaie ?? 'PEN')
@@ -137,7 +141,7 @@ async function sendPraticienAlert(appt: AppointmentWithRelations, job: Notificat
   }
 
   const body = renderTemplate(template.corps, appt)
-  const subject = template.sujet ?? 'Alerte praticien'
+  const subject = template.sujet ? renderTemplate(template.sujet, appt) : 'Alerte praticien'
 
   const emails = (praticiens ?? []).map((u) => u.email).filter(Boolean)
   if (emails.length === 0) {
@@ -207,7 +211,7 @@ export async function dispatch(job: NotificationJob) {
     }
 
     const body = renderTemplate(template.corps, typedAppt)
-    const subject = template.sujet ?? job.type
+    const subject = template.sujet ? renderTemplate(template.sujet, typedAppt) : job.type
 
     if (canal === 'whatsapp') {
       const warmingCheck = await checkWhatsappWarming(supabase, job.organizationId, settings?.unipile_connected_at ?? null)

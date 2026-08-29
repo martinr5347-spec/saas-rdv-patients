@@ -32,6 +32,29 @@ export function toTenantTime(iso: string, timeZone: string) {
   return `${p.hour}:${p.minute}:${p.second}`
 }
 
+const DATE_LOCALE_BY_LANGUE: Record<string, string> = {
+  es: 'es-PE',
+  pt: 'pt-BR',
+}
+
+// fecha_cita/hora_cita sont stockés en 'YYYY-MM-DD'/'HH:mm:ss', déjà dans le fuseau du
+// tenant (voir toTenantDate/toTenantTime) — on les affiche tels quels, sans nouvelle
+// conversion de fuseau, juste mis en forme pour un lecteur humain.
+export function formatDisplayDate(fechaCita: string, langue: string): string {
+  const [year, month, day] = fechaCita.split('-').map(Number)
+  if (!year || !month || !day) return fechaCita
+  const locale = DATE_LOCALE_BY_LANGUE[langue] ?? langue
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, day))
+  )
+}
+
+export function formatDisplayTime(horaCita: string): string {
+  const [hour, minute] = horaCita.split(':')
+  if (!hour || !minute) return horaCita
+  return `${hour}:${minute}`
+}
+
 export function tenantDateTimeToUtc(date: string, time: string, timeZone: string): Date {
   // On cherche le timestamp UTC qui correspond à la wall-clock date/time dans timeZone
   let candidate = new Date(`${date}T${time}Z`)

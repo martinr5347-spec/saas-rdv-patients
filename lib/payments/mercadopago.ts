@@ -4,6 +4,7 @@ export async function createPaymentLink(params: {
   accessToken: string
   externalRef: string
   amount: number
+  currency: string
   patientName: string
   notificationUrl: string
   successUrl: string
@@ -23,7 +24,7 @@ export async function createPaymentLink(params: {
           title: 'Acompte consultation',
           quantity: 1,
           unit_price: params.amount,
-          currency_id: 'PEN',
+          currency_id: params.currency,
         },
       ],
       payer: { name: params.patientName },

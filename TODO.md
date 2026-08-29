@@ -14,7 +14,7 @@ Dernière mise à jour : 2026-08-29
 | Phase 0 — Fondations | ✅ Terminée et testée en réel |
 | Phase 1 — MVP email (F2-F10) | ✅ Terminée, auditée et testée en réel |
 | Phase 2 — WhatsApp | 🟡 Code prêt (API v2 + chauffe des numéros), **jamais testé en réel** (pas de clé Unipile) |
-| Phase 3 — Self-service & polish | 🟡 Portail Stripe + HTML + i18n pt codés (migrations 007/008 pas encore appliquées) |
+| Phase 3 — Self-service & polish | ✅ Terminée et testée en réel |
 
 ---
 
@@ -36,26 +36,26 @@ Dernière mise à jour : 2026-08-29
 - ✅ Resend (`RESEND_API_KEY`) — envoi réel testé (email direct + flow complet dispatcher)
 - ✅ `CRON_SECRET` — généré, 3 crons testés (accepté/rejeté correctement)
 
-## Migrations écrites mais pas encore appliquées
+## Migrations
 
-- ⚠️ `007_html_email_templates.sql` (templates email es en HTML) et `008_pt_templates.sql` (miroir pt-BR complet) — impossibles à appliquer depuis l'environnement Claude Code (voir CHANGELOG 2026-08-29, blocage réseau sandbox sur `*.supabase.co` + credentials pooler périmés). **À appliquer manuellement via le SQL Editor Supabase** : https://supabase.com/dashboard/project/uxpnzodhmpqlaqsfpxzz/sql/new
+- ✅ `007_html_email_templates.sql` et `008_pt_templates.sql` appliquées par l'utilisateur via le SQL Editor Supabase, testées en réel (webhook Calendly synthétique, es + pt)
 
 ---
 
 ## Reste à faire
 
 ### Court terme
-- [ ] Appliquer `007_html_email_templates.sql` et `008_pt_templates.sql` via le SQL Editor Supabase
 - [ ] Configurer `UNIPILE_API_KEY` / `UNIPILE_BASE_URL` dès réception → tester le flow WhatsApp complet (envoi réel + vérifier le bon nom d'endpoint, incertain entre `/chats/send` et `/chats/start` selon les pages de doc Unipile)
 - [ ] Définir `ADMIN_EMAIL` (au moins une adresse temporaire type `martinr5347@gmail.com`, en attendant un domaine pro)
 - [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients
 - [ ] Mettre à jour le connection string Postgres direct en commentaire dans `.env.local` (rejeté par Supabase — mot de passe probablement périmé depuis la rotation vers le nouveau format de clés `sb_secret_...`), ou l'enlever si plus utile
 
-### Phase 3
+### Phase 3 — terminée
 - [x] Portail Stripe (gestion abonnement) — `app/api/stripe/create-portal/route.ts` + bouton dans `/dashboard/settings`
-- [x] i18n templates (es/pt) — sélecteur de langue ajouté dans `/dashboard/settings`, templates pt en base (migration 008, pas encore appliquée)
-- [x] Mise en forme HTML des templates d'emails — migration 007 (pas encore appliquée)
-- [ ] Tester en réel une fois les migrations 007/008 appliquées : email HTML bien rendu, bascule pt fonctionnelle de bout en bout
+- [x] i18n templates (es/pt) — sélecteur de langue dans `/dashboard/settings`, migration 008 appliquée et testée
+- [x] Mise en forme HTML des templates d'emails — migration 007 appliquée et testée
+- [x] Devise MercadoPago dynamique (était codée en dur `PEN`) + champ devise dans les paramètres
+- [x] Format lisible des dates/heures dans les messages (au lieu du format brut de la base)
 
 ### Idées / améliorations non demandées explicitement (à valider avant de faire)
 - [ ] Indicateur visuel dans `/dashboard/settings` du statut de chauffe WhatsApp (jour actuel / quota du jour) — actuellement seule la base de données le sait

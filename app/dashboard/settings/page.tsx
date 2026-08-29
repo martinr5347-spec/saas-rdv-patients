@@ -45,6 +45,7 @@ async function updateSettings(formData: FormData) {
       mp_notification_url: String(formData.get('mp_notification_url') ?? ''),
       canal_email: formData.get('canal_email') === 'on',
       canal_whatsapp: formData.get('canal_whatsapp') === 'on',
+      monnaie: String(formData.get('monnaie') ?? 'PEN'),
     })
     .eq('organization_id', profile.organization_id)
 
@@ -150,6 +151,19 @@ export default async function SettingsPage() {
           <div>
             <label className="block text-sm font-medium">Montant acompte</label>
             <input name="monto_acompte" type="number" step="0.01" defaultValue={settings?.monto_acompte} className="mt-1 w-full rounded-md border px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Devise</label>
+            <select name="monnaie" defaultValue={settings?.monnaie ?? 'PEN'} className="mt-1 w-full rounded-md border px-3 py-2">
+              <option value="PEN">Sol péruvien (PEN)</option>
+              <option value="BRL">Real brésilien (BRL)</option>
+              <option value="MXN">Peso mexicain (MXN)</option>
+              <option value="COP">Peso colombien (COP)</option>
+              <option value="CLP">Peso chilien (CLP)</option>
+              <option value="ARS">Peso argentin (ARS)</option>
+              <option value="UYU">Peso uruguayen (UYU)</option>
+              <option value="USD">Dollar (USD)</option>
+            </select>
           </div>
         </div>
         <div>

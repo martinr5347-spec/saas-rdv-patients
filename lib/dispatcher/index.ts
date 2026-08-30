@@ -22,19 +22,45 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
   const org = appt.organizations
   const settings = org?.org_settings
 
-  const monto = typeof appt.monto_acompte === 'number' ? appt.monto_acompte.toFixed(2) : appt.monto_acompte
+  const montoAcompte = typeof appt.monto_acompte === 'number' ? appt.monto_acompte : Number(appt.monto_acompte)
   const langue = org?.langue ?? 'es'
   const fechaCita = appt.fecha_cita ? formatDisplayDate(appt.fecha_cita, langue) : ''
   const horaCita = appt.hora_cita ? formatDisplayTime(appt.hora_cita) : ''
 
-  return corps
-    .replace(/\{\{nom_patient\}\}/g, patient?.nom ?? '')
-    .replace(/\{\{fecha_cita\}\}/g, fechaCita)
-    .replace(/\{\{hora_cita\}\}/g, horaCita)
-    .replace(/\{\{link_pago\}\}/g, appt.link_pago ?? '')
-    .replace(/\{\{monto_acompte\}\}/g, monto)
-    .replace(/\{\{monnaie\}\}/g, settings?.monnaie ?? 'PEN')
-    .replace(/\{\{nombre_cabinet\}\}/g, org?.nom ?? '')
+  const costoTotal = settings?.costo_total
+  const hasCostoDesglose = typeof costoTotal === 'number' && costoTotal > montoAcompte
+  const restoPagar = hasCostoDesglose ? costoTotal - montoAcompte : null
+
+  // Conditions consommées par {{#if ...}} — jamais interpolées telles quelles.
+  const conditions: Record<string, boolean> = {
+    direccion: Boolean(org?.adresse),
+    costo_desglose: hasCostoDesglose,
+    calendly_url: Boolean(settings?.calendly_url),
+  }
+
+  const values: Record<string, string> = {
+    nom_patient: patient?.nom ?? '',
+    fecha_cita: fechaCita,
+    hora_cita: horaCita,
+    link_pago: appt.link_pago ?? '',
+    monto_acompte: montoAcompte.toFixed(2),
+    monnaie: settings?.monnaie ?? 'PEN',
+    nombre_cabinet: org?.nom ?? '',
+    direccion: org?.adresse ?? '',
+    calendly_url: settings?.calendly_url ?? '',
+    costo_total: typeof costoTotal === 'number' ? costoTotal.toFixed(2) : '',
+    resto_pagar: restoPagar !== null ? restoPagar.toFixed(2) : '',
+  }
+
+  let out = corps.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_match, varName: string, inner: string) =>
+    conditions[varName] ? inner : ''
+  )
+
+  for (const [key, val] of Object.entries(values)) {
+    out = out.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), val)
+  }
+
+  return out
 }
 
 async function loadTemplate(

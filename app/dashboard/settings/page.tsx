@@ -46,13 +46,18 @@ async function updateSettings(formData: FormData) {
       canal_email: formData.get('canal_email') === 'on',
       canal_whatsapp: formData.get('canal_whatsapp') === 'on',
       monnaie: String(formData.get('monnaie') ?? 'PEN'),
+      costo_total: formData.get('costo_total') ? Number(formData.get('costo_total')) : null,
     })
     .eq('organization_id', profile.organization_id)
 
   const langue = formData.get('langue')
-  if (langue === 'es' || langue === 'pt') {
-    await supabase.from('organizations').update({ langue }).eq('id', profile.organization_id)
+  const orgUpdate: { langue?: 'es' | 'pt'; adresse?: string } = {
+    adresse: String(formData.get('adresse') ?? ''),
   }
+  if (langue === 'es' || langue === 'pt') {
+    orgUpdate.langue = langue
+  }
+  await supabase.from('organizations').update(orgUpdate).eq('id', profile.organization_id)
 
   redirect('/dashboard/settings')
 }
@@ -114,7 +119,7 @@ export default async function SettingsPage() {
 
   const { data: organization } = await supabase
     .from('organizations')
-    .select('langue')
+    .select('langue, adresse')
     .eq('id', profile?.organization_id ?? '')
     .maybeSingle()
 
@@ -153,6 +158,10 @@ export default async function SettingsPage() {
             <input name="monto_acompte" type="number" step="0.01" defaultValue={settings?.monto_acompte} className="mt-1 w-full rounded-md border px-3 py-2" />
           </div>
           <div>
+            <label className="block text-sm font-medium">Coût total consultation (optionnel)</label>
+            <input name="costo_total" type="number" step="0.01" defaultValue={settings?.costo_total ?? ''} placeholder="Laisser vide si non applicable" className="mt-1 w-full rounded-md border px-3 py-2" />
+          </div>
+          <div>
             <label className="block text-sm font-medium">Devise</label>
             <select name="monnaie" defaultValue={settings?.monnaie ?? 'PEN'} className="mt-1 w-full rounded-md border px-3 py-2">
               <option value="PEN">Sol péruvien (PEN)</option>
@@ -172,6 +181,10 @@ export default async function SettingsPage() {
             <option value="es">Español</option>
             <option value="pt">Português</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Adresse du cabinet</label>
+          <input name="adresse" defaultValue={organization?.adresse ?? ''} placeholder="Av. Brasil 2730, Pueblo Libre, Lima" className="mt-1 w-full rounded-md border px-3 py-2" />
         </div>
         <div>
           <label className="block text-sm font-medium">URL Calendly</label>

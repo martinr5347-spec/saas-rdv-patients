@@ -121,3 +121,33 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 - 🟠 **Date/heure brutes dans les messages** : `{{fecha_cita}}`/`{{hora_cita}}` interpolaient directement les valeurs stockées en base (`2026-09-01`, `11:09:13`) sans mise en forme lisible. Ajout de `formatDisplayDate`/`formatDisplayTime` dans `lib/utils/timezone.ts` (format long localisé es-PE/pt-BR pour la date, `HH:mm` sans secondes pour l'heure) — uniquement pour l'affichage, le stockage en base reste inchangé (nécessaire pour les crons/tri).
 - 🟡 **Sujet des emails jamais templaté** : seul `corps` passait par `renderTemplate()`, jamais `sujet` — impact réel uniquement sur `pago_praticien` dont le sujet contient `{{nom_patient}}`/`{{fecha_cita}}` (aurait affiché les variables brutes non substituées au praticien). Corrigé dans les deux points d'envoi du dispatcher.
 - Retesté en réel après correction (nouvelle org de test PEN, webhook Calendly) : notification `sent`, email reçu avec date longue lisible.
+
+### Refonte visuelle des emails (retour utilisateur : "ça manque d'illustration, de mise en page")
+- Migration `009_email_visual_redesign.sql` : bandeau coloré avec icône emoji par type de notification (📅 confirmation, ⏰ aviso, ✅ pago, 💰 pago_praticien, ❌ anulacion, 🔔 recordatorio), encart date/heure mis en valeur dans une carte grise, carte globale à bordure arrondie. Les 12 templates (6 types × es/pt) réécrits en cohérence.
+- **Bug d'encodage découvert en appliquant la migration** : le script PowerShell appelant l'API Supabase avec les caractères accentués/emoji en UTF-8 brut échouait sur la moitié des templates (`PGRST102 Empty or invalid json`) — Windows PowerShell 5.1 lit les fichiers `.ps1` sans BOM avec le codepage système, pas en UTF-8, ce qui corrompait les caractères multi-octets avant même l'exécution du script. **Solution adoptée** : tous les caractères non-ASCII (accents es/pt, emoji) sont désormais écrits en entités HTML numériques (`&#225;`, `&#128197;`, etc.) dans le SQL et dans tout script d'automatisation — 100% ASCII, aucune ambiguïté d'encodage possible, et ça reste un HTML strictement valide. À réutiliser pour toute future migration de contenu texte.
+- Retesté en réel (nouvelle org, webhook Calendly) : notification `sent`, contenu vérifié intact en base (entités non corrompues).
+
+### Contenu manquant vs. modèle de production réel (retour utilisateur, comparaison avec l'email réel de Rocío)
+- L'utilisateur a montré l'email réel en production (Make + Google Sheets, cabinet de Rocío) : bien plus riche que mon redesign — adresse du cabinet, coût total de la consultation avec détail acompte/reste à payer sur place, signature personnalisée. Décision : ajouter adresse + coût total (génériques, utiles à tous les cabinets) ; la signature/citation personnalisée reste hors scope (branding propre à Rocío, pas un besoin générique SaaS).
+- Migration `010_costo_total.sql` : nouvelle colonne `org_settings.costo_total` (nullable — optionnel par cabinet).
+- `organizations.adresse` (colonne déjà existante dans le schéma mais jamais exposée) : ajoutée aux paramètres du cabinet.
+- `lib/dispatcher/index.ts` `renderTemplate()` : refonte pour supporter une syntaxe conditionnelle `{{#if variable}}...{{/if}}` (le bloc est retiré si la variable est vide) — nécessaire car l'adresse et le détail de coût sont optionnels par cabinet. Nouvelles variables : `{{direccion}}`, `{{costo_total}}`, `{{resto_pagar}}` (= costo_total - monto_acompte, seulement si costo_total > monto_acompte).
+- Migration `011_email_direccion_costo.sql` : ajoute les blocs conditionnels adresse (dans l'encart date/heure) et détail de coût aux 4 templates concernés par un RDV à venir (confirmation, aviso, pago, recordatorio), es + pt. `anulacion` et `pago_praticien` inchangés (non pertinent).
+- Fichier écrit directement en entités HTML ASCII cette fois (leçon de la migration 009) — zéro problème d'encodage à l'application.
+- **Bloquant rencontré** : `org_settings.costo_total` nécessite une migration de schéma (ALTER TABLE), donc pas applicable via l'API REST Supabase (PostgREST ne fait que du CRUD, pas de DDL) — l'utilisateur l'a appliquée elle-même via le SQL Editor.
+- Testé en réel avec adresse + coût total renseignés (acompte 20, coût total 120) et un nom de patient réaliste ("Martin Roelandt", pas un nom de test avec "Paciente" dedans — ce mot ne vient jamais du template, seulement des données de test précédentes) : notification `sent`.
+
+### Test de bout en bout du cycle de vie complet (demande utilisateur)
+- Créé une org de test avec un vrai compte praticien lié (via l'API Auth admin Supabase) pour valider aussi l'alerte `pago_praticien`, pas seulement les notifications patient.
+- Testé en conditions réelles, avec les vrais crons et webhooks (pas de mock) :
+  - Paiement reçu (webhook MercadoPago simulé avec un `external_reference` réel) → statut `pagado`, notifications `pago` + `pago_praticien` envoyées
+  - Rappel 24h avant RDV (`fecha_cita`/`hora_cita` recalées dans la fenêtre de rappel, fuseau America/Lima) → notification `recordatorio` envoyée
+  - Relance avant annulation (`fecha_reserva` recalée à 7h dans le passé, entre delai_aviso_h=6 et delai_paiement_h=12) → notification `aviso` envoyée
+  - Annulation automatique (`fecha_reserva` recalée à 13h dans le passé) → statut `anulado`, notification `anulacion` envoyée
+- Confirmé à l'utilisateur que les délais (paiement/aviso/rappel) sont déjà configurables par cabinet dans Paramètres — pas une nouvelle demande, déjà couvert par `org_settings.delai_paiement_h/delai_aviso_h/delai_rappel_h`.
+- **Bug d'outillage rencontré et résolu** : plusieurs tentatives de relance du serveur dev via `Start-Process` sont restées orphelines (process node/cmd zombies compétant sur le même dossier `.next`), provoquant des timeouts de 2 minutes sur les appels PowerShell suivants. Tués manuellement (`Stop-Process`), puis serveur relancé via `[System.Diagnostics.Process]::Start` avec `cmd.exe /c npm run dev > log 2> log` pour un détachement plus propre.
+
+### Bouton "Reagendar" sur l'email d'annulation (retour utilisateur)
+- Migration `012_anulacion_reagendar.sql` : ajoute un bouton pointant vers `{{calendly_url}}` (déjà stocké dans `org_settings`, jamais réutilisé dans un template) sur l'email d'annulation, es + pt, dans un bloc `{{#if calendly_url}}`.
+- `renderTemplate()` : nouvelle variable `calendly_url`.
+- Retesté en réel (nouvelle org, annulation auto déclenchée) : notification `sent`.

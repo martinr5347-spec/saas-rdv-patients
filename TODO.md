@@ -3,7 +3,7 @@
 > Voir [`CHANGELOG.md`](./CHANGELOG.md) pour l'historique détaillé de chaque tâche technique.
 > Ce fichier donne un instantané de l'état actuel : ce qui est fait, testé, et ce qui reste à faire.
 
-Dernière mise à jour : 2026-08-29
+Dernière mise à jour : 2026-08-30
 
 ---
 
@@ -38,7 +38,11 @@ Dernière mise à jour : 2026-08-29
 
 ## Migrations
 
-- ✅ `007_html_email_templates.sql` et `008_pt_templates.sql` appliquées par l'utilisateur via le SQL Editor Supabase, testées en réel (webhook Calendly synthétique, es + pt)
+- ✅ `007` à `012` appliquées (007/008 par l'utilisateur via SQL Editor pour les ALTER TABLE ; le reste par script PowerShell REST) et testées en réel : templates HTML es, i18n pt, coût total/adresse, bouton reagendar sur l'annulation
+
+## Cycle de vie complet testé en réel (2026-08-30)
+
+Tous les types de notification validés de bout en bout (webhooks + crons réels, org de test avec vrai compte praticien lié) : confirmation, paiement reçu (patient + alerte praticien), rappel 24h, relance avant annulation (aviso), annulation automatique avec bouton de reprise de RDV. Les délais (paiement/aviso/rappel) sont confirmés déjà configurables par cabinet dans Paramètres.
 
 ---
 
@@ -69,3 +73,7 @@ Dernière mise à jour : 2026-08-29
 - Toujours arrêter le serveur dev avant `npm run build` (les deux écrivent dans `.next` et se corrompent mutuellement si lancés en même temps)
 - Les scripts de test temporaires (`_test_*.mjs`, `_cleanup_test.mjs`) sont toujours supprimés après usage — n'en laisser traîner aucun dans le repo
 - Le package `pg` est utilisé ponctuellement (`npm install --no-save pg`) pour appliquer les migrations SQL directement via la connexion Postgres (pas de Supabase CLI configuré) — toujours désinstallé/non committé après usage
+- Pour toute manipulation réseau vers Supabase (REST API, tests via webhook local) depuis l'environnement Claude Code : utiliser l'outil PowerShell, pas Bash (Bash tourne dans un sandbox réseau isolé qui bloque `*.supabase.co` en DNS ; PowerShell a un accès réseau complet au vrai poste)
+- Toute valeur texte contenant des accents ou emoji, envoyée via un script PowerShell vers l'API Supabase, doit être écrite en entités HTML numériques ASCII (`&#225;`, `&#128197;`...) — Windows PowerShell 5.1 lit les fichiers `.ps1` sans BOM avec le codepage système, pas en UTF-8, ce qui corrompt silencieusement les caractères multi-octets et fait échouer une partie des requêtes (`PGRST102 Empty or invalid json`)
+- Le nouveau format de clé Supabase `sb_secret_...` est bloqué par l'API si la requête a l'air de venir d'un navigateur ("Forbidden use of secret API key in browser") — passer un `-UserAgent` explicite non-navigateur (ex. `"curl/8.0"`) sur chaque appel `Invoke-RestMethod`
+- Éviter `Start-Process ... -RedirectStandardOutput/-RedirectStandardError` pour relancer le serveur dev : des process orphelins peuvent rester à se marcher dessus sur `.next` et provoquer des timeouts de 2 min sur les appels suivants. Préférer `[System.Diagnostics.Process]::Start()` avec `cmd.exe /c npm run dev > log 2> log`, et toujours vérifier/tuer les process `node`/`cmd` existants avant de relancer

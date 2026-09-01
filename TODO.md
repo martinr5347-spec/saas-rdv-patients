@@ -22,7 +22,6 @@ Dernière mise à jour : 2026-09-02
 
 | Variable | Sert à | Statut |
 |---|---|---|
-| `ADMIN_EMAIL` | Reçoit les alertes d'erreurs internes (F12) | ❌ Non configuré — sans ça, `alertAdminEmail` retombe sur `EMAIL_FROM` (`onboarding@resend.dev`, pas une vraie boîte + bloqué par la restriction sandbox Resend) |
 | Domaine vérifié sur Resend | Envoyer des emails à de vrais patients (pas juste au compte Resend) | ❌ `onboarding@resend.dev` ne peut envoyer qu'à `martinr5347@gmail.com` |
 | `WEBHOOK_SECRET_CALENDLY` | Vérifier l'authenticité des webhooks Calendly | ❌ Vide — vérification de signature désactivée tant que non configuré (à récupérer depuis un vrai compte Calendly connecté) |
 | `WEBHOOK_SECRET_MERCADOPAGO` | Idem pour MercadoPago | ❌ Vide, même limite |
@@ -35,6 +34,7 @@ Dernière mise à jour : 2026-09-02
 - ✅ Resend (`RESEND_API_KEY`) — envoi réel testé (email direct + flow complet dispatcher)
 - ✅ `CRON_SECRET` — généré, 3 crons testés (accepté/rejeté correctement)
 - ✅ Unipile (`UNIPILE_API_KEY`, `UNIPILE_BASE_URL`) — envoi WhatsApp réel testé, endpoint correct confirmé (`POST /api/v1/chats`, multipart/form-data)
+- ✅ `ADMIN_EMAIL` (`martinr5347@gmail.com`) — alerte admin testée en réel (webhook Calendly avec cabinet introuvable), bien reçue
 
 ## Migrations
 
@@ -49,9 +49,8 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 ## Reste à faire
 
 ### Court terme
-- [ ] Retour utilisateur en attente sur le WhatsApp : mise en forme du message + clickabilité du lien de paiement (l'ancien test avec le template plat avait ce souci, raison exacte pas confirmée — à revoir avec le nouveau template si le problème persiste)
-- [ ] Définir `ADMIN_EMAIL` (au moins une adresse temporaire type `martinr5347@gmail.com`, en attendant un domaine pro)
-- [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients
+- [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients (dernier vrai bloquant avant un premier cabinet réel)
+- [ ] Récupérer `WEBHOOK_SECRET_CALENDLY` et `WEBHOOK_SECRET_MERCADOPAGO` une fois de vrais comptes Calendly/MercadoPago connectés
 - [ ] Mettre à jour le connection string Postgres direct en commentaire dans `.env.local` (rejeté par Supabase — mot de passe probablement périmé depuis la rotation vers le nouveau format de clés `sb_secret_...`), ou l'enlever si plus utile
 
 ### Phase 2 — terminée

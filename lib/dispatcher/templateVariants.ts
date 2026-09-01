@@ -405,3 +405,63 @@ ${dateBox('às')}
 export function getVariantContent(type: NotificationType, variant: VariantId, canal: Canal, langue: Langue): VariantContent {
   return MESSAGE_VARIANTS[type][variant][canal][langue]
 }
+
+// Aperçus courts (2-3 lignes, données d'exemple) affichés sous chaque bouton radio
+// dans /dashboard/settings. Texte indépendant du vrai corps (HTML/plain-text) des
+// templates — juste pour donner une idée du ton, pas un rendu fidèle pixel-perfect.
+const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string>>> = {
+  confirmation: {
+    standard: {
+      es: 'Tu cita está reservada\nHola María López, tu cita con Clínica Bienestar está reservada para el 15 de marzo de 2026 a las 10:00.\nPara confirmarla, realiza el acompte de 20.00 PEN.',
+      pt: 'Sua consulta está reservada\nOlá Maria Silva, sua consulta com Clínica Bem-Estar está reservada para 15 de março de 2026 às 10:00.\nPara confirmar, realize o sinal de 20.00 PEN.',
+    },
+    calido: {
+      es: '¡Qué alegría, María López!\nQuedó todo listo para tu cita con Clínica Bienestar. Este es el detalle: 15 de marzo de 2026 a las 10:00.\nSolo falta confirmar tu lugar con un acompte de 20.00 PEN.',
+      pt: 'Que alegria, Maria Silva!\nFicou tudo certo para sua consulta com Clínica Bem-Estar. Aqui está o resumo: 15 de março de 2026 às 10:00.\nSó falta confirmar seu horário com um sinal de 20.00 PEN.',
+    },
+  },
+  aviso: {
+    standard: {
+      es: 'Falta tu acompte\nHola María López, aún no hemos recibido el acompte para tu cita con Clínica Bienestar.\nSi no pagas pronto, la cita será cancelada automáticamente.',
+      pt: 'Falta o seu sinal\nOlá Maria Silva, ainda não recebemos o sinal da sua consulta com Clínica Bem-Estar.\nSe não pagar em breve, a consulta será cancelada automaticamente.',
+    },
+    calido: {
+      es: 'Un empujoncito más, María López\nVimos que todavía no llega el acompte para tu cita con Clínica Bienestar. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
+      pt: 'Só falta um passinho, Maria Silva\nVimos que o sinal da sua consulta com Clínica Bem-Estar ainda não chegou. Não se preocupe, ainda dá tempo!\nPara manter seu horário, é só concluir por aqui.',
+    },
+  },
+  pago: {
+    standard: {
+      es: '¡Pago recibido!\nHola María López, hemos recibido tu acompte de 20.00 PEN.\nTu cita con Clínica Bienestar está confirmada. ¡Te esperamos!',
+      pt: 'Pagamento recebido!\nOlá Maria Silva, recebemos o seu sinal de 20.00 PEN.\nSua consulta com Clínica Bem-Estar está confirmada. Te esperamos!',
+    },
+    calido: {
+      es: '¡Todo listo, María López!\nRecibimos tu acompte de 20.00 PEN, ¡muchas gracias!\nTu cita con Clínica Bienestar está confirmada. ¡Nos vemos pronto!',
+      pt: 'Tudo certo, Maria Silva!\nRecebemos o seu sinal de 20.00 PEN, muito obrigado!\nSua consulta com Clínica Bem-Estar está confirmada. Até breve!',
+    },
+  },
+  anulacion: {
+    standard: {
+      es: 'Cita cancelada\nHola María López, tu cita con Clínica Bienestar ha sido cancelada automáticamente por no recibir el acompte a tiempo.\nSi deseas reagendar, hazlo aquí mismo.',
+      pt: 'Consulta cancelada\nOlá Maria Silva, sua consulta com Clínica Bem-Estar foi cancelada automaticamente por não recebermos o sinal a tempo.\nSe quiser reagendar, faça aqui mesmo.',
+    },
+    calido: {
+      es: 'No hay problema, María López\nComo no llegamos a recibir el acompte a tiempo, tu horario con Clínica Bienestar quedó liberado.\nCuando quieras, puedes elegir un nuevo horario aquí.',
+      pt: 'Sem problemas, Maria Silva\nComo não recebemos o sinal a tempo, seu horário com Clínica Bem-Estar foi liberado.\nQuando quiser, você pode escolher um novo horário aqui.',
+    },
+  },
+  recordatorio: {
+    standard: {
+      es: 'Te esperamos\nHola María López, te recordamos tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
+      pt: 'Te esperamos\nOlá Maria Silva, lembramos da sua consulta com Clínica Bem-Estar: 15 de março de 2026 às 10:00.',
+    },
+    calido: {
+      es: '¡Te esperamos, María López!\nSolo un recordatorio cariñoso de tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
+      pt: 'Estamos te esperando, Maria Silva!\nSó um lembrete carinhoso da sua consulta com Clínica Bem-Estar: 15 de março de 2026 às 10:00.',
+    },
+  },
+}
+
+export function getPreview(type: NotificationType, variant: VariantId, langue: Langue): string {
+  return PREVIEWS[type][variant][langue]
+}

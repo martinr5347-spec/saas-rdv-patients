@@ -189,3 +189,9 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 - `types/database.ts` mis à jour (`variantes_mensaje: Json`).
 - Testé en réel (simulation fidèle de ce que ferait `updateSettings()` : écriture `org_settings.variantes_mensaje` + override `message_templates` avec le contenu "calido" de la confirmation, puis webhook Calendly réel) : notification `sent`.
 - **Reste à faire** : tester la vraie page `/dashboard/settings` dans un navigateur (radio buttons, sauvegarde) — le test ci-dessus valide le mécanisme de données mais pas l'interface elle-même.
+
+### Aperçu du message sous chaque variante (retour utilisateur)
+- Chaque bouton radio affiche maintenant un aperçu de 2-3 lignes (données d'exemple : "María López" / "Maria Silva", cabinet fictif, date/heure/montant fictifs) dans la langue actuelle du cabinet — texte indépendant du vrai corps HTML/WhatsApp du template (pas un rendu pixel-perfect, juste pour donner le ton).
+- `lib/dispatcher/templateVariants.ts` : nouveau catalogue `PREVIEWS` (5 types × 2 variantes × 2 langues) + `getPreview()`.
+- UI : les deux options par type sont maintenant présentées en grille 2 colonnes façon carte, avec surbrillance bleue de la carte sélectionnée (`has-[:checked]:` Tailwind, supporté en 3.4.1).
+- Non testé visuellement dans un navigateur (pas d'outil de capture d'écran disponible dans cette session) — `tsc`/`lint` propres, à valider par l'utilisateur.

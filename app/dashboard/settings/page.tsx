@@ -9,6 +9,7 @@ import {
   VARIANT_LABELS,
   NOTIFICATION_TYPE_LABELS,
   getVariantContent,
+  getPreview,
 } from '@/lib/dispatcher/templateVariants'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
@@ -259,19 +260,28 @@ export default async function SettingsPage() {
           {NOTIFICATION_TYPES.map((type) => {
             const currentVariant =
               (settings?.variantes_mensaje as Record<string, string> | null)?.[type] === 'calido' ? 'calido' : 'standard'
+            const previewLangue = organization?.langue === 'pt' ? 'pt' : 'es'
             return (
               <fieldset key={type}>
-                <legend className="block text-sm font-medium mb-1">{NOTIFICATION_TYPE_LABELS[type]}</legend>
-                <div className="flex gap-4">
+                <legend className="block text-sm font-medium mb-2">{NOTIFICATION_TYPE_LABELS[type]}</legend>
+                <div className="grid grid-cols-2 gap-3">
                   {VARIANT_IDS.map((variantId) => (
-                    <label key={variantId} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name={`variante_${type}`}
-                        value={variantId}
-                        defaultChecked={currentVariant === variantId}
-                      />
-                      {VARIANT_LABELS[variantId]}
+                    <label
+                      key={variantId}
+                      className="block rounded-md border p-3 text-sm cursor-pointer hover:border-blue-400 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50"
+                    >
+                      <span className="flex items-center gap-2 font-medium">
+                        <input
+                          type="radio"
+                          name={`variante_${type}`}
+                          value={variantId}
+                          defaultChecked={currentVariant === variantId}
+                        />
+                        {VARIANT_LABELS[variantId]}
+                      </span>
+                      <p className="mt-2 text-xs text-gray-500 whitespace-pre-line">
+                        {getPreview(type, variantId, previewLangue)}
+                      </p>
                     </label>
                   ))}
                 </div>

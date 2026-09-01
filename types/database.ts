@@ -120,6 +120,7 @@ export interface Database {
           canal_whatsapp: boolean
           monnaie: string
           costo_total: number | null
+          variantes_mensaje: Json
           updated_at: string
         }
         Insert: {
@@ -137,6 +138,7 @@ export interface Database {
           canal_whatsapp?: boolean
           monnaie?: string
           costo_total?: number | null
+          variantes_mensaje?: Json
           updated_at?: string
         }
         Update: {
@@ -154,6 +156,7 @@ export interface Database {
           canal_whatsapp?: boolean
           monnaie?: string
           costo_total?: number | null
+          variantes_mensaje?: Json
           updated_at?: string
         }
         Relationships: [

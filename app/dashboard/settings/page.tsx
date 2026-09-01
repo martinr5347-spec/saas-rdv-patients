@@ -2,6 +2,17 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 import { getStripe } from '@/lib/payments/stripe'
+import {
+  NotificationType,
+  VariantId,
+  VARIANT_IDS,
+  VARIANT_LABELS,
+  NOTIFICATION_TYPE_LABELS,
+  getVariantContent,
+} from '@/lib/dispatcher/templateVariants'
+
+const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
+const CANALES = ['email', 'whatsapp'] as const
 
 async function updateSettings(formData: FormData) {
   'use server'
@@ -31,6 +42,11 @@ async function updateSettings(formData: FormData) {
     current?.unipile_connected_at ?? null
   )
 
+  const variantes: Record<NotificationType, VariantId> = {} as Record<NotificationType, VariantId>
+  for (const type of NOTIFICATION_TYPES) {
+    variantes[type] = formData.get(`variante_${type}`) === 'calido' ? 'calido' : 'standard'
+  }
+
   await supabase
     .from('org_settings')
     .update({
@@ -47,17 +63,37 @@ async function updateSettings(formData: FormData) {
       canal_whatsapp: formData.get('canal_whatsapp') === 'on',
       monnaie: String(formData.get('monnaie') ?? 'PEN'),
       costo_total: formData.get('costo_total') ? Number(formData.get('costo_total')) : null,
+      variantes_mensaje: variantes,
     })
     .eq('organization_id', profile.organization_id)
 
-  const langue = formData.get('langue')
+  const langueField = formData.get('langue')
+  const finalLangue = langueField === 'pt' ? 'pt' : 'es'
   const orgUpdate: { langue?: 'es' | 'pt'; adresse?: string } = {
     adresse: String(formData.get('adresse') ?? ''),
   }
-  if (langue === 'es' || langue === 'pt') {
-    orgUpdate.langue = langue
+  if (langueField === 'es' || langueField === 'pt') {
+    orgUpdate.langue = langueField
   }
   await supabase.from('organizations').update(orgUpdate).eq('id', profile.organization_id)
+
+  for (const type of NOTIFICATION_TYPES) {
+    const variantId = variantes[type]
+    for (const canal of CANALES) {
+      const content = getVariantContent(type, variantId, canal, finalLangue)
+      await supabase.from('message_templates').upsert(
+        {
+          organization_id: profile.organization_id,
+          type,
+          canal,
+          langue: finalLangue,
+          sujet: content.sujet ?? null,
+          corps: content.corps,
+        },
+        { onConflict: 'organization_id,type,canal,langue' }
+      )
+    }
+  }
 
   redirect('/dashboard/settings')
 }
@@ -212,6 +248,38 @@ export default async function SettingsPage() {
             <span className="text-sm">WhatsApp actif</span>
           </label>
         </div>
+
+        <div className="border-t pt-4 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold">Modelo de mensajes</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Elige el estilo de cada mensaje enviado a tus pacientes. Los datos de la cita (nombre, fecha, enlace de pago...) siguen siendo automáticos.
+            </p>
+          </div>
+          {NOTIFICATION_TYPES.map((type) => {
+            const currentVariant =
+              (settings?.variantes_mensaje as Record<string, string> | null)?.[type] === 'calido' ? 'calido' : 'standard'
+            return (
+              <fieldset key={type}>
+                <legend className="block text-sm font-medium mb-1">{NOTIFICATION_TYPE_LABELS[type]}</legend>
+                <div className="flex gap-4">
+                  {VARIANT_IDS.map((variantId) => (
+                    <label key={variantId} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name={`variante_${type}`}
+                        value={variantId}
+                        defaultChecked={currentVariant === variantId}
+                      />
+                      {VARIANT_LABELS[variantId]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )
+          })}
+        </div>
+
         <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
           Enregistrer
         </button>

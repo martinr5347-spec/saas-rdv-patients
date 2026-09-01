@@ -176,3 +176,16 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 - Scénario annulation : confirmation → `fecha_reserva` recalée à 13h dans le passé → cron `payment-deadline` → statut `anulado` + notification `anulacion` (avec bouton de reprise de RDV) envoyée
 - Un envoi de confirmation a échoué avec `fetch failed` (erreur réseau transitoire ponctuelle vers Unipile, non reproduite sur les 4 autres envois du même test) — sans lien avec le code, l'annulation qui suivait sur le même appointment s'est envoyée normalement
 - **Limite de conception notée (pas corrigée, à valider avant d'y toucher)** : le quota de chauffe WhatsApp est suivi par `organization_id`, alors que la contrainte réelle (anti-ban WhatsApp) s'applique au numéro/compte Unipile. Si plusieurs cabinets partageaient un jour le même compte Unipile, chacun aurait son propre quota de 5/jour, dépassant collectivement la limite réelle prudente pour le numéro. Non pertinent tant qu'un cabinet = un numéro WhatsApp dédié (cas d'usage actuel).
+
+---
+
+## 2026-09-02
+
+### Sélecteur de modèle de message (demande utilisateur)
+- Nouvelle fonctionnalité : dans `/dashboard/settings`, un bouton radio par type de notification (confirmation, aviso, pago, anulacion, recordatorio — 5 types ; `pago_praticien` reste fixe, non exposé car interne) permet de choisir entre 2 styles prédéfinis : "Estándar" (contenu actuel, repris tel quel) et "Cercano y cálido" (ton plus personnel, nouveau contenu rédigé pour l'occasion). Les variables ({{nom_patient}}, {{fecha_cita}}, {{link_pago}}...) et la structure (bandeau coloré, encart date/adresse, bouton) restent identiques entre variantes — seul le texte change.
+- `lib/dispatcher/templateVariants.ts` : catalogue statique (code, pas en base) des 2 variantes × 5 types × 2 canaux (email/whatsapp) × 2 langues (es/pt) = 40 contenus. Le "standard" reprend exactement les templates par défaut existants (migrations 009/011/012/013) ; le "calido" est un nouveau ton chaleureux rédigé pour cette fonctionnalité.
+- **Choix d'architecture** : plutôt que de faire lire le catalogue directement par le dispatcher au moment de l'envoi (aurait nécessité de modifier `loadTemplate()`, code déjà testé en production), la sélection d'une variante **matérialise** son contenu dans un override org-spécifique de `message_templates` (même mécanisme déjà utilisé pour l'i18n pt) — à chaque sauvegarde des paramètres, les 5 types × 2 canaux sont réécrits avec le contenu de la variante choisie, dans la langue actuelle du cabinet. Le moteur de rendu (`renderTemplate`, `loadTemplate`) n'a pas changé.
+- Migration `014_message_variants.sql` : nouvelle colonne `org_settings.variantes_mensaje` (jsonb, ex. `{"confirmation":"calido"}`) — stocke uniquement le *choix*, pas le texte (qui reste dans le code).
+- `types/database.ts` mis à jour (`variantes_mensaje: Json`).
+- Testé en réel (simulation fidèle de ce que ferait `updateSettings()` : écriture `org_settings.variantes_mensaje` + override `message_templates` avec le contenu "calido" de la confirmation, puis webhook Calendly réel) : notification `sent`.
+- **Reste à faire** : tester la vraie page `/dashboard/settings` dans un navigateur (radio buttons, sauvegarde) — le test ci-dessus valide le mécanisme de données mais pas l'interface elle-même.

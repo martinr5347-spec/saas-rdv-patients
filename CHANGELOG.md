@@ -168,3 +168,11 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 ### `ADMIN_EMAIL` configuré et testé
 - `ADMIN_EMAIL=martinr5347@gmail.com` ajouté à `.env.local` — jusque-là vide, les alertes admin retombaient sur `EMAIL_FROM` (`onboarding@resend.dev`, une adresse non consultée)
 - Testé en réel : webhook Calendly avec `calendly_url` ne correspondant à aucun cabinet → alerte "Webhook Calendly : cabinet introuvable" bien reçue
+
+### Cycle de vie complet WhatsApp testé en réel (demande utilisateur)
+- 3 cabinets de test distincts (confirmation+paiement, confirmation+aviso, confirmation+annulation) — nécessaire car la chauffe WhatsApp (`org_settings`/quota journalier) est calculée par organisation, pas par compte Unipile/numéro : réutiliser le même cabinet pour tous les scénarios aurait consommé le quota de 5 msg/jour avant la fin du test
+- Scénario paiement : confirmation → paiement MercadoPago simulé (18s d'attente respectant le délai anti-bot de 15s entre deux messages) → notification `pago` envoyée
+- Scénario relance : confirmation → `fecha_reserva` recalée à 7h dans le passé → cron `payment-reminder` → notification `aviso` envoyée
+- Scénario annulation : confirmation → `fecha_reserva` recalée à 13h dans le passé → cron `payment-deadline` → statut `anulado` + notification `anulacion` (avec bouton de reprise de RDV) envoyée
+- Un envoi de confirmation a échoué avec `fetch failed` (erreur réseau transitoire ponctuelle vers Unipile, non reproduite sur les 4 autres envois du même test) — sans lien avec le code, l'annulation qui suivait sur le même appointment s'est envoyée normalement
+- **Limite de conception notée (pas corrigée, à valider avant d'y toucher)** : le quota de chauffe WhatsApp est suivi par `organization_id`, alors que la contrainte réelle (anti-ban WhatsApp) s'applique au numéro/compte Unipile. Si plusieurs cabinets partageaient un jour le même compte Unipile, chacun aurait son propre quota de 5/jour, dépassant collectivement la limite réelle prudente pour le numéro. Non pertinent tant qu'un cabinet = un numéro WhatsApp dédié (cas d'usage actuel).

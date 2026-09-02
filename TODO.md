@@ -3,7 +3,7 @@
 > Voir [`CHANGELOG.md`](./CHANGELOG.md) pour l'historique détaillé de chaque tâche technique.
 > Ce fichier donne un instantané de l'état actuel : ce qui est fait, testé, et ce qui reste à faire.
 
-Dernière mise à jour : 2026-09-02
+Dernière mise à jour : 2026-09-03
 
 ---
 
@@ -49,14 +49,17 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 ## Reste à faire
 
 ### Court terme
-- [ ] **Bloquant** : déposer le vrai `public/images/duo_praticiens.png` (export PNG transparent direct — pas de passage par JPEG, pas de screenshot). Les deux fichiers précédemment déposés étaient inutilisables (l'un avait perdu sa transparence, l'autre était une capture d'écran de la page entière) et ont été supprimés.
-- [ ] Rendu `/login` non validé par l'utilisateur ("je valide pas du tout", motif exact non précisé) — à reprendre une fois l'image correcte fournie
 - [ ] Valider visuellement la charte TailAdmin dans un vrai navigateur (sidebar, header, cards, tables, couleurs violet/turquoise) — testé uniquement par requêtes HTTP scriptées (200, pas d'overlay d'erreur, sidebar présente dans le HTML), jamais vu rendu
-- [ ] Valider visuellement le sélecteur de langue es/pt sur `/login` (testé en HTTP scripté uniquement)
 - [ ] Tester la page `/dashboard/settings` dans un vrai navigateur (radio buttons de variante de message) — validé côté données/mécanisme, pas encore côté interface
 - [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients (dernier vrai bloquant avant un premier cabinet réel)
 - [ ] Récupérer `WEBHOOK_SECRET_CALENDLY` et `WEBHOOK_SECRET_MERCADOPAGO` une fois de vrais comptes Calendly/MercadoPago connectés
 - [ ] Mettre à jour le connection string Postgres direct en commentaire dans `.env.local` (rejeté par Supabase — mot de passe probablement périmé depuis la rotation vers le nouveau format de clés `sb_secret_...`), ou l'enlever si plus utile
+- [ ] Décider si le `<title>` de l'onglet navigateur (`app/layout.tsx`, "Citas SaaS — ...") doit aussi devenir "Núcleo" — laissé inchangé, hors périmètre précisé par l'utilisateur jusqu'ici
+
+### Page de login — terminé, validé par l'utilisateur ("c'est good")
+- [x] Refonte 2 colonnes (marine/crème), image des personnages avec bulle à engrenages intégrée (`duo_praticiens.png`, transparence réelle confirmée)
+- [x] Sélecteur de langue es/pt (`next-intl`, mode client sans routing) + accroche dynamique selon la langue
+- [x] Rebranding "Citas SaaS" → "Núcleo" (sidebar dashboard + admin)
 
 ### Charte visuelle TailAdmin — terminé (mécanisme), rendu visuel à valider
 - [x] `tailwind.config.ts` : couleurs `brand` (violet, 500=#7C3AED), `accent` (turquoise, 500=#0D9488), `gray`/`success`/`error`/`warning` (palette TailAdmin), police Outfit, tailles/ombres "theme-*"
@@ -84,6 +87,11 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 - [x] Mise en forme HTML des templates d'emails — migration 007 appliquée et testée
 - [x] Devise MercadoPago dynamique (était codée en dur `PEN`) + champ devise dans les paramètres
 - [x] Format lisible des dates/heures dans les messages (au lieu du format brut de la base)
+
+### Extraction téléphone patient — terminé, testé en réel
+- [x] Repli sur `questions_and_answers` (question "WhatsApp"/"celular") si `text_reminder_number` absent — corrige un cas où aucun numéro n'était jamais capturé pour les cabinets utilisant une question personnalisée Calendly
+- [x] Normalisation cohérente (`+51` par défaut, garde le préfixe existant sinon) — utile aussi pour la dédup patient par téléphone
+- [x] Vérifié qu'aucun doublon de message n'est créé avec le système `dispatch()` existant
 
 ### Idées / améliorations non demandées explicitement (à valider avant de faire)
 - [ ] Indicateur visuel dans `/dashboard/settings` du statut de chauffe WhatsApp (jour actuel / quota du jour) — actuellement seule la base de données le sait

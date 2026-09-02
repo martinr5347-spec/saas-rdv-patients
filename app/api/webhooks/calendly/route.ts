@@ -44,6 +44,29 @@ function matchCalendlyUrl(calendlyUrl: string, candidates: string[]) {
     .some((c) => c.includes(normalized) || normalized.includes(c))
 }
 
+// Le numéro WhatsApp du patient arrive soit via le champ SMS intégré de Calendly
+// (invitee.text_reminder_number), soit via une question personnalisée du formulaire
+// (ex: "Número de celular (WhatsApp)") — selon comment chaque cabinet a configuré son
+// Calendly. On normalise dans les deux cas pour un format cohérent en base (utile pour
+// la déduplication des patients par téléphone) : uniquement chiffres + un éventuel "+"
+// en tête, +51 (Pérou) par défaut si aucun indicatif n'est fourni.
+function normalizePhone(raw: string): string {
+  const cleaned = raw.replace(/(?!^\+)[^\d]/g, '')
+  if (!cleaned) return ''
+  return cleaned.startsWith('+') ? cleaned : `+51${cleaned}`
+}
+
+function extractPhoneFromAnswers(questionsAndAnswers: unknown): string {
+  if (!Array.isArray(questionsAndAnswers)) return ''
+  const match = questionsAndAnswers.find((qa) => {
+    const question = typeof (qa as { question?: unknown })?.question === 'string' ? (qa as { question: string }).question : ''
+    const label = question.toLowerCase()
+    return label.includes('whatsapp') || label.includes('celular')
+  }) as { answer?: unknown } | undefined
+  const answer = typeof match?.answer === 'string' ? match.answer : ''
+  return answer
+}
+
 export async function POST(req: Request) {
   const body = await req.text()
   const secret = process.env.WEBHOOK_SECRET_CALENDLY
@@ -122,10 +145,15 @@ export async function POST(req: Request) {
 
   const patientName = typeof invitee.name === 'string' ? invitee.name : ''
   const patientEmail = typeof invitee.email === 'string' ? invitee.email : ''
-  const patientPhone =
-    typeof invitee.text_reminder_number === 'string'
-      ? invitee.text_reminder_number
-      : ''
+
+  // Le numéro peut venir du champ SMS intégré de Calendly, ou d'une question
+  // personnalisée du formulaire ("Número de celular (WhatsApp)") selon le cabinet —
+  // on vérifie les deux emplacements possibles de questions_and_answers.
+  const rawPhone =
+    (typeof invitee.text_reminder_number === 'string' ? invitee.text_reminder_number : '') ||
+    extractPhoneFromAnswers(payloadData.questions_and_answers) ||
+    extractPhoneFromAnswers(invitee.questions_and_answers)
+  const patientPhone = rawPhone ? normalizePhone(rawPhone) : ''
 
   if (!patientName || (!patientEmail && !patientPhone)) {
     console.error('Calendly webhook: données patient manquantes', { patientName, patientEmail, patientPhone })

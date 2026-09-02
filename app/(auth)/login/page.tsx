@@ -3,9 +3,9 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import GearThoughtBubble from '@/components/auth/GearThoughtBubble'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 
@@ -50,16 +50,18 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/60">
-            Gestion de rendez-vous
+            {MESSAGES[locale].tagline}
           </div>
           <div className="text-3xl font-semibold text-white">Núcleo</div>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center">
-          <GearThoughtBubble />
-          {/* Image des personnages retirée en attendant un vrai PNG transparent
-              (voir public/images/ — le fichier déposé jusqu'ici n'était pas exploitable).
-              Remettre un <Image src="/images/duo_praticiens.png" fill .../> ici une fois le fichier fourni. */}
+        <div className="relative z-10 h-[380px] w-full">
+          <Image
+            src="/images/duo_praticiens.png"
+            alt="Praticiens Núcleo"
+            fill
+            className="object-contain object-bottom"
+          />
         </div>
       </div>
 

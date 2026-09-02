@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-gray-50">
-        <Sidebar navItems={navItems} brand="Citas SaaS — Admin" />
+        <Sidebar navItems={navItems} brand="Núcleo — Admin" />
         <div className="lg:pl-[260px]">
           <Header userName={profile?.nom ?? user?.email ?? ''} signOutAction={signOut} />
           <main className="p-4 lg:p-6">{children}</main>

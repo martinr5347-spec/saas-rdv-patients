@@ -10,7 +10,7 @@ export interface NavItem {
   icon: React.ReactNode
 }
 
-export default function Sidebar({ navItems, brand = 'Citas SaaS' }: { navItems: NavItem[]; brand?: string }) {
+export default function Sidebar({ navItems, brand = 'Núcleo' }: { navItems: NavItem[]; brand?: string }) {
   const pathname = usePathname()
   const { isMobileOpen, closeMobileSidebar } = useSidebar()
 
@@ -25,7 +25,7 @@ export default function Sidebar({ navItems, brand = 'Citas SaaS' }: { navItems: 
         }`}
       >
         <div className="flex items-center gap-2 py-6">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">C</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">{brand.charAt(0)}</span>
           <span className="text-lg font-semibold text-gray-800">{brand}</span>
         </div>
         <nav className="flex-1 overflow-y-auto no-scrollbar">

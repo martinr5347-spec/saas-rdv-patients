@@ -49,10 +49,22 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 ## Reste à faire
 
 ### Court terme
+- [ ] **Bloquant** : déposer le vrai `public/images/duo_praticiens.png` (export PNG transparent direct — pas de passage par JPEG, pas de screenshot). Les deux fichiers précédemment déposés étaient inutilisables (l'un avait perdu sa transparence, l'autre était une capture d'écran de la page entière) et ont été supprimés.
+- [ ] Rendu `/login` non validé par l'utilisateur ("je valide pas du tout", motif exact non précisé) — à reprendre une fois l'image correcte fournie
+- [ ] Valider visuellement la charte TailAdmin dans un vrai navigateur (sidebar, header, cards, tables, couleurs violet/turquoise) — testé uniquement par requêtes HTTP scriptées (200, pas d'overlay d'erreur, sidebar présente dans le HTML), jamais vu rendu
+- [ ] Valider visuellement le sélecteur de langue es/pt sur `/login` (testé en HTTP scripté uniquement)
 - [ ] Tester la page `/dashboard/settings` dans un vrai navigateur (radio buttons de variante de message) — validé côté données/mécanisme, pas encore côté interface
 - [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients (dernier vrai bloquant avant un premier cabinet réel)
 - [ ] Récupérer `WEBHOOK_SECRET_CALENDLY` et `WEBHOOK_SECRET_MERCADOPAGO` une fois de vrais comptes Calendly/MercadoPago connectés
 - [ ] Mettre à jour le connection string Postgres direct en commentaire dans `.env.local` (rejeté par Supabase — mot de passe probablement périmé depuis la rotation vers le nouveau format de clés `sb_secret_...`), ou l'enlever si plus utile
+
+### Charte visuelle TailAdmin — terminé (mécanisme), rendu visuel à valider
+- [x] `tailwind.config.ts` : couleurs `brand` (violet, 500=#7C3AED), `accent` (turquoise, 500=#0D9488), `gray`/`success`/`error`/`warning` (palette TailAdmin), police Outfit, tailles/ombres "theme-*"
+- [x] Composants génériques : `components/ui/{Card,Table,Badge,StatCard}.tsx`, `components/layout/{Sidebar,Header,icons}.tsx`, `context/SidebarContext.tsx`
+- [x] `app/dashboard/layout.tsx` et `app/admin/layout.tsx` reconstruits avec sidebar + header (logique de données inchangée)
+- [x] Pages reskinnées : dashboard, rendez-vous (liste+détail), patients, paramètres, admin — className uniquement, aucune requête/action modifiée
+- [x] Testé en réel (compte de test + session, 4 routes dashboard + admin) : 200, sidebar présente, pas d'overlay d'erreur
+- [ ] Pages volontairement laissées hors scope (pas de sidebar/header/card/table) : `/login`, `/register`, `/subscribe`, landing (`app/page.tsx`) — gardent l'ancien bleu, à harmoniser si souhaité plus tard
 
 ### Sélecteur de variante de message — terminé (mécanisme), UI à valider
 - [x] Catalogue de 2 variantes ("Estándar" / "Cercano y cálido") × 5 types × 2 canaux × 2 langues (`lib/dispatcher/templateVariants.ts`)

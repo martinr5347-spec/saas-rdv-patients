@@ -1,0 +1,12 @@
+{
+  "login": {
+    "title": "Conexión",
+    "subtitle": "Ingresa a tu espacio para gestionar tus citas.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Ingresar",
+    "submitLoading": "Ingresando...",
+    "noAccount": "¿Aún no tienes cuenta?",
+    "register": "Regístrate"
+  }
+}

@@ -1,5 +1,14 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+
+const STATUS_BADGE = {
+  pendiente: 'warning',
+  pagado: 'success',
+  anulado: 'error',
+} as const
 
 export default async function AppointmentsPage({
   searchParams,
@@ -24,59 +33,65 @@ export default async function AppointmentsPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Rendez-vous</h1>
+      <h1 className="text-2xl font-semibold text-gray-800">Rendez-vous</h1>
 
-      <form method="get" className="flex flex-wrap gap-4 bg-white p-4 rounded-xl shadow">
-        <select name="statut" defaultValue={searchParams.statut ?? ''} className="rounded-md border px-3 py-2">
-          <option value="">Tous les statuts</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="pagado">Pagado</option>
-          <option value="anulado">Anulado</option>
-        </select>
-        <input name="depuis" type="date" defaultValue={searchParams.depuis ?? ''} className="rounded-md border px-3 py-2" />
-        <input name="jusquau" type="date" defaultValue={searchParams.jusquau ?? ''} className="rounded-md border px-3 py-2" />
-        <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Filtrer</button>
-      </form>
+      <Card>
+        <form method="get" className="flex flex-wrap gap-4">
+          <select name="statut" defaultValue={searchParams.statut ?? ''} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400">
+            <option value="">Tous les statuts</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="pagado">Pagado</option>
+            <option value="anulado">Anulado</option>
+          </select>
+          <input name="depuis" type="date" defaultValue={searchParams.depuis ?? ''} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+          <input name="jusquau" type="date" defaultValue={searchParams.jusquau ?? ''} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+          <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+            Filtrer
+          </button>
+        </form>
+      </Card>
 
-      {error && <p className="text-red-600">{error.message}</p>}
+      {error && <p className="text-error-600 text-sm">{error.message}</p>}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left">Patient</th>
-              <th className="px-4 py-2 text-left">Date</th>
-              <th className="px-4 py-2 text-left">Heure</th>
-              <th className="px-4 py-2 text-left">Statut</th>
-              <th className="px-4 py-2 text-left">Acompte</th>
-              <th className="px-4 py-2 text-left"></th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell isHeader>Patient</TableCell>
+              <TableCell isHeader>Date</TableCell>
+              <TableCell isHeader>Heure</TableCell>
+              <TableCell isHeader>Statut</TableCell>
+              <TableCell isHeader>Acompte</TableCell>
+              <TableCell isHeader></TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(appointments ?? []).length === 0 && (
-              <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={6}>
+              <TableRow>
+                <TableCell colSpan={6} className="text-gray-500">
                   Aucun rendez-vous.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
             {(appointments ?? []).map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="px-4 py-2">{(a.patients as { nom: string } | null)?.nom ?? '-'}</td>
-                <td className="px-4 py-2">{a.fecha_cita}</td>
-                <td className="px-4 py-2">{a.hora_cita}</td>
-                <td className="px-4 py-2 capitalize">{a.statut}</td>
-                <td className="px-4 py-2">{a.monto_acompte}</td>
-                <td className="px-4 py-2">
-                  <Link href={`/dashboard/appointments/${a.id}`} className="text-blue-600 hover:underline">
+              <TableRow key={a.id}>
+                <TableCell>{(a.patients as { nom: string } | null)?.nom ?? '-'}</TableCell>
+                <TableCell>{a.fecha_cita}</TableCell>
+                <TableCell>{a.hora_cita}</TableCell>
+                <TableCell>
+                  <Badge color={STATUS_BADGE[a.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{a.statut}</Badge>
+                </TableCell>
+                <TableCell>{a.monto_acompte}</TableCell>
+                <TableCell>
+                  <Link href={`/dashboard/appointments/${a.id}`} className="text-brand-600 hover:underline font-medium">
                     Détails
                   </Link>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   )
 }

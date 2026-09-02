@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import Badge from '@/components/ui/Badge'
+import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
 
 export default async function AdminPage() {
   const supabase = createClient()
@@ -11,30 +13,38 @@ export default async function AdminPage() {
   }))
 
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Admin plateforme</h1>
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left">Cabinet</th>
-              <th className="px-4 py-2 text-left">Pays</th>
-              <th className="px-4 py-2 text-left">Plan</th>
-              <th className="px-4 py-2 text-left">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold text-gray-800">Admin plateforme</h1>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell isHeader>Cabinet</TableCell>
+              <TableCell isHeader>Pays</TableCell>
+              <TableCell isHeader>Plan</TableCell>
+              <TableCell isHeader>Statut</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {orgsWithStatus.map((org) => (
-              <tr key={org.id} className="border-t">
-                <td className="px-4 py-2">{org.nom}</td>
-                <td className="px-4 py-2">{org.pays}</td>
-                <td className="px-4 py-2">{org.subscription?.plan ?? '-'}</td>
-                <td className="px-4 py-2">{org.subscription?.statut ?? '-'}</td>
-              </tr>
+              <TableRow key={org.id}>
+                <TableCell className="font-medium text-gray-800">{org.nom}</TableCell>
+                <TableCell>{org.pays}</TableCell>
+                <TableCell>{org.subscription?.plan ?? '-'}</TableCell>
+                <TableCell>
+                  {org.subscription?.statut ? (
+                    <Badge color={org.subscription.statut === 'active' ? 'success' : org.subscription.statut === 'past_due' ? 'warning' : 'gray'}>
+                      {org.subscription.statut}
+                    </Badge>
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   )
 }

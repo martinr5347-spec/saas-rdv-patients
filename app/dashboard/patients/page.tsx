@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
 
 export default async function PatientsPage() {
   const supabase = createClient()
@@ -9,27 +10,27 @@ export default async function PatientsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Patients</h1>
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left">Nom</th>
-              <th className="px-4 py-2 text-left">Email</th>
-              <th className="px-4 py-2 text-left">Téléphone</th>
-            </tr>
-          </thead>
-          <tbody>
+      <h1 className="text-2xl font-semibold text-gray-800">Patients</h1>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell isHeader>Nom</TableCell>
+              <TableCell isHeader>Email</TableCell>
+              <TableCell isHeader>Téléphone</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(patients ?? []).map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="px-4 py-2">{p.nom}</td>
-                <td className="px-4 py-2">{p.email ?? '-'}</td>
-                <td className="px-4 py-2">{p.telefono ?? '-'}</td>
-              </tr>
+              <TableRow key={p.id}>
+                <TableCell className="font-medium text-gray-800">{p.nom}</TableCell>
+                <TableCell>{p.email ?? '-'}</TableCell>
+                <TableCell>{p.telefono ?? '-'}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   )
 }

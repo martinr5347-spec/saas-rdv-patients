@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import StatCard from '@/components/ui/StatCard'
+import { CalendarIcon } from '@/components/layout/icons'
 
 export default async function DashboardHomePage() {
   const supabase = createClient()
@@ -18,20 +20,11 @@ export default async function DashboardHomePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Tableau de bord</h1>
+      <h1 className="text-2xl font-semibold text-gray-800">Tableau de bord</h1>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-sm text-gray-500">Prochains RDV</p>
-          <p className="text-3xl font-bold">{appointments?.length ?? 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-sm text-gray-500">En attente de paiement</p>
-          <p className="text-3xl font-bold">{countsByStatus['pendiente'] ?? 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-sm text-gray-500">Payés</p>
-          <p className="text-3xl font-bold">{countsByStatus['pagado'] ?? 0}</p>
-        </div>
+        <StatCard label="Prochains RDV" value={appointments?.length ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
+        <StatCard label="En attente de paiement" value={countsByStatus['pendiente'] ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
+        <StatCard label="Payés" value={countsByStatus['pagado'] ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
       </div>
     </div>
   )

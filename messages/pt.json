@@ -1,0 +1,12 @@
+{
+  "login": {
+    "title": "Acesso",
+    "subtitle": "Acesse seu espaço para gerenciar suas consultas.",
+    "email": "E-mail",
+    "password": "Senha",
+    "submit": "Entrar",
+    "submitLoading": "Entrando...",
+    "noAccount": "Ainda não tem conta?",
+    "register": "Cadastre-se"
+  }
+}

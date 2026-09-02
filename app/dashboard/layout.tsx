@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { SidebarProvider } from '@/context/SidebarContext'
+import Sidebar from '@/components/layout/Sidebar'
+import Header from '@/components/layout/Header'
+import { HomeIcon, CalendarIcon, UsersIcon, SettingsIcon, ShieldIcon } from '@/components/layout/icons'
 
 async function signOut() {
   'use server'
@@ -36,58 +40,35 @@ export default async function DashboardLayout({
       ? Math.max(0, Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
       : null
 
+  const navItems = [
+    { href: '/dashboard', label: 'Accueil', icon: <HomeIcon /> },
+    { href: '/dashboard/appointments', label: 'Rendez-vous', icon: <CalendarIcon /> },
+    { href: '/dashboard/patients', label: 'Patients', icon: <UsersIcon /> },
+    { href: '/dashboard/settings', label: 'Paramètres', icon: <SettingsIcon /> },
+    ...(profile?.role === 'admin' ? [{ href: '/admin', label: 'Admin', icon: <ShieldIcon /> }] : []),
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold text-lg">Citas SaaS</span>
-            <nav className="flex gap-4 text-sm">
-              <Link href="/dashboard" className="text-gray-700 hover:text-blue-600">
-                Accueil
-              </Link>
-              <Link href="/dashboard/appointments" className="text-gray-700 hover:text-blue-600">
-                Rendez-vous
-              </Link>
-              <Link href="/dashboard/patients" className="text-gray-700 hover:text-blue-600">
-                Patients
-              </Link>
-              <Link href="/dashboard/settings" className="text-gray-700 hover:text-blue-600">
-                Paramètres
-              </Link>
-              {profile?.role === 'admin' && (
-                <Link href="/admin" className="text-gray-700 hover:text-blue-600">
-                  Admin
+    <SidebarProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar navItems={navItems} />
+        <div className="lg:pl-[260px]">
+          <Header userName={profile?.nom ?? user?.email ?? ''} signOutAction={signOut} />
+          {trialDaysLeft !== null && (
+            <div className="border-b border-brand-100 bg-brand-50">
+              <div className="px-4 py-2 text-sm text-brand-700 flex items-center justify-center gap-2 lg:px-6">
+                <span>
+                  Essai gratuit : {trialDaysLeft} {trialDaysLeft > 1 ? 'jours restants' : 'jour restant'}
+                </span>
+                <Link href="/subscribe" className="font-medium underline hover:text-brand-800">
+                  Passer au plan payant
                 </Link>
-              )}
-            </nav>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-gray-600">{profile?.nom ?? user?.email}</span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="text-red-600 hover:text-red-800"
-              >
-                Déconnexion
-              </button>
-            </form>
-          </div>
+              </div>
+            </div>
+          )}
+          <main className="p-4 lg:p-6">{children}</main>
         </div>
-      </header>
-      {trialDaysLeft !== null && (
-        <div className="bg-blue-50 border-b border-blue-100">
-          <div className="max-w-6xl mx-auto px-4 py-2 text-sm text-blue-800 flex items-center justify-center gap-2">
-            <span>
-              Essai gratuit : {trialDaysLeft} {trialDaysLeft > 1 ? 'jours restants' : 'jour restant'}
-            </span>
-            <Link href="/subscribe" className="font-medium underline hover:text-blue-900">
-              Passer au plan payant
-            </Link>
-          </div>
-        </div>
-      )}
-      <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
-    </div>
+      </div>
+    </SidebarProvider>
   )
 }

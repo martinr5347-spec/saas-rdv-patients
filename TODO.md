@@ -57,7 +57,7 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 - [ ] Récupérer `WEBHOOK_SECRET_CALENDLY` et `WEBHOOK_SECRET_MERCADOPAGO` une fois de vrais comptes Calendly/MercadoPago connectés
 - [x] Connection string Postgres direct : refonctionne (utilisée avec succès pour appliquer la migration 015, voir CHANGELOG 26-30/09) — plus besoin de passer par le SQL Editor pour les futures migrations, sauf nouvel incident de credentials
 - [ ] Décider si le `<title>` de l'onglet navigateur (`app/layout.tsx`, "Citas SaaS — ...") doit aussi devenir "Núcleo" — laissé inchangé, hors périmètre précisé par l'utilisateur jusqu'ici
-- [x] Commiter le travail du 26 au 30/09 (i18n dashboard, refonte login/register/landing, migration 015) — commit `<COMMIT_SHA>` le 2026-09-30
+- [x] Commiter le travail du 26 au 30/09 (i18n dashboard, refonte login/register/landing, migration 015) — commit `130e073` le 2026-09-30
 
 ### Page de login — terminé, validé par l'utilisateur ("c'est good")
 - [x] Refonte 2 colonnes (marine/crème), image des personnages avec bulle à engrenages intégrée

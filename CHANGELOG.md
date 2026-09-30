@@ -247,3 +247,47 @@ Tests réels effectués (webhooks signés) : webhook Calendly (création RDV, id
 - **Cause probable identifiée** : le numéro de téléphone n'était extrait que de `invitee.text_reminder_number` (champ SMS intégré de Calendly) — si le formulaire réel d'un cabinet collecte le WhatsApp via une question personnalisée à la place, aucun numéro n'était jamais récupéré, empêchant tout envoi WhatsApp pour ces patients.
 - `app/api/webhooks/calendly/route.ts` : nouvelles fonctions `extractPhoneFromAnswers()` (cherche une question dont le libellé contient "whatsapp" ou "celular", teste `payload.questions_and_answers` puis `payload.invitee.questions_and_answers` par robustesse) et `normalizePhone()` (garde uniquement chiffres + un éventuel `+` en tête, ajoute `+51` par défaut si absent). Utilisé comme repli si `text_reminder_number` est vide — s'intègre dans le pipeline existant (création patient + `dispatch()`), aucun doublon.
 - Testé en réel (3 scénarios, orgs de test jetables) : téléphone absent de `text_reminder_number` mais présent dans `questions_and_answers` → bien extrait et stocké ; normalisation `"933781998"` → `"+51933781998"` et `"+33 7819 98525"` → `"+33781998525"` (pas de double préfixe) confirmées ; une seule notification `confirmation`/`whatsapp` créée (pas de doublon) ; envoi réel réussi (`statut: sent`) après un premier essai en échec transitoire (`Unipile error: 401`, non reproduit au second essai — clé API revérifiée directement, fonctionnelle).
+
+---
+
+## 2026-09-26 au 2026-09-30
+
+### Incident résolu : projet Supabase temporairement injoignable
+- "Failed to fetch" sur `/login` : le sous-domaine du projet (`uxpnzodhmpqlaqsfpxzz.supabase.co`) ne résolvait plus du tout en DNS (confirmé via PowerShell — `supabase.co` et `google.com` résolvaient normalement, donc pas un problème réseau général de la machine). Le dashboard Supabase indiquait pourtant le projet "Healthy" avec du trafic récent.
+- Quelques minutes plus tard : DNS de nouveau résolu, `/auth/v1/health` répond 200. Incident transitoire côté Supabase (probable réveil d'une mise en pause automatique du plan gratuit), résolu sans action de notre part.
+
+### Correction : l'image de login n'a jamais eu de vraie transparence
+- L'entrée du 2026-09-02 ("transparence réelle confirmée par inspection visuelle") était fausse : un test en vrai navigateur a montré un damier gris visible derrière les personnages sur `/login`, pas le fond navy.
+- Cause identifiée en lisant directement l'en-tête IHDR du PNG (`xxd -l 34 duo_praticiens.png`) : byte "color type" = `02` (truecolor SANS alpha) au lieu de `06` attendu — l'outil source avait aplati son damier de prévisualisation de transparence dans les pixels au lieu d'exporter un vrai canal alpha. Même famille de bug que l'ancienne version JPEG.
+- Tentative de détourage automatique (chroma-key + flood-fill depuis les bords) sur l'image existante : échec — la blouse blanche du praticien a des tons trop proches du gris du damier, le detourage troue le vêtement.
+- Solution : régénération de l'image sur fond vert uni (prompt donné à l'utilisateur pour son outil de génération externe), puis détourage par chroma-key + suppression du spill vert sur les bords, vérifié par le même contrôle d'octet IHDR (`06` confirmé) avant d'écraser `public/images/duo_praticiens.png`. Rendu confirmé propre sur le fond navy en vrai navigateur.
+- **Méthode à réutiliser systématiquement** : ne jamais conclure qu'un PNG est transparent sur une inspection visuelle seule — toujours vérifier le byte de color type de l'IHDR.
+
+### Landing page (`app/page.tsx`) — identité visuelle Núcleo + i18n
+- Refonte complète : header + hero en navy `#0A1422`, CTA violet `#6926D2`, nouvelle section crème `#F5F0E8` avec 3 points clés (confirmation automatique, acompte, rappels) — remplace le fond blanc générique, le header "Citas SaaS" et les boutons bleus par défaut de `create-next-app`.
+- Sélecteur de langue ES/PT ajouté (même principe que `/login`, couleurs adaptées à un header sombre) avec traduction complète de tous les textes de la page.
+
+### Page `/register` — refonte pour matcher `/login`
+- Reprend exactement la structure 2 colonnes de `/login` (navy + illustration à gauche, formulaire crème à droite, même sélecteur de langue) à la place d'un simple formulaire centré, en français, sans rapport visuel avec le reste de l'app.
+- Champ "Nom du cabinet" et tous les textes du formulaire traduits ES/PT.
+
+### i18n complète du dashboard praticien (ES/PT)
+- Toutes les chaînes de l'interface praticien traduites (sidebar, header, les 4 pages : accueil, rendez-vous liste + détail, patients, paramètres), remplaçant le français codé en dur restant depuis les phases précédentes. `next-intl`, nouveau namespace `dashboard` dans `messages/es.json`/`pt.json`.
+- **Architecture retenue** : chaque page reste un Server Component pour la donnée (requêtes Supabase inchangées), mais délègue le rendu à une nouvelle vue Client (`*View.tsx`, ex. `AppointmentsView.tsx`) qui appelle `useTranslations()`. Nouveau composant `components/layout/DashboardChrome.tsx` qui centralise sidebar/header traduits et le bandeau d'essai gratuit — remplace le JSX qui était en dur dans `app/dashboard/layout.tsx`.
+- `/admin` non touché (hors périmètre de la demande). Templates emails/WhatsApp envoyés aux patients (`MESSAGE_VARIANTS`, `getVariantContent`, `getPreview` dans `lib/dispatcher/templateVariants.ts`) non touchés — seuls les libellés du sélecteur de variante còté praticien (noms des types de notification, "Estándar"/"Cercano y cálido") sont devenus bilingues.
+
+### Langue = réglage de compte, pas un toggle de session (changement de conception demandé après coup)
+- Première version livrée : sélecteur ES/PT dans le header du dashboard, persisté en `localStorage` (cohérent avec le mécanisme déjà utilisé par landing/login/register). Retour utilisateur : mauvaise UX pour une app authentifiée — la langue doit être choisie une fois à l'inscription et appartenir au compte, pas à la session/navigateur.
+- **Migration `015_user_idioma.sql`** : nouvelle colonne `users.idioma` (`text not null default 'es'`, contrainte check `es`/`pt`). **Appliquée directement en base** via connexion Postgres (`pg`, installé temporairement puis désinstallé) — la connexion via le pooler, qui échouait systématiquement depuis fin août (voir note "connection string" du TODO), fonctionne de nouveau.
+- `/register` : le sélecteur de langue déjà présent (jusque-là juste cosmétique, pour afficher le formulaire dans la langue choisie) envoie maintenant sa valeur à l'inscription et la fait persister dans `users.idioma`.
+- `/dashboard/settings` : nouveau champ "Idioma del panel" / "Idioma do painel" (distinct du champ existant "Idioma de mensajes al paciente") pour changer la langue du compte a posteriori.
+- Toggle retiré du header du dashboard (vérifié : plus aucune trace dans le HTML rendu). Toute la zone authentifiée lit désormais `users.idioma` côté serveur à chaque requête — `localStorage`/`useLocale()` reste utilisé uniquement par landing/login/register (pages sans compte encore associé).
+
+### Bug corrigé : aperçu des templates de message non réactif au changement de langue patient
+- Sur `/dashboard/settings`, changer "Idioma de mensajes al paciente" en Português ne mettait jamais à jour l'aperçu des templates : le `<select>` n'était pas contrôlé (valeur lue seulement à la soumission du formulaire), et par erreur introduite par le point précédent, l'aperçu suivait de toute façon la langue du compte praticien plutôt que ce champ.
+- Corrigé : `<select>` rendu contrôlé (`useState`) ; légendes de type de notification, libellés de variante et corps de l'aperçu suivent maintenant ce champ en temps réel, sans clic sur "Guardar".
+- Les 10 textes portugais (5 types de notification × 2 variantes) fournis par l'utilisateur ont remplacé les anciens textes d'aperçu PT dans `PREVIEWS` (`lib/dispatcher/templateVariants.ts`) — uniquement les aperçus courts affichés sous les boutons radio, pas les vrais templates envoyés aux patients (`MESSAGE_VARIANTS`, déjà complets en PT, non touchés).
+
+### Testé en réel à chaque étape
+- Comptes de test créés, essai gratuit activé, puis nettoyés via l'API Supabase (auth admin + REST), sans mock : dashboard entier confirmé rendu en portugais quand `users.idioma = 'pt'` ; aperçu de template confirmé suivre `organizations.langue` en direct (testé en patchant l'organisation en `pt` puis en relisant la page avec la même session) ; toggle confirmé disparu du header.
+- `tsc --noEmit`, `next lint` et `next build` complets propres après chaque changement significatif.

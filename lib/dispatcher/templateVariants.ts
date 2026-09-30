@@ -15,17 +15,35 @@ export type Langue = 'es' | 'pt'
 
 export const VARIANT_IDS: VariantId[] = ['standard', 'calido']
 
-export const VARIANT_LABELS: Record<VariantId, string> = {
-  standard: 'Estándar',
-  calido: 'Cercano y cálido',
+// Ces deux labels s'affichent dans /dashboard/settings et suivent la langue de
+// l'interface du praticien (dashboard), pas la langue des messages patients
+// (`organization.langue`, utilisée par MESSAGE_VARIANTS/PREVIEWS ci-dessous).
+export const VARIANT_LABELS: Record<Langue, Record<VariantId, string>> = {
+  es: {
+    standard: 'Estándar',
+    calido: 'Cercano y cálido',
+  },
+  pt: {
+    standard: 'Padrão',
+    calido: 'Próximo e caloroso',
+  },
 }
 
-export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
-  confirmation: 'Confirmación de cita',
-  aviso: 'Relance antes de anulación',
-  pago: 'Pago recibido',
-  anulacion: 'Anulación automática',
-  recordatorio: 'Recordatorio de cita (24h)',
+export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, string>> = {
+  es: {
+    confirmation: 'Confirmación de cita',
+    aviso: 'Relance antes de anulación',
+    pago: 'Pago recibido',
+    anulacion: 'Anulación automática',
+    recordatorio: 'Recordatorio de cita (24h)',
+  },
+  pt: {
+    confirmation: 'Confirmação de consulta',
+    aviso: 'Aviso antes do cancelamento',
+    pago: 'Pagamento recebido',
+    anulacion: 'Cancelamento automático',
+    recordatorio: 'Lembrete de consulta (24h)',
+  },
 }
 
 interface VariantContent {
@@ -413,51 +431,51 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
   confirmation: {
     standard: {
       es: 'Tu cita está reservada\nHola María López, tu cita con Clínica Bienestar está reservada para el 15 de marzo de 2026 a las 10:00.\nPara confirmarla, realiza el acompte de 20.00 PEN.',
-      pt: 'Sua consulta está reservada\nOlá Maria Silva, sua consulta com Clínica Bem-Estar está reservada para 15 de março de 2026 às 10:00.\nPara confirmar, realize o sinal de 20.00 PEN.',
+      pt: 'Olá [Nome], sua consulta com [Clínica] está agendada para [Data] às [Hora]. Para confirmá-la, realize o sinal de [Valor] PEN.',
     },
     calido: {
       es: '¡Qué alegría, María López!\nQuedó todo listo para tu cita con Clínica Bienestar. Este es el detalle: 15 de marzo de 2026 a las 10:00.\nSolo falta confirmar tu lugar con un acompte de 20.00 PEN.',
-      pt: 'Que alegria, Maria Silva!\nFicou tudo certo para sua consulta com Clínica Bem-Estar. Aqui está o resumo: 15 de março de 2026 às 10:00.\nSó falta confirmar seu horário com um sinal de 20.00 PEN.',
+      pt: 'Que alegria, [Nome]! Tudo pronto para sua consulta com [Clínica]. Detalhe: [Data] às [Hora]. Só falta confirmar seu lugar com um sinal de [Valor] PEN.',
     },
   },
   aviso: {
     standard: {
       es: 'Falta tu acompte\nHola María López, aún no hemos recibido el acompte para tu cita con Clínica Bienestar.\nSi no pagas pronto, la cita será cancelada automáticamente.',
-      pt: 'Falta o seu sinal\nOlá Maria Silva, ainda não recebemos o sinal da sua consulta com Clínica Bem-Estar.\nSe não pagar em breve, a consulta será cancelada automaticamente.',
+      pt: 'Falta seu sinal. Olá [Nome], ainda não recebemos o sinal para sua consulta com [Clínica]. Se não pagar em breve, a consulta será cancelada automaticamente.',
     },
     calido: {
       es: 'Un empujoncito más, María López\nVimos que todavía no llega el acompte para tu cita con Clínica Bienestar. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
-      pt: 'Só falta um passinho, Maria Silva\nVimos que o sinal da sua consulta com Clínica Bem-Estar ainda não chegou. Não se preocupe, ainda dá tempo!\nPara manter seu horário, é só concluir por aqui.',
+      pt: 'Um empurrãozinho, [Nome]! Vimos que o sinal para sua consulta com [Clínica] ainda não chegou. Sem problema, você ainda está a tempo! Se quiser manter seu horário, complete aqui antes que seja liberado.',
     },
   },
   pago: {
     standard: {
       es: '¡Pago recibido!\nHola María López, hemos recibido tu acompte de 20.00 PEN.\nTu cita con Clínica Bienestar está confirmada. ¡Te esperamos!',
-      pt: 'Pagamento recebido!\nOlá Maria Silva, recebemos o seu sinal de 20.00 PEN.\nSua consulta com Clínica Bem-Estar está confirmada. Te esperamos!',
+      pt: 'Pagamento recebido! Olá [Nome], recebemos seu sinal de [Valor] PEN. Sua consulta com [Clínica] está confirmada. Te esperamos!',
     },
     calido: {
       es: '¡Todo listo, María López!\nRecibimos tu acompte de 20.00 PEN, ¡muchas gracias!\nTu cita con Clínica Bienestar está confirmada. ¡Nos vemos pronto!',
-      pt: 'Tudo certo, Maria Silva!\nRecebemos o seu sinal de 20.00 PEN, muito obrigado!\nSua consulta com Clínica Bem-Estar está confirmada. Até breve!',
+      pt: 'Tudo certo, [Nome]! Recebemos seu sinal de [Valor] PEN, obrigado! Sua consulta com [Clínica] está confirmada. Até logo!',
     },
   },
   anulacion: {
     standard: {
       es: 'Cita cancelada\nHola María López, tu cita con Clínica Bienestar ha sido cancelada automáticamente por no recibir el acompte a tiempo.\nSi deseas reagendar, hazlo aquí mismo.',
-      pt: 'Consulta cancelada\nOlá Maria Silva, sua consulta com Clínica Bem-Estar foi cancelada automaticamente por não recebermos o sinal a tempo.\nSe quiser reagendar, faça aqui mesmo.',
+      pt: 'Consulta cancelada. Olá [Nome], sua consulta com [Clínica] foi cancelada automaticamente por não receber o sinal a tempo. Se quiser reagendar, faça aqui mesmo.',
     },
     calido: {
       es: 'No hay problema, María López\nComo no llegamos a recibir el acompte a tiempo, tu horario con Clínica Bienestar quedó liberado.\nCuando quieras, puedes elegir un nuevo horario aquí.',
-      pt: 'Sem problemas, Maria Silva\nComo não recebemos o sinal a tempo, seu horário com Clínica Bem-Estar foi liberado.\nQuando quiser, você pode escolher um novo horário aqui.',
+      pt: 'Sem problema, [Nome]! Como não recebemos o sinal a tempo, seu horário com [Clínica] foi liberado. Quando quiser, você pode escolher um novo horário aqui.',
     },
   },
   recordatorio: {
     standard: {
       es: 'Te esperamos\nHola María López, te recordamos tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
-      pt: 'Te esperamos\nOlá Maria Silva, lembramos da sua consulta com Clínica Bem-Estar: 15 de março de 2026 às 10:00.',
+      pt: 'Te esperamos! Olá [Nome], lembramos sua consulta com [Clínica]: [Data] às [Hora].',
     },
     calido: {
       es: '¡Te esperamos, María López!\nSolo un recordatorio cariñoso de tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
-      pt: 'Estamos te esperando, Maria Silva!\nSó um lembrete carinhoso da sua consulta com Clínica Bem-Estar: 15 de março de 2026 às 10:00.',
+      pt: 'Te esperamos, [Nome]! Só um lembrete carinhoso da sua consulta com [Clínica]: [Data] às [Hora].',
     },
   },
 }

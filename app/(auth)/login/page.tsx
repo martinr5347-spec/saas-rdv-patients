@@ -6,14 +6,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import esMessages from '@/messages/es.json'
-import ptMessages from '@/messages/pt.json'
-
-type Locale = 'es' | 'pt'
-const MESSAGES: Record<Locale, typeof esMessages> = { es: esMessages, pt: ptMessages }
+import { useLocale, MESSAGES } from '@/lib/hooks/useLocale'
 
 export default function LoginPage() {
-  const [locale, setLocale] = useState<Locale>('es')
+  const { locale, setLocale } = useLocale()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)

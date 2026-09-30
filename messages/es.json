@@ -1,5 +1,18 @@
 {
   "tagline": "TODO TU NEGOCIO, EN UN SOLO LUGAR",
+  "home": {
+    "navLogin": "Iniciar sesión",
+    "navRegister": "Registrarse",
+    "heroTitle": "Gestión de citas, acomptos y recordatorios para profesionales médicos y estéticas",
+    "heroSubtitle": "Automatice confirmaciones, cobros de acompto por MercadoPago, recordatorios y más — todo en una plataforma multi-cabinete segura.",
+    "ctaPrimary": "Empezar gratis",
+    "feature1Title": "Confirmación automática",
+    "feature1Desc": "Cada reserva envía al instante un mensaje de confirmación con el enlace de pago.",
+    "feature2Title": "Cobro de acompto",
+    "feature2Desc": "Acompto vía MercadoPago, con aviso y anulación automática si no se paga a tiempo.",
+    "feature3Title": "Recordatorios",
+    "feature3Desc": "Un recordatorio antes de cada cita, por correo y WhatsApp, sin trabajo manual."
+  },
   "login": {
     "title": "Conexión",
     "subtitle": "Ingresa a tu espacio para gestionar tus citas.",
@@ -9,5 +22,112 @@
     "submitLoading": "Ingresando...",
     "noAccount": "¿Aún no tienes cuenta?",
     "register": "Regístrate"
+  },
+  "register": {
+    "title": "Regístrate",
+    "subtitle": "Crea tu cuenta para empezar a gestionar tus citas.",
+    "orgName": "Nombre del cabinete / profesional",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Crear cuenta",
+    "submitLoading": "Creando cuenta...",
+    "genericError": "Error al crear la cuenta",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "loginLink": "Inicia sesión"
+  },
+  "dashboard": {
+    "nav": {
+      "home": "Inicio",
+      "appointments": "Citas",
+      "patients": "Pacientes",
+      "settings": "Configuración",
+      "admin": "Admin",
+      "logout": "Cerrar sesión"
+    },
+    "trial": {
+      "banner": "Prueba gratuita: {days, plural, one {# día restante} other {# días restantes}}",
+      "upgrade": "Pasar al plan de pago"
+    },
+    "home": {
+      "title": "Panel de control",
+      "upcoming": "Próximas citas",
+      "pendingPayment": "Pendientes de pago",
+      "paid": "Pagados"
+    },
+    "appointments": {
+      "title": "Citas",
+      "allStatuses": "Todos los estados",
+      "filter": "Filtrar",
+      "none": "Sin citas.",
+      "colPatient": "Paciente",
+      "colDate": "Fecha",
+      "colTime": "Hora",
+      "colStatus": "Estado",
+      "colDeposit": "Adelanto",
+      "details": "Detalles"
+    },
+    "appointmentDetail": {
+      "title": "Detalle de la cita",
+      "backToList": "Volver a la lista",
+      "notFound": "Cita no encontrada.",
+      "patient": "Paciente",
+      "email": "Email",
+      "phone": "Teléfono",
+      "dateTime": "Fecha / Hora",
+      "at": "a las",
+      "status": "Estado",
+      "deposit": "Adelanto",
+      "notes": "Notas",
+      "paymentLink": "Enlace de pago",
+      "channel": "Canal",
+      "type": "Tipo",
+      "sentAt": "Enviado el",
+      "error": "Error",
+      "noNotifications": "Sin notificaciones."
+    },
+    "patients": {
+      "title": "Pacientes",
+      "colName": "Nombre",
+      "colEmail": "Email",
+      "colPhone": "Teléfono"
+    },
+    "settings": {
+      "title": "Configuración del consultorio",
+      "subscription": "Suscripción",
+      "statusLabel": "Estado",
+      "manageSubscription": "Gestionar mi suscripción",
+      "paymentDelay": "Plazo de pago (h)",
+      "noticeDelay": "Plazo de aviso (h)",
+      "reminderDelay": "Plazo de recordatorio (h)",
+      "depositAmount": "Monto del adelanto",
+      "totalCost": "Costo total de consulta (opcional)",
+      "totalCostPlaceholder": "Dejar vacío si no aplica",
+      "currency": "Moneda",
+      "currencyOptions": {
+        "PEN": "Sol peruano (PEN)",
+        "BRL": "Real brasileño (BRL)",
+        "MXN": "Peso mexicano (MXN)",
+        "COP": "Peso colombiano (COP)",
+        "CLP": "Peso chileno (CLP)",
+        "ARS": "Peso argentino (ARS)",
+        "UYU": "Peso uruguayo (UYU)",
+        "USD": "Dólar (USD)"
+      },
+      "dashboardLanguage": "Idioma del panel",
+      "patientMessageLanguage": "Idioma de mensajes al paciente",
+      "languageOptionEs": "Español",
+      "languageOptionPt": "Portugués",
+      "clinicAddress": "Dirección del consultorio",
+      "clinicAddressPlaceholder": "Av. Brasil 2730, Pueblo Libre, Lima",
+      "calendlyUrl": "URL de Calendly",
+      "unipileAccountId": "ID de cuenta Unipile",
+      "mpToken": "Token de MercadoPago",
+      "mpWebhookUrl": "URL webhook de MercadoPago",
+      "emailActive": "Email activo",
+      "whatsappActive": "WhatsApp activo",
+      "messageTemplate": "Plantilla de mensajes",
+      "messageTemplateDesc": "Elige el estilo de cada mensaje enviado a tus pacientes. Los datos de la cita (nombre, fecha, enlace de pago...) siguen siendo automáticos.",
+      "save": "Guardar"
+    }
   }
 }

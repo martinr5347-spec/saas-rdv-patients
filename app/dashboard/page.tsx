@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import StatCard from '@/components/ui/StatCard'
-import { CalendarIcon } from '@/components/layout/icons'
+import DashboardHomeView from './DashboardHomeView'
 
 export default async function DashboardHomePage() {
   const supabase = createClient()
@@ -19,13 +18,10 @@ export default async function DashboardHomePage() {
   )
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Tableau de bord</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Prochains RDV" value={appointments?.length ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
-        <StatCard label="En attente de paiement" value={countsByStatus['pendiente'] ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
-        <StatCard label="Payés" value={countsByStatus['pagado'] ?? 0} icon={<CalendarIcon className="h-5 w-5" />} />
-      </div>
-    </div>
+    <DashboardHomeView
+      total={appointments?.length ?? 0}
+      pending={countsByStatus['pendiente'] ?? 0}
+      paid={countsByStatus['pagado'] ?? 0}
+    />
   )
 }

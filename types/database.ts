@@ -40,6 +40,7 @@ export interface Database {
           role: 'praticien' | 'staff' | 'admin'
           nom: string | null
           email: string
+          idioma: 'es' | 'pt'
           created_at: string
         }
         Insert: {
@@ -48,6 +49,7 @@ export interface Database {
           role: 'praticien' | 'staff' | 'admin'
           nom?: string | null
           email: string
+          idioma?: 'es' | 'pt'
           created_at?: string
         }
         Update: {
@@ -56,6 +58,7 @@ export interface Database {
           role?: 'praticien' | 'staff' | 'admin'
           nom?: string | null
           email?: string
+          idioma?: 'es' | 'pt'
           created_at?: string
         }
         Relationships: [

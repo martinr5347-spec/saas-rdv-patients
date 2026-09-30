@@ -6,9 +6,11 @@ import { MenuIcon, CloseIcon } from './icons'
 export default function Header({
   userName,
   signOutAction,
+  logoutLabel = 'Déconnexion',
 }: {
   userName: string
   signOutAction: () => void
+  logoutLabel?: string
 }) {
   const { isMobileOpen, toggleMobileSidebar } = useSidebar()
 
@@ -27,7 +29,7 @@ export default function Header({
         <span className="text-sm text-gray-600">{userName}</span>
         <form action={signOutAction}>
           <button type="submit" className="text-sm font-medium text-error-600 hover:text-error-700">
-            Déconnexion
+            {logoutLabel}
           </button>
         </form>
       </div>

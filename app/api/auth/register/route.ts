@@ -5,11 +5,13 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, nom } = body
+    const { email, password, nom, idioma } = body
 
     if (!email || !password || !nom) {
       return NextResponse.json({ error: 'Email, mot de passe et nom sont requis' }, { status: 400 })
     }
+
+    const userIdioma = idioma === 'pt' ? 'pt' : 'es'
 
     const supabase = createServiceRoleClient()
 
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
         role: 'praticien',
         nom,
         email,
+        idioma: userIdioma,
       }),
       supabase.from('org_settings').insert({
         organization_id: org.id,

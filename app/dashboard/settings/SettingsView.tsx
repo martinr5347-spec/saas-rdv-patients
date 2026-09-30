@@ -1,0 +1,204 @@
+'use client'
+
+import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+import Card from '@/components/ui/Card'
+import {
+  NotificationType,
+  VariantId,
+  VARIANT_IDS,
+  VARIANT_LABELS,
+  NOTIFICATION_TYPE_LABELS,
+  getPreview,
+} from '@/lib/dispatcher/templateVariants'
+
+const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
+const CURRENCIES = ['PEN', 'BRL', 'MXN', 'COP', 'CLP', 'ARS', 'UYU', 'USD'] as const
+
+export interface OrgSettings {
+  delai_paiement_h: number | null
+  delai_aviso_h: number | null
+  delai_rappel_h: number | null
+  monto_acompte: number | null
+  costo_total: number | null
+  monnaie: string | null
+  calendly_url: string | null
+  unipile_account_id: string | null
+  mp_access_token: string | null
+  mp_notification_url: string | null
+  canal_email: boolean | null
+  canal_whatsapp: boolean | null
+  variantes_mensaje: unknown
+}
+
+export default function SettingsView({
+  settings,
+  subscriptionStatut,
+  hasStripeCustomer,
+  organizationLangue,
+  organizationAdresse,
+  userIdioma,
+  updateSettingsAction,
+  openBillingPortalAction,
+}: {
+  settings: OrgSettings | null
+  subscriptionStatut: string | null
+  hasStripeCustomer: boolean
+  organizationLangue: string | null
+  organizationAdresse: string | null
+  userIdioma: string | null
+  updateSettingsAction: (formData: FormData) => void
+  openBillingPortalAction: () => void
+}) {
+  const t = useTranslations('dashboard.settings')
+  const [patientLangue, setPatientLangue] = useState<'es' | 'pt'>(organizationLangue === 'pt' ? 'pt' : 'es')
+
+  const inputClass =
+    'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400'
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+      {hasStripeCustomer && (
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-800">{t('subscription')}</p>
+              <p className="text-sm text-gray-500">{t('statusLabel')} : {subscriptionStatut}</p>
+            </div>
+            <form action={openBillingPortalAction}>
+              <button type="submit" className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50">
+                {t('manageSubscription')}
+              </button>
+            </form>
+          </div>
+        </Card>
+      )}
+      <Card>
+        <form action={updateSettingsAction} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('paymentDelay')}</label>
+            <input name="delai_paiement_h" type="number" defaultValue={settings?.delai_paiement_h ?? undefined} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('noticeDelay')}</label>
+            <input name="delai_aviso_h" type="number" defaultValue={settings?.delai_aviso_h ?? undefined} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('reminderDelay')}</label>
+            <input name="delai_rappel_h" type="number" defaultValue={settings?.delai_rappel_h ?? undefined} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('depositAmount')}</label>
+            <input name="monto_acompte" type="number" step="0.01" defaultValue={settings?.monto_acompte ?? undefined} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('totalCost')}</label>
+            <input name="costo_total" type="number" step="0.01" defaultValue={settings?.costo_total ?? ''} placeholder={t('totalCostPlaceholder')} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
+            <select name="monnaie" defaultValue={settings?.monnaie ?? 'PEN'} className={inputClass}>
+              {CURRENCIES.map((code) => (
+                <option key={code} value={code}>{t(`currencyOptions.${code}`)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('dashboardLanguage')}</label>
+          <select name="idioma" defaultValue={userIdioma ?? 'es'} className={inputClass}>
+            <option value="es">{t('languageOptionEs')}</option>
+            <option value="pt">{t('languageOptionPt')}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('patientMessageLanguage')}</label>
+          <select
+            name="langue"
+            value={patientLangue}
+            onChange={(e) => setPatientLangue(e.target.value === 'pt' ? 'pt' : 'es')}
+            className={inputClass}
+          >
+            <option value="es">{t('languageOptionEs')}</option>
+            <option value="pt">{t('languageOptionPt')}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('clinicAddress')}</label>
+          <input name="adresse" defaultValue={organizationAdresse ?? ''} placeholder={t('clinicAddressPlaceholder')} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('calendlyUrl')}</label>
+          <input name="calendly_url" type="url" defaultValue={settings?.calendly_url ?? ''} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('unipileAccountId')}</label>
+          <input name="unipile_account_id" defaultValue={settings?.unipile_account_id ?? ''} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('mpToken')}</label>
+          <input name="mp_access_token" defaultValue={settings?.mp_access_token ?? ''} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">{t('mpWebhookUrl')}</label>
+          <input name="mp_notification_url" defaultValue={settings?.mp_notification_url ?? ''} className={inputClass} />
+        </div>
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2">
+            <input name="canal_email" type="checkbox" defaultChecked={settings?.canal_email ?? false} className="accent-brand-600" />
+            <span className="text-sm text-gray-700">{t('emailActive')}</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input name="canal_whatsapp" type="checkbox" defaultChecked={settings?.canal_whatsapp ?? false} className="accent-brand-600" />
+            <span className="text-sm text-gray-700">{t('whatsappActive')}</span>
+          </label>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">{t('messageTemplate')}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{t('messageTemplateDesc')}</p>
+          </div>
+          {NOTIFICATION_TYPES.map((type) => {
+            const currentVariant =
+              (settings?.variantes_mensaje as Record<string, string> | null)?.[type] === 'calido' ? 'calido' : 'standard'
+            return (
+              <fieldset key={type}>
+                <legend className="block text-sm font-medium text-gray-700 mb-2">{NOTIFICATION_TYPE_LABELS[patientLangue][type]}</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  {VARIANT_IDS.map((variantId: VariantId) => (
+                    <label
+                      key={variantId}
+                      className="block rounded-lg border border-gray-200 p-3 text-sm cursor-pointer hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+                    >
+                      <span className="flex items-center gap-2 font-medium text-gray-800">
+                        <input
+                          type="radio"
+                          name={`variante_${type}`}
+                          value={variantId}
+                          defaultChecked={currentVariant === variantId}
+                          className="accent-brand-600"
+                        />
+                        {VARIANT_LABELS[patientLangue][variantId]}
+                      </span>
+                      <p className="mt-2 text-xs text-gray-500 whitespace-pre-line">
+                        {getPreview(type, variantId, patientLangue)}
+                      </p>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )
+          })}
+        </div>
+
+          <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+            {t('save')}
+          </button>
+        </form>
+      </Card>
+    </div>
+  )
+}

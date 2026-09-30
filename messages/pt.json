@@ -1,5 +1,18 @@
 {
-  "tagline": "TUDO O QUE VOCÊ PRECISA, EM UM SÓ LUGAR",
+  "tagline": "TUDO O SEU NEGÓCIO, EM UM SÓ LUGAR",
+  "home": {
+    "navLogin": "Entrar",
+    "navRegister": "Cadastrar-se",
+    "heroTitle": "Gestão de consultas, entradas e lembretes para profissionais médicos e estéticos",
+    "heroSubtitle": "Automatize confirmações, cobranças de entrada via MercadoPago, lembretes e mais — tudo em uma plataforma multi-consultório segura.",
+    "ctaPrimary": "Começar grátis",
+    "feature1Title": "Confirmação automática",
+    "feature1Desc": "Cada reserva envia instantaneamente uma mensagem de confirmação com o link de pagamento.",
+    "feature2Title": "Cobrança de entrada",
+    "feature2Desc": "Entrada via MercadoPago, com aviso e cancelamento automático caso não seja paga a tempo.",
+    "feature3Title": "Lembretes",
+    "feature3Desc": "Um lembrete antes de cada consulta, por e-mail e WhatsApp, sem trabalho manual."
+  },
   "login": {
     "title": "Acesso",
     "subtitle": "Acesse seu espaço para gerenciar suas consultas.",
@@ -9,5 +22,112 @@
     "submitLoading": "Entrando...",
     "noAccount": "Ainda não tem conta?",
     "register": "Cadastre-se"
+  },
+  "register": {
+    "title": "Cadastre-se",
+    "subtitle": "Crie sua conta para começar a gerenciar suas consultas.",
+    "orgName": "Nome do consultório / profissional",
+    "email": "E-mail",
+    "password": "Senha",
+    "submit": "Criar conta",
+    "submitLoading": "Criando conta...",
+    "genericError": "Erro ao criar a conta",
+    "haveAccount": "Já tem conta?",
+    "loginLink": "Entrar"
+  },
+  "dashboard": {
+    "nav": {
+      "home": "Início",
+      "appointments": "Consultas",
+      "patients": "Pacientes",
+      "settings": "Configurações",
+      "admin": "Admin",
+      "logout": "Sair"
+    },
+    "trial": {
+      "banner": "Teste gratuito: {days, plural, one {# dia restante} other {# dias restantes}}",
+      "upgrade": "Mudar para o plano pago"
+    },
+    "home": {
+      "title": "Painel de controle",
+      "upcoming": "Próximas consultas",
+      "pendingPayment": "Aguardando pagamento",
+      "paid": "Pagos"
+    },
+    "appointments": {
+      "title": "Consultas",
+      "allStatuses": "Todos os status",
+      "filter": "Filtrar",
+      "none": "Sem consultas.",
+      "colPatient": "Paciente",
+      "colDate": "Data",
+      "colTime": "Hora",
+      "colStatus": "Status",
+      "colDeposit": "Sinal",
+      "details": "Detalhes"
+    },
+    "appointmentDetail": {
+      "title": "Detalhe da consulta",
+      "backToList": "Voltar à lista",
+      "notFound": "Consulta não encontrada.",
+      "patient": "Paciente",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "dateTime": "Data / Hora",
+      "at": "às",
+      "status": "Status",
+      "deposit": "Sinal",
+      "notes": "Notas",
+      "paymentLink": "Link de pagamento",
+      "channel": "Canal",
+      "type": "Tipo",
+      "sentAt": "Enviado em",
+      "error": "Erro",
+      "noNotifications": "Sem notificações."
+    },
+    "patients": {
+      "title": "Pacientes",
+      "colName": "Nome",
+      "colEmail": "E-mail",
+      "colPhone": "Telefone"
+    },
+    "settings": {
+      "title": "Configurações do consultório",
+      "subscription": "Assinatura",
+      "statusLabel": "Status",
+      "manageSubscription": "Gerenciar minha assinatura",
+      "paymentDelay": "Prazo de pagamento (h)",
+      "noticeDelay": "Prazo de aviso (h)",
+      "reminderDelay": "Prazo de lembrete (h)",
+      "depositAmount": "Valor do sinal",
+      "totalCost": "Custo total da consulta (opcional)",
+      "totalCostPlaceholder": "Deixe em branco se não aplicável",
+      "currency": "Moeda",
+      "currencyOptions": {
+        "PEN": "Sol peruano (PEN)",
+        "BRL": "Real brasileiro (BRL)",
+        "MXN": "Peso mexicano (MXN)",
+        "COP": "Peso colombiano (COP)",
+        "CLP": "Peso chileno (CLP)",
+        "ARS": "Peso argentino (ARS)",
+        "UYU": "Peso uruguaio (UYU)",
+        "USD": "Dólar (USD)"
+      },
+      "dashboardLanguage": "Idioma do painel",
+      "patientMessageLanguage": "Idioma das mensagens ao paciente",
+      "languageOptionEs": "Espanhol",
+      "languageOptionPt": "Português",
+      "clinicAddress": "Endereço do consultório",
+      "clinicAddressPlaceholder": "Av. Brasil 2730, Pueblo Libre, Lima",
+      "calendlyUrl": "URL do Calendly",
+      "unipileAccountId": "ID da conta Unipile",
+      "mpToken": "Token do MercadoPago",
+      "mpWebhookUrl": "URL do webhook do MercadoPago",
+      "emailActive": "E-mail ativo",
+      "whatsappActive": "WhatsApp ativo",
+      "messageTemplate": "Modelo de mensagens",
+      "messageTemplateDesc": "Escolha o estilo de cada mensagem enviada aos seus pacientes. Os dados da consulta (nome, data, link de pagamento...) continuam sendo automáticos.",
+      "save": "Salvar"
+    }
   }
 }

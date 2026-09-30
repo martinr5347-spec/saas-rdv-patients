@@ -3,7 +3,7 @@
 > Voir [`CHANGELOG.md`](./CHANGELOG.md) pour l'historique détaillé de chaque tâche technique.
 > Ce fichier donne un instantané de l'état actuel : ce qui est fait, testé, et ce qui reste à faire.
 
-Dernière mise à jour : 2026-09-03
+Dernière mise à jour : 2026-09-30
 
 ---
 
@@ -39,6 +39,7 @@ Dernière mise à jour : 2026-09-03
 ## Migrations
 
 - ✅ `007` à `014` appliquées (ALTER TABLE — 007/008/014 — par l'utilisateur via SQL Editor ; le reste par script PowerShell/Node REST) et testées en réel : templates HTML es, i18n pt, coût total/adresse, bouton reagendar sur l'annulation, templates WhatsApp enrichis, sélecteur de variante de message
+- ✅ `015_user_idioma.sql` appliquée (connexion Postgres directe via `pg`, qui refonctionne — voir CHANGELOG 26-30/09) : colonne `users.idioma`, langue du compte praticien
 
 ## Cycle de vie complet testé en réel (2026-08-30)
 
@@ -49,17 +50,28 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 ## Reste à faire
 
 ### Court terme
-- [ ] Valider visuellement la charte TailAdmin dans un vrai navigateur (sidebar, header, cards, tables, couleurs violet/turquoise) — testé uniquement par requêtes HTTP scriptées (200, pas d'overlay d'erreur, sidebar présente dans le HTML), jamais vu rendu
-- [ ] Tester la page `/dashboard/settings` dans un vrai navigateur (radio buttons de variante de message) — validé côté données/mécanisme, pas encore côté interface
+- [x] Valider visuellement la page `/login` dans un vrai navigateur — fait (capture d'écran réelle), image des personnages détourée proprement (voir correction ci-dessous, l'entrée précédente affirmant une transparence réelle était fausse)
+- [ ] Valider visuellement la charte TailAdmin du dashboard dans un vrai navigateur (sidebar, header, cards, tables) — le rendu PT/ES du dashboard n'a été vérifié que par comptes de test + requêtes HTTP scriptées cette session-ci, jamais vu à l'écran
+- [ ] Tester la page `/dashboard/settings` dans un vrai navigateur (radio buttons de variante de message, sélecteur de langue patient en direct) — validé côté données/mécanisme et par comptes de test HTTP, pas encore vu rendu
 - [ ] Vérifier un domaine sur resend.com/domains pour pouvoir envoyer à de vrais patients (dernier vrai bloquant avant un premier cabinet réel)
 - [ ] Récupérer `WEBHOOK_SECRET_CALENDLY` et `WEBHOOK_SECRET_MERCADOPAGO` une fois de vrais comptes Calendly/MercadoPago connectés
-- [ ] Mettre à jour le connection string Postgres direct en commentaire dans `.env.local` (rejeté par Supabase — mot de passe probablement périmé depuis la rotation vers le nouveau format de clés `sb_secret_...`), ou l'enlever si plus utile
+- [x] Connection string Postgres direct : refonctionne (utilisée avec succès pour appliquer la migration 015, voir CHANGELOG 26-30/09) — plus besoin de passer par le SQL Editor pour les futures migrations, sauf nouvel incident de credentials
 - [ ] Décider si le `<title>` de l'onglet navigateur (`app/layout.tsx`, "Citas SaaS — ...") doit aussi devenir "Núcleo" — laissé inchangé, hors périmètre précisé par l'utilisateur jusqu'ici
+- [x] Commiter le travail du 26 au 30/09 (i18n dashboard, refonte login/register/landing, migration 015) — commit `<COMMIT_SHA>` le 2026-09-30
 
 ### Page de login — terminé, validé par l'utilisateur ("c'est good")
-- [x] Refonte 2 colonnes (marine/crème), image des personnages avec bulle à engrenages intégrée (`duo_praticiens.png`, transparence réelle confirmée)
+- [x] Refonte 2 colonnes (marine/crème), image des personnages avec bulle à engrenages intégrée
 - [x] Sélecteur de langue es/pt (`next-intl`, mode client sans routing) + accroche dynamique selon la langue
 - [x] Rebranding "Citas SaaS" → "Núcleo" (sidebar dashboard + admin)
+- [x] **Correction 26-30/09** : la transparence de `duo_praticiens.png` n'était en fait jamais réelle (damier gris visible en vrai navigateur derrière les personnages) — re-détourée par chroma-key sur fond vert, vérifiée par l'octet IHDR cette fois, confirmée propre à l'écran
+
+### Landing page, `/register`, i18n dashboard, langue de compte — terminé, testé en réel (26-30/09)
+- [x] Landing (`app/page.tsx`) : identité Núcleo complète (navy `#0A1422`, violet `#6926D2`, section crème `#F5F0E8`), sélecteur de langue, tout traduit
+- [x] `/register` : même layout 2 colonnes que `/login`, formulaire traduit (au lieu d'un formulaire générique en français)
+- [x] i18n complète du dashboard praticien (sidebar, header, 4 pages) — `next-intl`, architecture Server fetch → Client view (`DashboardChrome.tsx` + un `*View.tsx` par page)
+- [x] Langue = réglage de compte (`users.idioma`, migration `015`), choisie une fois à l'inscription, modifiable dans Paramètres — plus de toggle de session dans le header
+- [x] Fix : aperçu des templates de message (côté praticien) non réactif au champ "Idioma de mensajes al paciente" — select non contrôlé, corrigé ; 10 textes d'aperçu PT ajoutés
+- [x] `/admin` et templates patients (`MESSAGE_VARIANTS`) non touchés — hors périmètre de ces demandes
 
 ### Charte visuelle TailAdmin — terminé (mécanisme), rendu visuel à valider
 - [x] `tailwind.config.ts` : couleurs `brand` (violet, 500=#7C3AED), `accent` (turquoise, 500=#0D9488), `gray`/`success`/`error`/`warning` (palette TailAdmin), police Outfit, tailles/ombres "theme-*"
@@ -67,7 +79,7 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 - [x] `app/dashboard/layout.tsx` et `app/admin/layout.tsx` reconstruits avec sidebar + header (logique de données inchangée)
 - [x] Pages reskinnées : dashboard, rendez-vous (liste+détail), patients, paramètres, admin — className uniquement, aucune requête/action modifiée
 - [x] Testé en réel (compte de test + session, 4 routes dashboard + admin) : 200, sidebar présente, pas d'overlay d'erreur
-- [ ] Pages volontairement laissées hors scope (pas de sidebar/header/card/table) : `/login`, `/register`, `/subscribe`, landing (`app/page.tsx`) — gardent l'ancien bleu, à harmoniser si souhaité plus tard
+- [x] `/login`, `/register` et la landing (`app/page.tsx`) harmonisés avec la charte Núcleo (26-30/09, voir section ci-dessus) — seule `/subscribe` reste avec l'ancien bleu générique, à faire si souhaité
 
 ### Sélecteur de variante de message — terminé (mécanisme), UI à valider
 - [x] Catalogue de 2 variantes ("Estándar" / "Cercano y cálido") × 5 types × 2 canaux × 2 langues (`lib/dispatcher/templateVariants.ts`)
@@ -104,7 +116,9 @@ Tous les types de notification validés de bout en bout (webhooks + crons réels
 - Le serveur dev tourne via `npm run dev` depuis `c:\Users\marti\Desktop\SAAS\saas-rdv-patients` — **fermer/rouvrir VSCode après toute install globale** (Node, Stripe CLI...) pour que le PATH se rafraîchisse
 - Toujours arrêter le serveur dev avant `npm run build` (les deux écrivent dans `.next` et se corrompent mutuellement si lancés en même temps)
 - Les scripts de test temporaires (`_test_*.mjs`, `_cleanup_test.mjs`) sont toujours supprimés après usage — n'en laisser traîner aucun dans le repo
-- Le package `pg` est utilisé ponctuellement (`npm install --no-save pg`) pour appliquer les migrations SQL directement via la connexion Postgres (pas de Supabase CLI configuré) — toujours désinstallé/non committé après usage
+- Le package `pg` est utilisé ponctuellement (`npm install --no-save pg`) pour appliquer les migrations SQL directement via la connexion Postgres (pas de Supabase CLI configuré) — toujours désinstallé/non committé après usage. Le connection string en commentaire dans `.env.local` (pooler, port 6543) refonctionne depuis le 26-30/09 (utilisé avec succès pour la migration 015) après avoir été rejeté fin août — cause exacte non identifiée, à re-tester avant de supposer qu'il est de nouveau cassé
+- Pour vérifier si un PNG a un vrai canal alpha : ne jamais se fier à une inspection visuelle, lire le byte "color type" de l'en-tête IHDR (`xxd -l 34 <fichier>`, byte à l'offset 25 — `06` = truecolor+alpha réel, `02` = pas d'alpha malgré un éventuel damier visible dans les pixels)
+- Les variables de session PowerShell (`-SessionVariable`, cookies d'auth Supabase...) ne survivent pas entre deux appels à l'outil PowerShell (chaque appel est un nouveau process) — pour un flux multi-étapes nécessitant la même session (ex. inscription puis requêtes authentifiées), tout faire dans un seul appel/script
 - Pour toute manipulation réseau vers Supabase (REST API, tests via webhook local) depuis l'environnement Claude Code : utiliser l'outil PowerShell, pas Bash (Bash tourne dans un sandbox réseau isolé qui bloque `*.supabase.co` en DNS ; PowerShell a un accès réseau complet au vrai poste)
 - Toute valeur texte contenant des accents ou emoji, envoyée via un script PowerShell vers l'API Supabase, doit être écrite en entités HTML numériques ASCII (`&#225;`, `&#128197;`...) — Windows PowerShell 5.1 lit les fichiers `.ps1` sans BOM avec le codepage système, pas en UTF-8, ce qui corrompt silencieusement les caractères multi-octets et fait échouer une partie des requêtes (`PGRST102 Empty or invalid json`)
 - Le nouveau format de clé Supabase `sb_secret_...` est bloqué par l'API si la requête a l'air de venir d'un navigateur ("Forbidden use of secret API key in browser") — passer un `-UserAgent` explicite non-navigateur (ex. `"curl/8.0"`) sur chaque appel `Invoke-RestMethod`

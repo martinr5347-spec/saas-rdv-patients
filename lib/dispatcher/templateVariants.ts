@@ -93,9 +93,9 @@ export const MESSAGE_VARIANTS: Catalog = {
             '#2563eb', '#1d4ed8', '📅', 'Tu cita está reservada',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> está reservada para:</p>
 ${dateBox('a las')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmarla, realiza el acompte de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
-    {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Costo total de la consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de acompte ahora y <strong>{{resto_pagar}} {{monnaie}}</strong> en el consultorio el día de tu cita.</p>{{/if}}
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar acompte</a>`
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmarla, realiza el adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Costo total de la consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de adelanto ahora y <strong>{{resto_pagar}} {{monnaie}}</strong> en el consultorio el día de tu cita.</p>{{/if}}
+    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto</a>`
           ),
         },
         pt: {
@@ -112,7 +112,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `📅 Hola {{nom_patient}}!\n\nTu cita con {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nPara confirmarla, realiza el acompte de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `📅 Hola {{nom_patient}}!\n\nTu cita con {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nPara confirmarla, realiza el adelanto de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
         },
         pt: {
           corps: `📅 Ola {{nom_patient}}!\n\nSua consulta com {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nPara confirmar, realize o sinal de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}\n{{link_pago}}`,
@@ -127,7 +127,7 @@ ${dateBox('às')}
             '#2563eb', '#1d4ed8', '💙', '¡Qué alegría, {{nom_patient}}!',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Quedó todo listo para tu cita con <strong>{{nombre_cabinet}}</strong>. Este es el detalle:</p>
 ${dateBox('a las')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un acompte de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">El costo total es de <strong>{{costo_total}} {{monnaie}}</strong>: dejas {{monto_acompte}} {{monnaie}} ahora y el resto (<strong>{{resto_pagar}} {{monnaie}}</strong>) lo abonas tranquilamente en el consultorio.</p>{{/if}}
     <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar mi cita</a>`
           ),
@@ -146,7 +146,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `💙 ¡Qué alegría, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nSolo falta confirmar tu lugar con un acompte de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `💙 ¡Qué alegría, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nSolo falta confirmar tu lugar con un adelanto de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
         },
         pt: {
           corps: `💙 Que alegria, {{nom_patient}}!\n\nFicou tudo certo para sua consulta com {{nombre_cabinet}}:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nSo falta confirmar seu horario com um sinal de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}\n{{link_pago}}`,
@@ -161,11 +161,11 @@ ${dateBox('às')}
         es: {
           sujet: 'Recordatorio de pago — tu cita será cancelada',
           corps: card(
-            '#b45309', '#92400e', '⏰', 'Falta tu acompte',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, aún no hemos recibido el acompte para tu cita con <strong>{{nombre_cabinet}}</strong>:</p>
+            '#b45309', '#92400e', '⏰', 'Falta tu adelanto',
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, aún no hemos recibido el adelanto para tu cita con <strong>{{nombre_cabinet}}</strong>:</p>
 ${dateBox('a las')}
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Si no pagas pronto, la cita será cancelada automáticamente.</p>
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#b45309;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar acompte ahora</a>`
+    <a href="{{link_pago}}" style="display:block;text-align:center;background:#b45309;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto ahora</a>`
           ),
         },
         pt: {
@@ -181,7 +181,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `⏰ Hola {{nom_patient}}, aun no hemos recibido el acompte para tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi no pagas pronto, la cita sera cancelada automaticamente. Evitalo aqui:\n{{link_pago}}`,
+          corps: `⏰ Hola {{nom_patient}}, aun no hemos recibido el adelanto para tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi no pagas pronto, la cita sera cancelada automaticamente. Evitalo aqui:\n{{link_pago}}`,
         },
         pt: {
           corps: `⏰ Ola {{nom_patient}}, ainda nao recebemos o sinal da sua consulta do dia {{fecha_cita}} as {{hora_cita}}.\n\nSe nao pagar em breve, a consulta sera cancelada automaticamente. Evite isso aqui:\n{{link_pago}}`,
@@ -191,13 +191,13 @@ ${dateBox('às')}
     calido: {
       email: {
         es: {
-          sujet: 'No te olvides de tu acompte',
+          sujet: 'No te olvides de tu adelanto',
           corps: card(
             '#b45309', '#92400e', '🙂', 'Un empujoncito más, {{nom_patient}}',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Vimos que todavía no llega el acompte para tu cita con <strong>{{nombre_cabinet}}</strong>. ¡No pasa nada, todavía estás a tiempo!</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Vimos que todavía no llega el adelanto para tu cita con <strong>{{nombre_cabinet}}</strong>. ¡No pasa nada, todavía estás a tiempo!</p>
 ${dateBox('a las')}
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Si prefieres mantener tu horario, complétalo aquí antes de que se libere:</p>
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#b45309;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Completar mi acompte</a>`
+    <a href="{{link_pago}}" style="display:block;text-align:center;background:#b45309;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Completar mi adelanto</a>`
           ),
         },
         pt: {
@@ -213,7 +213,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `🙂 Hola {{nom_patient}}, un empujoncito mas: todavia no llega el acompte de tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi prefieres mantener tu horario, completalo aqui antes de que se libere:\n{{link_pago}}`,
+          corps: `🙂 Hola {{nom_patient}}, un empujoncito mas: todavia no llega el adelanto de tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi prefieres mantener tu horario, completalo aqui antes de que se libere:\n{{link_pago}}`,
         },
         pt: {
           corps: `🙂 Ola {{nom_patient}}, so falta um passinho: o sinal da sua consulta do dia {{fecha_cita}} as {{hora_cita}} ainda nao chegou.\n\nPara manter seu horario, conclua por aqui antes que ele seja liberado:\n{{link_pago}}`,
@@ -229,7 +229,7 @@ ${dateBox('às')}
           sujet: 'Acompte recibido — cita confirmada',
           corps: card(
             '#15803d', '#166534', '✅', '¡Pago recibido!',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, hemos recibido tu acompte de <strong>{{monto_acompte}} {{monnaie}}</strong>.</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, hemos recibido tu adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>.</p>
 ${dateBox('a las')}
     {{#if costo_desglose}}<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7280;">Recuerda llevar <strong>{{resto_pagar}} {{monnaie}}</strong> el día de tu cita (costo total: {{costo_total}} {{monnaie}}).</p>{{/if}}
     <p style="margin:0;font-size:15px;line-height:1.6;color:#1f2937;">Tu cita con <strong>{{nombre_cabinet}}</strong> está confirmada. ¡Te esperamos!</p>`
@@ -248,7 +248,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `✅ Hola {{nom_patient}}, recibimos tu acompte de {{monto_acompte}} {{monnaie}}.\n\nTu cita del {{fecha_cita}} a las {{hora_cita}} con {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Recuerda llevar {{resto_pagar}} {{monnaie}} el dia de tu cita.\n{{/if}}Te esperamos!`,
+          corps: `✅ Hola {{nom_patient}}, recibimos tu adelanto de {{monto_acompte}} {{monnaie}}.\n\nTu cita del {{fecha_cita}} a las {{hora_cita}} con {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Recuerda llevar {{resto_pagar}} {{monnaie}} el dia de tu cita.\n{{/if}}Te esperamos!`,
         },
         pt: {
           corps: `✅ Ola {{nom_patient}}, recebemos seu sinal de {{monto_acompte}} {{monnaie}}.\n\nSua consulta do dia {{fecha_cita}} as {{hora_cita}} com {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Lembre-se de levar {{resto_pagar}} {{monnaie}} no dia da consulta.\n{{/if}}Te esperamos!`,
@@ -261,7 +261,7 @@ ${dateBox('às')}
           sujet: '¡Gracias por tu pago!',
           corps: card(
             '#15803d', '#166534', '💚', '¡Todo listo, {{nom_patient}}!',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Recibimos tu acompte de <strong>{{monto_acompte}} {{monnaie}}</strong>, ¡muchas gracias!</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Recibimos tu adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>, ¡muchas gracias!</p>
 ${dateBox('a las')}
     {{#if costo_desglose}}<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7280;">Recuerda traer <strong>{{resto_pagar}} {{monnaie}}</strong> el día de tu cita (costo total: {{costo_total}} {{monnaie}}).</p>{{/if}}
     <p style="margin:0;font-size:15px;line-height:1.6;color:#1f2937;">Tu cita con <strong>{{nombre_cabinet}}</strong> está confirmada. ¡Nos vemos pronto!</p>`
@@ -280,7 +280,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `💚 ¡Gracias, {{nom_patient}}! Recibimos tu acompte de {{monto_acompte}} {{monnaie}}.\n\nTu cita del {{fecha_cita}} a las {{hora_cita}} con {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Recuerda traer {{resto_pagar}} {{monnaie}} el dia de tu cita.\n{{/if}}Nos vemos pronto!`,
+          corps: `💚 ¡Gracias, {{nom_patient}}! Recibimos tu adelanto de {{monto_acompte}} {{monnaie}}.\n\nTu cita del {{fecha_cita}} a las {{hora_cita}} con {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Recuerda traer {{resto_pagar}} {{monnaie}} el dia de tu cita.\n{{/if}}Nos vemos pronto!`,
         },
         pt: {
           corps: `💚 Obrigado, {{nom_patient}}! Recebemos seu sinal de {{monto_acompte}} {{monnaie}}.\n\nSua consulta do dia {{fecha_cita}} as {{hora_cita}} com {{nombre_cabinet}} esta confirmada.\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Lembre-se de trazer {{resto_pagar}} {{monnaie}} no dia da consulta.\n{{/if}}Ate breve!`,
@@ -296,7 +296,7 @@ ${dateBox('às')}
           sujet: 'Cita cancelada por falta de pago',
           corps: card(
             '#b91c1c', '#991b1b', '❌', 'Cita cancelada',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> ha sido cancelada automáticamente por no recibir el acompte a tiempo:</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> ha sido cancelada automáticamente por no recibir el adelanto a tiempo:</p>
 ${dateBoxSimple('a las')}
     {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Si deseas reagendar, hazlo aquí mismo:</p>
     <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reagendar cita</a>{{/if}}`
@@ -315,7 +315,7 @@ ${dateBoxSimple('às')}
       },
       whatsapp: {
         es: {
-          corps: `❌ Hola {{nom_patient}}, tu cita del {{fecha_cita}} a las {{hora_cita}} fue cancelada por falta de acompte.\n{{#if calendly_url}}\nSi deseas reagendar:\n{{calendly_url}}{{/if}}`,
+          corps: `❌ Hola {{nom_patient}}, tu cita del {{fecha_cita}} a las {{hora_cita}} fue cancelada por falta de adelanto.\n{{#if calendly_url}}\nSi deseas reagendar:\n{{calendly_url}}{{/if}}`,
         },
         pt: {
           corps: `❌ Ola {{nom_patient}}, sua consulta do dia {{fecha_cita}} as {{hora_cita}} foi cancelada por falta de sinal.\n{{#if calendly_url}}\nSe quiser reagendar:\n{{calendly_url}}{{/if}}`,
@@ -328,7 +328,7 @@ ${dateBoxSimple('às')}
           sujet: 'Tu horario quedó liberado',
           corps: card(
             '#b91c1c', '#991b1b', '🙁', 'No hay problema, {{nom_patient}}',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Como no llegamos a recibir el acompte a tiempo, tu horario con <strong>{{nombre_cabinet}}</strong> quedó liberado:</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Como no llegamos a recibir el adelanto a tiempo, tu horario con <strong>{{nombre_cabinet}}</strong> quedó liberado:</p>
 ${dateBoxSimple('a las')}
     {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Cuando quieras, puedes elegir un nuevo horario aquí:</p>
     <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Elegir nuevo horario</a>{{/if}}`
@@ -347,7 +347,7 @@ ${dateBoxSimple('às')}
       },
       whatsapp: {
         es: {
-          corps: `🙁 Hola {{nom_patient}}, no hay problema: tu horario del {{fecha_cita}} a las {{hora_cita}} quedo liberado por no llegar el acompte a tiempo.\n{{#if calendly_url}}\nCuando quieras, elige un nuevo horario aqui:\n{{calendly_url}}{{/if}}`,
+          corps: `🙁 Hola {{nom_patient}}, no hay problema: tu horario del {{fecha_cita}} a las {{hora_cita}} quedo liberado por no llegar el adelanto a tiempo.\n{{#if calendly_url}}\nCuando quieras, elige un nuevo horario aqui:\n{{calendly_url}}{{/if}}`,
         },
         pt: {
           corps: `🙁 Ola {{nom_patient}}, sem problemas: seu horario do dia {{fecha_cita}} as {{hora_cita}} foi liberado por nao recebermos o sinal a tempo.\n{{#if calendly_url}}\nQuando quiser, escolha um novo horario aqui:\n{{calendly_url}}{{/if}}`,
@@ -430,51 +430,51 @@ export function getVariantContent(type: NotificationType, variant: VariantId, ca
 const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string>>> = {
   confirmation: {
     standard: {
-      es: 'Tu cita está reservada\nHola María López, tu cita con Clínica Bienestar está reservada para el 15 de marzo de 2026 a las 10:00.\nPara confirmarla, realiza el acompte de 20.00 PEN.',
+      es: 'Tu cita está reservada\nHola [Nombre], tu cita con [Clínica] está reservada para [Fecha] a las [Hora].\nPara confirmarla, realiza el adelanto de [Valor] PEN.',
       pt: 'Olá [Nome], sua consulta com [Clínica] está agendada para [Data] às [Hora]. Para confirmá-la, realize o sinal de [Valor] PEN.',
     },
     calido: {
-      es: '¡Qué alegría, María López!\nQuedó todo listo para tu cita con Clínica Bienestar. Este es el detalle: 15 de marzo de 2026 a las 10:00.\nSolo falta confirmar tu lugar con un acompte de 20.00 PEN.',
+      es: '¡Qué alegría, [Nombre]!\nQuedó todo listo para tu cita con [Clínica]. Este es el detalle: [Fecha] a las [Hora].\nSolo falta confirmar tu lugar con un adelanto de [Valor] PEN.',
       pt: 'Que alegria, [Nome]! Tudo pronto para sua consulta com [Clínica]. Detalhe: [Data] às [Hora]. Só falta confirmar seu lugar com um sinal de [Valor] PEN.',
     },
   },
   aviso: {
     standard: {
-      es: 'Falta tu acompte\nHola María López, aún no hemos recibido el acompte para tu cita con Clínica Bienestar.\nSi no pagas pronto, la cita será cancelada automáticamente.',
+      es: 'Falta tu adelanto\nHola [Nombre], aún no hemos recibido el adelanto para tu cita con [Clínica].\nSi no pagas pronto, la cita será cancelada automáticamente.',
       pt: 'Falta seu sinal. Olá [Nome], ainda não recebemos o sinal para sua consulta com [Clínica]. Se não pagar em breve, a consulta será cancelada automaticamente.',
     },
     calido: {
-      es: 'Un empujoncito más, María López\nVimos que todavía no llega el acompte para tu cita con Clínica Bienestar. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
+      es: 'Un empujoncito más, [Nombre]\nVimos que todavía no llega el adelanto para tu cita con [Clínica]. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
       pt: 'Um empurrãozinho, [Nome]! Vimos que o sinal para sua consulta com [Clínica] ainda não chegou. Sem problema, você ainda está a tempo! Se quiser manter seu horário, complete aqui antes que seja liberado.',
     },
   },
   pago: {
     standard: {
-      es: '¡Pago recibido!\nHola María López, hemos recibido tu acompte de 20.00 PEN.\nTu cita con Clínica Bienestar está confirmada. ¡Te esperamos!',
+      es: '¡Pago recibido!\nHola [Nombre], hemos recibido tu adelanto de [Valor] PEN.\nTu cita con [Clínica] está confirmada. ¡Te esperamos!',
       pt: 'Pagamento recebido! Olá [Nome], recebemos seu sinal de [Valor] PEN. Sua consulta com [Clínica] está confirmada. Te esperamos!',
     },
     calido: {
-      es: '¡Todo listo, María López!\nRecibimos tu acompte de 20.00 PEN, ¡muchas gracias!\nTu cita con Clínica Bienestar está confirmada. ¡Nos vemos pronto!',
+      es: '¡Todo listo, [Nombre]!\nRecibimos tu adelanto de [Valor] PEN, ¡muchas gracias!\nTu cita con [Clínica] está confirmada. ¡Nos vemos pronto!',
       pt: 'Tudo certo, [Nome]! Recebemos seu sinal de [Valor] PEN, obrigado! Sua consulta com [Clínica] está confirmada. Até logo!',
     },
   },
   anulacion: {
     standard: {
-      es: 'Cita cancelada\nHola María López, tu cita con Clínica Bienestar ha sido cancelada automáticamente por no recibir el acompte a tiempo.\nSi deseas reagendar, hazlo aquí mismo.',
+      es: 'Cita cancelada\nHola [Nombre], tu cita con [Clínica] ha sido cancelada automáticamente por no recibir el adelanto a tiempo.\nSi deseas reagendar, hazlo aquí mismo.',
       pt: 'Consulta cancelada. Olá [Nome], sua consulta com [Clínica] foi cancelada automaticamente por não receber o sinal a tempo. Se quiser reagendar, faça aqui mesmo.',
     },
     calido: {
-      es: 'No hay problema, María López\nComo no llegamos a recibir el acompte a tiempo, tu horario con Clínica Bienestar quedó liberado.\nCuando quieras, puedes elegir un nuevo horario aquí.',
+      es: 'No hay problema, [Nombre]\nComo no llegamos a recibir el adelanto a tiempo, tu horario con [Clínica] quedó liberado.\nCuando quieras, puedes elegir un nuevo horario aquí.',
       pt: 'Sem problema, [Nome]! Como não recebemos o sinal a tempo, seu horário com [Clínica] foi liberado. Quando quiser, você pode escolher um novo horário aqui.',
     },
   },
   recordatorio: {
     standard: {
-      es: 'Te esperamos\nHola María López, te recordamos tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
+      es: 'Te esperamos\nHola [Nombre], te recordamos tu cita con [Clínica]: [Fecha] a las [Hora].',
       pt: 'Te esperamos! Olá [Nome], lembramos sua consulta com [Clínica]: [Data] às [Hora].',
     },
     calido: {
-      es: '¡Te esperamos, María López!\nSolo un recordatorio cariñoso de tu cita con Clínica Bienestar: 15 de marzo de 2026 a las 10:00.',
+      es: '¡Te esperamos, [Nombre]!\nSolo un recordatorio cariñoso de tu cita con [Clínica]: [Fecha] a las [Hora].',
       pt: 'Te esperamos, [Nome]! Só um lembrete carinhoso da sua consulta com [Clínica]: [Data] às [Hora].',
     },
   },

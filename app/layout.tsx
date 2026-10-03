@@ -19,8 +19,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Citas SaaS — Gestión de citas para médicos y estéticas",
-  description: "Plataforma multi-tenant de gestión de citas, acomptos y recordatorios para profesionales de salud y estética en América Latina.",
+  title: "Citas SaaS — Gestión de citas para médicos y estéticos",
+  description: "Plataforma multi-tenant de gestión de citas, adelantos y recordatorios para profesionales de salud y estética en América Latina.",
 };
 
 export default function RootLayout({

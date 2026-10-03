@@ -20,8 +20,8 @@ export async function createPaymentLink(params: {
     body: {
       items: [
         {
-          id: 'acompte',
-          title: 'Acompte consultation',
+          id: 'adelanto',
+          title: 'Adelanto de consulta',
           quantity: 1,
           unit_price: params.amount,
           currency_id: params.currency,

@@ -5,13 +5,19 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, nom, idioma } = body
+    const { email, password, nom, idioma, especialidad } = body
 
     if (!email || !password || !nom) {
       return NextResponse.json({ error: 'Email, mot de passe et nom sont requis' }, { status: 400 })
     }
 
     const userIdioma = idioma === 'pt' ? 'pt' : 'es'
+    const orgEspecialidad =
+      especialidad === 'estetica_dermato' || especialidad === 'clinica_medica' ? especialidad : null
+    // Valeurs de depart pour le cabinet (langue des messages patients, devise) —
+    // reprennent la langue choisie a l'inscription comme defaut raisonnable,
+    // modifiables ensuite independamment dans Parametres.
+    const defaultMonnaie = userIdioma === 'pt' ? 'BRL' : 'PEN'
 
     const supabase = createServiceRoleClient()
 
@@ -30,7 +36,7 @@ export async function POST(req: Request) {
 
     const { data: org, error: orgError } = await supabase
       .from('organizations')
-      .insert({ nom })
+      .insert({ nom, langue: userIdioma, especialidad: orgEspecialidad })
       .select('id')
       .single()
 
@@ -51,6 +57,7 @@ export async function POST(req: Request) {
       }),
       supabase.from('org_settings').insert({
         organization_id: org.id,
+        monnaie: defaultMonnaie,
       }),
       supabase.from('subscriptions').insert({
         organization_id: org.id,

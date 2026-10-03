@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useLocale, MESSAGES } from '@/lib/hooks/useLocale'
+import { MailIcon, LockIcon } from '@/components/auth/icons'
 
 export default function LoginPage() {
   const { locale, setLocale } = useLocale()
@@ -41,28 +42,29 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Colonne gauche */}
       <div className="hidden md:flex md:w-[42%] relative flex-col justify-between overflow-hidden bg-[#1a1a2e] p-14">
-        <div className="pointer-events-none absolute -top-20 -left-20 h-72 w-72 rounded-full bg-white/[0.06]" />
-        <div className="pointer-events-none absolute bottom-10 -right-16 h-52 w-52 rounded-full bg-white/[0.05]" />
-
         <div className="relative z-10">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/60">
-            {MESSAGES[locale].tagline}
-          </div>
           <div className="text-3xl font-semibold text-white">Núcleo</div>
         </div>
 
-        <div className="relative z-10 h-[380px] w-full">
-          <Image
-            src="/images/duo_praticiens.png"
-            alt="Praticiens Núcleo"
-            fill
-            className="object-contain object-bottom"
-          />
+        <div className="relative z-10 space-y-4">
+          <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
+            <Image
+              src="/images/hero-characters.png"
+              alt="Praticiens Núcleo"
+              fill
+              className="object-cover"
+            />
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs text-white/90">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6926D2]" />
+            {MESSAGES[locale].login.featureBadge}
+          </div>
         </div>
       </div>
 
       {/* Colonne droite */}
-      <div className="relative flex flex-1 items-center justify-center bg-[#f7f5f0] px-6 py-16">
+      <div className="relative flex flex-1 items-center justify-center bg-[#F5F0E8] px-6 py-16">
         <div className="absolute top-6 right-6 flex gap-2">
           <button
             type="button"
@@ -137,38 +139,49 @@ function LoginFormFields({
           <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[#1a1a1a]">
             {t('email')}
           </label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-[#1a1a1a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
-          />
+          <div className="relative">
+            <MailIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#999999]" />
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3.5 text-sm text-[#1a1a1a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
+            />
+          </div>
         </div>
         <div>
           <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[#1a1a1a]">
             {t('password')}
           </label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-[#1a1a1a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
-          />
+          <div className="relative">
+            <LockIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#999999]" />
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3.5 text-sm text-[#1a1a1a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
+            />
+          </div>
         </div>
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-[#7C3AED] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#6d28d9] disabled:opacity-50"
+          className="w-full rounded-lg bg-[#7C3AED] px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-[#7C3AED]/30 hover:bg-[#6d28d9] disabled:opacity-50"
         >
           {loading ? t('submitLoading') : t('submit')}
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-[#666666]">
+      <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-[#999999]">
+        <LockIcon className="h-3.5 w-3.5" />
+        {t('dataProtected')}
+      </div>
+
+      <p className="mt-6 text-center text-sm text-[#666666]">
         {t('noAccount')}{' '}
         <Link href="/register" className="font-medium text-[#7C3AED] hover:underline">
           {t('register')}

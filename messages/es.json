@@ -3,15 +3,27 @@
   "home": {
     "navLogin": "Iniciar sesión",
     "navRegister": "Registrarse",
-    "heroTitle": "Gestión de citas, acomptos y recordatorios para profesionales médicos y estéticas",
-    "heroSubtitle": "Automatice confirmaciones, cobros de acompto por MercadoPago, recordatorios y más — todo en una plataforma multi-cabinete segura.",
+    "heroTitlePre": "Gestión de citas,",
+    "heroTitleHighlight": "adelantos y recordatorios",
+    "heroTitlePost": "para profesionales médicos y estéticos",
+    "heroSubtitle": "Automatice confirmaciones, cobros de adelanto por MercadoPago, recordatorios y más — todo en una plataforma multi-consultorio segura.",
     "ctaPrimary": "Empezar gratis",
     "feature1Title": "Confirmación automática",
     "feature1Desc": "Cada reserva envía al instante un mensaje de confirmación con el enlace de pago.",
-    "feature2Title": "Cobro de acompto",
-    "feature2Desc": "Acompto vía MercadoPago, con aviso y anulación automática si no se paga a tiempo.",
+    "feature2Title": "Cobro de adelanto",
+    "feature2Desc": "Adelanto vía MercadoPago, con aviso y anulación automática si no se paga a tiempo.",
     "feature3Title": "Recordatorios",
-    "feature3Desc": "Un recordatorio antes de cada cita, por correo y WhatsApp, sin trabajo manual."
+    "feature3Desc": "Un recordatorio antes de cada cita, por correo y WhatsApp, sin trabajo manual.",
+    "badge": "Plataforma especializada en salud y estética",
+    "previewLabel": "Próxima cita",
+    "previewName": "María López",
+    "previewDate": "15 de marzo, 10:00",
+    "previewStatus": "Pagado · 20.00 PEN",
+    "whatsappSent": "WhatsApp Enviado",
+    "whatsappConfirmed": "Confirmado por el paciente",
+    "whatsappQuote": "¡Confirmo mi asistencia mañana a las 10h!",
+    "featureBubble1": "Cero faltas — Seña y confirmación automática por WhatsApp",
+    "featureBubble2": "Agenda sincronizada — Calendly + recordatorios automáticos"
   },
   "login": {
     "title": "Conexión",
@@ -21,25 +33,37 @@
     "submit": "Ingresar",
     "submitLoading": "Ingresando...",
     "noAccount": "¿Aún no tienes cuenta?",
-    "register": "Regístrate"
+    "register": "Regístrate",
+    "featureBadge": "Cero faltas — Confirmación automática por WhatsApp",
+    "dataProtected": "Datos protegidos"
   },
   "register": {
+    "trialBadge": "Prueba gratuita de 7 días",
     "title": "Regístrate",
     "subtitle": "Crea tu cuenta para empezar a gestionar tus citas.",
-    "orgName": "Nombre del cabinete / profesional",
+    "sectionAbout": "Sobre ti",
+    "orgName": "Nombre del consultorio / profesional",
+    "specialtyLabel": "Área de especialización",
+    "specialtyEstetica": "Estética & Dermato",
+    "specialtyClinica": "Clínica Médica",
+    "sectionAccess": "Acceso",
     "email": "Correo electrónico",
     "password": "Contraseña",
     "submit": "Crear cuenta",
     "submitLoading": "Creando cuenta...",
     "genericError": "Error al crear la cuenta",
     "haveAccount": "¿Ya tienes cuenta?",
-    "loginLink": "Inicia sesión"
+    "loginLink": "Inicia sesión",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "dataProtected": "Datos protegidos"
   },
   "dashboard": {
     "nav": {
       "home": "Inicio",
       "appointments": "Citas",
       "patients": "Pacientes",
+      "ingresos": "Mis ingresos",
       "settings": "Configuración",
       "admin": "Admin",
       "logout": "Cerrar sesión"
@@ -50,6 +74,9 @@
     },
     "home": {
       "title": "Panel de control",
+      "greetingMorning": "Buenos días, {name}",
+      "greetingAfternoon": "Buenas tardes, {name}",
+      "greetingNight": "Buenas noches, {name}",
       "upcoming": "Próximas citas",
       "pendingPayment": "Pendientes de pago",
       "paid": "Pagados"
@@ -64,7 +91,19 @@
       "colTime": "Hora",
       "colStatus": "Estado",
       "colDeposit": "Adelanto",
-      "details": "Detalles"
+      "details": "Detalles",
+      "viewList": "Lista",
+      "viewCalendar": "Calendario",
+      "calendar": {
+        "today": "Hoy",
+        "previous": "Atrás",
+        "next": "Siguiente",
+        "month": "Mes",
+        "week": "Semana",
+        "day": "Día",
+        "noEvents": "No hay citas pagadas en este rango.",
+        "paidLabel": "Pagado"
+      }
     },
     "appointmentDetail": {
       "title": "Detalle de la cita",
@@ -113,7 +152,16 @@
         "UYU": "Peso uruguayo (UYU)",
         "USD": "Dólar (USD)"
       },
-      "dashboardLanguage": "Idioma del panel",
+      "groupProfile": "Mi perfil",
+      "profilePhoto": "Subir foto",
+      "fullName": "Nombre completo",
+      "fullNamePlaceholder": "Ej: Dra. Camila Soares",
+      "especialidadTexto": "Especialidad",
+      "especialidadTextoPlaceholder": "Ej: Dermatología & Estética",
+      "groupBilling": "Facturación y plazos",
+      "groupLanguage": "Idioma",
+      "groupIntegrations": "Integraciones",
+      "groupChannels": "Canales activos",
       "patientMessageLanguage": "Idioma de mensajes al paciente",
       "languageOptionEs": "Español",
       "languageOptionPt": "Portugués",
@@ -128,6 +176,43 @@
       "messageTemplate": "Plantilla de mensajes",
       "messageTemplateDesc": "Elige el estilo de cada mensaje enviado a tus pacientes. Los datos de la cita (nombre, fecha, enlace de pago...) siguen siendo automáticos.",
       "save": "Guardar"
+    },
+    "ingresos": {
+      "title": "Mis ingresos",
+      "totalMonth": "Total del mes",
+      "totalMp": "Total MercadoPago",
+      "totalManual": "Total manual",
+      "formTitleCreate": "Registrar ingreso",
+      "formTitleEdit": "Editar ingreso",
+      "fieldFecha": "Fecha",
+      "fieldMonto": "Monto",
+      "fieldMetodo": "Método de pago",
+      "metodoEfectivo": "Efectivo",
+      "metodoTransferencia": "Transferencia",
+      "metodoOtro": "Otro",
+      "fieldPaciente": "Nombre del paciente",
+      "fieldConcepto": "Concepto",
+      "conceptoPlaceholder": "Ej: Consulta, Peeling, Láser",
+      "submitCreate": "Registrar ingreso",
+      "submitEdit": "Guardar cambios",
+      "cancelEdit": "Cancelar edición",
+      "colFecha": "Fecha",
+      "colPaciente": "Paciente",
+      "colConcepto": "Concepto",
+      "colMetodo": "Método",
+      "colMonto": "Monto",
+      "none": "No hay ingresos este mes.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar este ingreso?",
+      "monthLabel": "Mes",
+      "exportCsv": "Exportar CSV",
+      "exportPdf": "Exportar PDF",
+      "mpNotEditable": "Los ingresos de MercadoPago no son editables aquí.",
+      "months": [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+      ]
     }
   }
 }

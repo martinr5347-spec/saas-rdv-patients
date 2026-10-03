@@ -6,11 +6,12 @@ import { MESSAGES, Locale } from '@/lib/hooks/useLocale'
 import { SidebarProvider } from '@/context/SidebarContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
-import { HomeIcon, CalendarIcon, UsersIcon, SettingsIcon, ShieldIcon } from '@/components/layout/icons'
+import { HomeIcon, CalendarIcon, UsersIcon, CashIcon, SettingsIcon, ShieldIcon } from '@/components/layout/icons'
 
 export default function DashboardChrome({
   locale,
   userName,
+  photoUrl,
   isAdmin,
   trialDaysLeft,
   signOutAction,
@@ -18,6 +19,7 @@ export default function DashboardChrome({
 }: {
   locale: Locale
   userName: string
+  photoUrl: string | null
   isAdmin: boolean
   trialDaysLeft: number | null
   signOutAction: () => void
@@ -25,7 +27,7 @@ export default function DashboardChrome({
 }) {
   return (
     <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
-      <DashboardChromeContent userName={userName} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
+      <DashboardChromeContent userName={userName} photoUrl={photoUrl} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
         {children}
       </DashboardChromeContent>
     </NextIntlClientProvider>
@@ -34,12 +36,14 @@ export default function DashboardChrome({
 
 function DashboardChromeContent({
   userName,
+  photoUrl,
   isAdmin,
   trialDaysLeft,
   signOutAction,
   children,
 }: {
   userName: string
+  photoUrl: string | null
   isAdmin: boolean
   trialDaysLeft: number | null
   signOutAction: () => void
@@ -51,6 +55,7 @@ function DashboardChromeContent({
     { href: '/dashboard', label: t('nav.home'), icon: <HomeIcon /> },
     { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon /> },
     { href: '/dashboard/patients', label: t('nav.patients'), icon: <UsersIcon /> },
+    { href: '/dashboard/ingresos', label: t('nav.ingresos'), icon: <CashIcon /> },
     { href: '/dashboard/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
     ...(isAdmin ? [{ href: '/admin', label: t('nav.admin'), icon: <ShieldIcon /> }] : []),
   ]
@@ -60,7 +65,7 @@ function DashboardChromeContent({
       <div className="min-h-screen bg-gray-50">
         <Sidebar navItems={navItems} />
         <div className="lg:pl-[260px]">
-          <Header userName={userName} signOutAction={signOutAction} logoutLabel={t('nav.logout')} />
+          <Header userName={userName} photoUrl={photoUrl} signOutAction={signOutAction} logoutLabel={t('nav.logout')} />
           {trialDaysLeft !== null && (
             <div className="border-b border-brand-100 bg-brand-50">
               <div className="px-4 py-2 text-sm text-brand-700 flex items-center justify-center gap-2 lg:px-6">

@@ -1,16 +1,9 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SidebarProvider } from '@/context/SidebarContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import { HomeIcon, ShieldIcon } from '@/components/layout/icons'
-
-async function signOut() {
-  'use server'
-  const supabase = createClient()
-  await supabase.auth.signOut()
-  redirect('/login')
-}
+import { signOut } from './actions'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()

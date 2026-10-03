@@ -1,14 +1,17 @@
 'use client'
 
 import { useSidebar } from '@/context/SidebarContext'
+import Avatar from '@/components/ui/Avatar'
 import { MenuIcon, CloseIcon } from './icons'
 
 export default function Header({
   userName,
+  photoUrl,
   signOutAction,
   logoutLabel = 'Déconnexion',
 }: {
   userName: string
+  photoUrl?: string | null
   signOutAction: () => void
   logoutLabel?: string
 }) {
@@ -26,7 +29,10 @@ export default function Header({
       </button>
       <div className="hidden lg:block" />
       <div className="flex items-center gap-4">
-        <span className="text-sm text-gray-600">{userName}</span>
+        <div className="flex items-center gap-2.5">
+          <Avatar name={userName} photoUrl={photoUrl} size={32} />
+          <span className="hidden text-sm text-gray-700 sm:inline">{userName}</span>
+        </div>
         <form action={signOutAction}>
           <button type="submit" className="text-sm font-medium text-error-600 hover:text-error-700">
             {logoutLabel}

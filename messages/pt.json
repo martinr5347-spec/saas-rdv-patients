@@ -3,7 +3,9 @@
   "home": {
     "navLogin": "Entrar",
     "navRegister": "Cadastrar-se",
-    "heroTitle": "Gestão de consultas, entradas e lembretes para profissionais médicos e estéticos",
+    "heroTitlePre": "Gestão de consultas,",
+    "heroTitleHighlight": "entradas e lembretes",
+    "heroTitlePost": "para profissionais médicos e estéticos",
     "heroSubtitle": "Automatize confirmações, cobranças de entrada via MercadoPago, lembretes e mais — tudo em uma plataforma multi-consultório segura.",
     "ctaPrimary": "Começar grátis",
     "feature1Title": "Confirmação automática",
@@ -11,7 +13,17 @@
     "feature2Title": "Cobrança de entrada",
     "feature2Desc": "Entrada via MercadoPago, com aviso e cancelamento automático caso não seja paga a tempo.",
     "feature3Title": "Lembretes",
-    "feature3Desc": "Um lembrete antes de cada consulta, por e-mail e WhatsApp, sem trabalho manual."
+    "feature3Desc": "Um lembrete antes de cada consulta, por e-mail e WhatsApp, sem trabalho manual.",
+    "badge": "Plataforma especializada para saúde & estética",
+    "previewLabel": "Próxima consulta",
+    "previewName": "Maria Silva",
+    "previewDate": "15 de março, 10:00",
+    "previewStatus": "Pago · 20.00 BRL",
+    "whatsappSent": "WhatsApp Enviado",
+    "whatsappConfirmed": "Confirmado pelo paciente",
+    "whatsappQuote": "Confirmo presença amanhã às 10h!",
+    "featureBubble1": "Zero faltas — Sinal e confirmação automática via WhatsApp",
+    "featureBubble2": "Agenda sincronizada — Calendly + lembretes automáticos"
   },
   "login": {
     "title": "Acesso",
@@ -21,25 +33,37 @@
     "submit": "Entrar",
     "submitLoading": "Entrando...",
     "noAccount": "Ainda não tem conta?",
-    "register": "Cadastre-se"
+    "register": "Cadastre-se",
+    "featureBadge": "Zero faltas — Confirmação automática via WhatsApp",
+    "dataProtected": "Dados protegidos"
   },
   "register": {
+    "trialBadge": "Teste gratuito de 7 dias",
     "title": "Cadastre-se",
     "subtitle": "Crie sua conta para começar a gerenciar suas consultas.",
+    "sectionAbout": "Sobre você",
     "orgName": "Nome do consultório / profissional",
+    "specialtyLabel": "Área de atuação",
+    "specialtyEstetica": "Estética & Dermato",
+    "specialtyClinica": "Clínica Médica",
+    "sectionAccess": "Acesso",
     "email": "E-mail",
     "password": "Senha",
     "submit": "Criar conta",
     "submitLoading": "Criando conta...",
     "genericError": "Erro ao criar a conta",
     "haveAccount": "Já tem conta?",
-    "loginLink": "Entrar"
+    "loginLink": "Entrar",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "dataProtected": "Dados protegidos"
   },
   "dashboard": {
     "nav": {
       "home": "Início",
       "appointments": "Consultas",
       "patients": "Pacientes",
+      "ingresos": "Minha receita",
       "settings": "Configurações",
       "admin": "Admin",
       "logout": "Sair"
@@ -50,6 +74,9 @@
     },
     "home": {
       "title": "Painel de controle",
+      "greetingMorning": "Bom dia, {name}",
+      "greetingAfternoon": "Boa tarde, {name}",
+      "greetingNight": "Boa noite, {name}",
       "upcoming": "Próximas consultas",
       "pendingPayment": "Aguardando pagamento",
       "paid": "Pagos"
@@ -64,7 +91,19 @@
       "colTime": "Hora",
       "colStatus": "Status",
       "colDeposit": "Sinal",
-      "details": "Detalhes"
+      "details": "Detalhes",
+      "viewList": "Lista",
+      "viewCalendar": "Calendário",
+      "calendar": {
+        "today": "Hoje",
+        "previous": "Anterior",
+        "next": "Próximo",
+        "month": "Mês",
+        "week": "Semana",
+        "day": "Dia",
+        "noEvents": "Nenhuma consulta paga neste período.",
+        "paidLabel": "Pago"
+      }
     },
     "appointmentDetail": {
       "title": "Detalhe da consulta",
@@ -113,7 +152,16 @@
         "UYU": "Peso uruguaio (UYU)",
         "USD": "Dólar (USD)"
       },
-      "dashboardLanguage": "Idioma do painel",
+      "groupProfile": "Meu perfil",
+      "profilePhoto": "Enviar foto",
+      "fullName": "Nome completo",
+      "fullNamePlaceholder": "Ex: Dra. Camila Soares",
+      "especialidadTexto": "Especialidade",
+      "especialidadTextoPlaceholder": "Ex: Dermatologia & Estética",
+      "groupBilling": "Faturamento e prazos",
+      "groupLanguage": "Idioma",
+      "groupIntegrations": "Integrações",
+      "groupChannels": "Canais ativos",
       "patientMessageLanguage": "Idioma das mensagens ao paciente",
       "languageOptionEs": "Espanhol",
       "languageOptionPt": "Português",
@@ -128,6 +176,43 @@
       "messageTemplate": "Modelo de mensagens",
       "messageTemplateDesc": "Escolha o estilo de cada mensagem enviada aos seus pacientes. Os dados da consulta (nome, data, link de pagamento...) continuam sendo automáticos.",
       "save": "Salvar"
+    },
+    "ingresos": {
+      "title": "Minha receita",
+      "totalMonth": "Total do mês",
+      "totalMp": "Total MercadoPago",
+      "totalManual": "Total manual",
+      "formTitleCreate": "Registrar receita",
+      "formTitleEdit": "Editar receita",
+      "fieldFecha": "Data",
+      "fieldMonto": "Valor",
+      "fieldMetodo": "Forma de pagamento",
+      "metodoEfectivo": "Dinheiro",
+      "metodoTransferencia": "Transferência",
+      "metodoOtro": "Outro",
+      "fieldPaciente": "Nome do paciente",
+      "fieldConcepto": "Descrição",
+      "conceptoPlaceholder": "Ex: Consulta, Peeling, Laser",
+      "submitCreate": "Registrar receita",
+      "submitEdit": "Salvar alterações",
+      "cancelEdit": "Cancelar edição",
+      "colFecha": "Data",
+      "colPaciente": "Paciente",
+      "colConcepto": "Descrição",
+      "colMetodo": "Forma",
+      "colMonto": "Valor",
+      "none": "Nenhuma receita este mês.",
+      "edit": "Editar",
+      "delete": "Excluir",
+      "deleteConfirm": "Excluir esta receita?",
+      "monthLabel": "Mês",
+      "exportCsv": "Exportar CSV",
+      "exportPdf": "Exportar PDF",
+      "mpNotEditable": "As receitas do MercadoPago não são editáveis aqui.",
+      "months": [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+      ]
     }
   }
 }

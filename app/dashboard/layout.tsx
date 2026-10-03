@@ -1,13 +1,6 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DashboardChrome from '@/components/layout/DashboardChrome'
-
-async function signOut() {
-  'use server'
-  const supabase = createClient()
-  await supabase.auth.signOut()
-  redirect('/login')
-}
+import { signOut } from './actions'
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +14,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nom, role, organization_id, idioma')
+    .select('nom, role, organization_id, idioma, nombre_completo, foto_url')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
@@ -39,7 +32,8 @@ export default async function DashboardLayout({
   return (
     <DashboardChrome
       locale={profile?.idioma === 'pt' ? 'pt' : 'es'}
-      userName={profile?.nom ?? user?.email ?? ''}
+      userName={profile?.nombre_completo || profile?.nom || user?.email || ''}
+      photoUrl={profile?.foto_url ?? null}
       isAdmin={profile?.role === 'admin'}
       trialDaysLeft={trialDaysLeft}
       signOutAction={signOut}

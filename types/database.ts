@@ -11,6 +11,7 @@ export interface Database {
           pays: string
           fuseau: string
           langue: string
+          especialidad: 'estetica_dermato' | 'clinica_medica' | null
           created_at: string
         }
         Insert: {
@@ -20,6 +21,7 @@ export interface Database {
           pays?: string
           fuseau?: string
           langue?: string
+          especialidad?: 'estetica_dermato' | 'clinica_medica' | null
           created_at?: string
         }
         Update: {
@@ -29,6 +31,7 @@ export interface Database {
           pays?: string
           fuseau?: string
           langue?: string
+          especialidad?: 'estetica_dermato' | 'clinica_medica' | null
           created_at?: string
         }
         Relationships: []
@@ -41,6 +44,9 @@ export interface Database {
           nom: string | null
           email: string
           idioma: 'es' | 'pt'
+          nombre_completo: string | null
+          especialidad: string | null
+          foto_url: string | null
           created_at: string
         }
         Insert: {
@@ -50,6 +56,9 @@ export interface Database {
           nom?: string | null
           email: string
           idioma?: 'es' | 'pt'
+          nombre_completo?: string | null
+          especialidad?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Update: {
@@ -59,6 +68,9 @@ export interface Database {
           nom?: string | null
           email?: string
           idioma?: 'es' | 'pt'
+          nombre_completo?: string | null
+          especialidad?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Relationships: [
@@ -202,6 +214,7 @@ export interface Database {
           patient_id: string
           fecha_cita: string
           hora_cita: string
+          hora_fin: string | null
           fecha_reserva: string
           notas: string | null
           statut: 'pendiente' | 'pagado' | 'anulado'
@@ -221,6 +234,7 @@ export interface Database {
           patient_id: string
           fecha_cita: string
           hora_cita: string
+          hora_fin?: string | null
           fecha_reserva?: string
           notas?: string | null
           statut?: 'pendiente' | 'pagado' | 'anulado'
@@ -238,6 +252,7 @@ export interface Database {
           patient_id?: string
           fecha_cita?: string
           hora_cita?: string
+          hora_fin?: string | null
           fecha_reserva?: string
           notas?: string | null
           statut?: 'pendiente' | 'pagado' | 'anulado'
@@ -354,6 +369,45 @@ export interface Database {
         }
         Relationships: [
           { foreignKeyName: 'message_templates_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      ingresos_manuales: {
+        Row: {
+          id: string
+          organization_id: string
+          fecha: string
+          monto: number
+          metodo_pago: 'efectivo' | 'transferencia' | 'otro'
+          paciente_nombre: string | null
+          concepto: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          fecha: string
+          monto: number
+          metodo_pago: 'efectivo' | 'transferencia' | 'otro'
+          paciente_nombre?: string | null
+          concepto?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          fecha?: string
+          monto?: number
+          metodo_pago?: 'efectivo' | 'transferencia' | 'otro'
+          paciente_nombre?: string | null
+          concepto?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'ingresos_manuales_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'ingresos_manuales_created_by_fkey'; columns: ['created_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }
         ]
       }
     }

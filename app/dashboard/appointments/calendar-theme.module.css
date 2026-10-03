@@ -1,0 +1,64 @@
+.wrapper :global(.rbc-today) {
+  background-color: #f5f0e8;
+}
+
+.wrapper :global(.rbc-off-range-bg) {
+  background: #faf8f4;
+}
+
+.wrapper :global(.rbc-header) {
+  background: #f5f0e8;
+  color: #0a1422;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-color: #e5dfd3;
+}
+
+.wrapper :global(.rbc-month-view),
+.wrapper :global(.rbc-time-view),
+.wrapper :global(.rbc-time-header) {
+  border-color: #e5e7eb;
+}
+
+.wrapper :global(.rbc-day-bg + .rbc-day-bg),
+.wrapper :global(.rbc-month-row + .rbc-month-row),
+.wrapper :global(.rbc-timeslot-group) {
+  border-color: #eceae6;
+}
+
+.wrapper :global(.rbc-event) {
+  background-color: #6926d2;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.wrapper :global(.rbc-event.rbc-selected),
+.wrapper :global(.rbc-event:focus) {
+  background-color: #5a20b3;
+  outline: none;
+}
+
+.wrapper :global(.rbc-toolbar button) {
+  color: #0a1422;
+  border-color: #d9d4c8;
+  background: #ffffff;
+}
+
+.wrapper :global(.rbc-toolbar button:hover) {
+  background: #f5f0e8;
+}
+
+.wrapper :global(.rbc-toolbar button.rbc-active) {
+  background-color: #6926d2;
+  color: #ffffff;
+  border-color: #6926d2;
+}
+
+.wrapper :global(.rbc-toolbar button.rbc-active:hover) {
+  background-color: #5a20b3;
+}
+
+.wrapper :global(.rbc-current-time-indicator) {
+  background-color: #6926d2;
+}

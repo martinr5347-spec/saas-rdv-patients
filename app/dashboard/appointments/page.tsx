@@ -22,9 +22,24 @@ export default async function AppointmentsPage({
 
   const { data: appointments, error } = await query
 
+  // Vue calendrier : independante du filtre statut ci-dessus, montre toujours
+  // uniquement les RDV payes (agenda confirme du praticien). Isolation par
+  // organisation deja garantie par la RLS, comme pour la requete appointments
+  // ci-dessus.
+  const { data: paidAppointments } = await supabase
+    .from('appointments')
+    .select('id, fecha_cita, hora_cita, hora_fin, patients(nom)')
+    .eq('statut', 'pagado')
+    .order('fecha_cita', { ascending: true })
+    .limit(500)
+
   return (
     <AppointmentsView
       appointments={(appointments ?? []).map((a) => ({
+        ...a,
+        patients: a.patients as { nom: string } | null,
+      }))}
+      paidAppointments={(paidAppointments ?? []).map((a) => ({
         ...a,
         patients: a.patients as { nom: string } | null,
       }))}

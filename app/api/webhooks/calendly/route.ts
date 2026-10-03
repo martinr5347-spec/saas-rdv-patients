@@ -101,6 +101,7 @@ export async function POST(req: Request) {
   const eventTypeUrl = typeof eventType.url === 'string' ? eventType.url : ''
   const eventTypeSchedulingUrl = typeof eventType.scheduling_url === 'string' ? eventType.scheduling_url : ''
   const startTime = typeof eventObj.start_time === 'string' ? eventObj.start_time : ''
+  const endTime = typeof eventObj.end_time === 'string' ? eventObj.end_time : ''
 
   const calendlyEventId = extractUuidFromUri(eventUri) ?? extractUuidFromUri(eventTypeUri)
   if (!calendlyEventId) {
@@ -166,6 +167,7 @@ export async function POST(req: Request) {
 
   const fechaCita = toTenantDate(startTime, fuseau)
   const horaCita = toTenantTime(startTime, fuseau)
+  const horaFin = endTime ? toTenantTime(endTime, fuseau) : null
   const montoAcompte = Number(orgWithSettings.monto_acompte) || 0
 
   let patientId: string | null = null
@@ -217,6 +219,7 @@ export async function POST(req: Request) {
       patient_id: patientId,
       fecha_cita: fechaCita,
       hora_cita: horaCita,
+      hora_fin: horaFin,
       statut: 'pendiente',
       monto_acompte: montoAcompte,
       calendly_event_id: calendlyEventId,

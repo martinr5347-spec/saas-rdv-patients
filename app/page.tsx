@@ -28,7 +28,10 @@ function HomeContent({
     <div className="min-h-screen bg-[#0A1422]">
       <header className="border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="font-semibold text-lg text-white">Núcleo</span>
+          <div className="flex items-center gap-2">
+            <Image src="/images/nucleo-icon-inverse.png" alt="Núcleo" width={28} height={28} />
+            <span className="font-semibold text-lg text-white">Núcleo</span>
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
               <button

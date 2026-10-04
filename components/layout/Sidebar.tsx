@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/context/SidebarContext'
 
@@ -25,7 +26,7 @@ export default function Sidebar({ navItems, brand = 'Núcleo' }: { navItems: Nav
         }`}
       >
         <div className="flex items-center gap-2 py-6">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">{brand.charAt(0)}</span>
+          <Image src="/images/nucleo-icon-primary.png" alt="Núcleo" width={32} height={32} />
           <span className="text-lg font-semibold text-gray-800">{brand}</span>
         </div>
         <nav className="flex-1 overflow-y-auto no-scrollbar">

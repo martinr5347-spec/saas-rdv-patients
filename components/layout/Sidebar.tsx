@@ -26,7 +26,7 @@ export default function Sidebar({ navItems, brand = 'Núcleo' }: { navItems: Nav
         }`}
       >
         <div className="flex items-center gap-2 py-6">
-          <Image src="/images/nucleo-icon-primary.png" alt="Núcleo" width={32} height={32} />
+          <Image src="/images/nucleo-icon-primary.png" alt="Núcleo" width={40} height={40} />
           <span className="text-lg font-semibold text-gray-800">{brand}</span>
         </div>
         <nav className="flex-1 overflow-y-auto no-scrollbar">

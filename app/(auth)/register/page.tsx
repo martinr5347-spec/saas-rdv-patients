@@ -100,7 +100,10 @@ export default function RegisterPage() {
       {/* Colonne gauche */}
       <div className="hidden md:flex md:w-[42%] relative flex-col justify-between overflow-hidden bg-[#1a1a2e] p-14">
         <div className="relative z-10">
-          <div className="text-3xl font-semibold text-white">Núcleo</div>
+          <div className="flex items-center gap-2">
+            <Image src="/images/nucleo-icon-inverse.png" alt="Núcleo" width={36} height={36} />
+            <span className="text-3xl font-semibold text-white">Núcleo</span>
+          </div>
         </div>
 
         <div className="relative z-10 space-y-4">

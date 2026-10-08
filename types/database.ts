@@ -217,7 +217,7 @@ export interface Database {
           hora_fin: string | null
           fecha_reserva: string
           notas: string | null
-          statut: 'pendiente' | 'pagado' | 'anulado'
+          statut: 'pendiente' | 'confirmado' | 'en_curso' | 'pagado' | 'anulado'
           monto_acompte: number
           fecha_pago: string | null
           link_pago: string | null
@@ -237,7 +237,7 @@ export interface Database {
           hora_fin?: string | null
           fecha_reserva?: string
           notas?: string | null
-          statut?: 'pendiente' | 'pagado' | 'anulado'
+          statut?: 'pendiente' | 'confirmado' | 'en_curso' | 'pagado' | 'anulado'
           monto_acompte: number
           fecha_pago?: string | null
           link_pago?: string | null
@@ -255,7 +255,7 @@ export interface Database {
           hora_fin?: string | null
           fecha_reserva?: string
           notas?: string | null
-          statut?: 'pendiente' | 'pagado' | 'anulado'
+          statut?: 'pendiente' | 'confirmado' | 'en_curso' | 'pagado' | 'anulado'
           monto_acompte?: number
           fecha_pago?: string | null
           link_pago?: string | null

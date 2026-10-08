@@ -66,7 +66,9 @@ const GREETING_TEXT: Record<'morning' | 'afternoon' | 'night', string> = {
 
 const STATUT_CONFIG: Record<string, { dot: string; badgeBg: string; badgeText: string; label: string }> = {
   pendiente: { dot: 'bg-[#D97706]', badgeBg: 'bg-amber-50', badgeText: 'text-[#D97706]', label: 'Pendiente' },
-  pagado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Confirmado' },
+  confirmado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Confirmado' },
+  en_curso: { dot: 'bg-[#6926D2]', badgeBg: 'bg-violet-100', badgeText: 'text-[#6926D2]', label: 'En curso' },
+  pagado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Pagado' },
   anulado: { dot: 'bg-gray-300', badgeBg: 'bg-gray-100', badgeText: 'text-gray-500', label: 'Anulado' },
 }
 

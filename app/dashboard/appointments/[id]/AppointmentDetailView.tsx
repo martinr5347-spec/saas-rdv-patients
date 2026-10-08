@@ -8,6 +8,8 @@ import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } fr
 
 const STATUS_BADGE = {
   pendiente: 'warning',
+  confirmado: 'success',
+  en_curso: 'brand',
   pagado: 'success',
   anulado: 'error',
 } as const
@@ -72,7 +74,7 @@ export default function AppointmentDetailView({
           </div>
         )}
 
-        {appointment.link_pago && appointment.statut === 'pendiente' && (
+        {appointment.link_pago && ['pendiente', 'confirmado'].includes(appointment.statut) && (
           <div className="mt-4">
             <span className="text-gray-500 text-sm">{t('paymentLink')}</span>
             <a href={appointment.link_pago} target="_blank" rel="noopener noreferrer" className="block text-brand-600 hover:underline break-all">

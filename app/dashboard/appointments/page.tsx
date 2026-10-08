@@ -13,7 +13,7 @@ export default async function AppointmentsPage({
     .select('id, fecha_cita, hora_cita, statut, monto_acompte, patients(nom)')
     .order('fecha_cita', { ascending: false })
 
-  const statuts = ['pendiente', 'pagado', 'anulado'] as const
+  const statuts = ['pendiente', 'confirmado', 'en_curso', 'pagado', 'anulado'] as const
   if (searchParams.statut && statuts.includes(searchParams.statut as typeof statuts[number])) {
     query = query.eq('statut', searchParams.statut as typeof statuts[number])
   }

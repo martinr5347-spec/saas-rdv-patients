@@ -10,6 +10,8 @@ import AppointmentsCalendarView, { type PaidAppointment } from './AppointmentsCa
 
 const STATUS_BADGE = {
   pendiente: 'warning',
+  confirmado: 'success',
+  en_curso: 'brand',
   pagado: 'success',
   anulado: 'error',
 } as const
@@ -78,6 +80,8 @@ export default function AppointmentsView({
               <select name="statut" defaultValue={statut} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400">
                 <option value="">{t('allStatuses')}</option>
                 <option value="pendiente">Pendiente</option>
+                <option value="confirmado">Confirmado</option>
+                <option value="en_curso">En curso</option>
                 <option value="pagado">Pagado</option>
                 <option value="anulado">Anulado</option>
               </select>

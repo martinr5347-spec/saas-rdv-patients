@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const statut = searchParams.get('statut')
   const depuis = searchParams.get('depuis')
   const jusquau = searchParams.get('jusquau')
-  const statuts = ['pendiente', 'pagado', 'anulado'] as const
+  const statuts = ['pendiente', 'confirmado', 'en_curso', 'pagado', 'anulado'] as const
 
   if (statut && statuts.includes(statut as typeof statuts[number])) {
     query = query.eq('statut', statut as typeof statuts[number])

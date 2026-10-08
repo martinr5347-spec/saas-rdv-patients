@@ -26,7 +26,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = await req.json().catch(() => ({}))
   const statut = body.statut
 
-  const statuts = ['pendiente', 'pagado', 'anulado'] as const
+  const statuts = ['pendiente', 'confirmado', 'en_curso', 'pagado', 'anulado'] as const
   if (!statut || !statuts.includes(statut as typeof statuts[number])) {
     return NextResponse.json({ error: 'Statut invalide' }, { status: 400 })
   }

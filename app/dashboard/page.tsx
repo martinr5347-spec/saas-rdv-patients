@@ -16,40 +16,49 @@ export default async function DashboardHomePage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nom, nombre_completo, organization_id')
+    .select('nom, nombre_completo, organization_id, especialidad, foto_url')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
   const { data: organization } = await supabase
     .from('organizations')
-    .select('fuseau')
+    .select('fuseau, adresse')
     .eq('id', profile?.organization_id ?? '')
     .maybeSingle()
+
+  const { count: patientCount } = await supabase
+    .from('patients')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', profile?.organization_id ?? '')
+
+  const today = new Date().toISOString().split('T')[0]
+  const { count: upcomingCount } = await supabase
+    .from('appointments')
+    .select('id', { count: 'exact', head: true })
+    .gte('fecha_cita', today)
 
   const fuseau = organization?.fuseau ?? 'America/Lima'
   const hour = Number(toTenantParts(new Date().toISOString(), fuseau).hour)
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, fecha_cita, hora_cita, statut')
-    .order('fecha_cita', { ascending: false })
-    .limit(5)
+  const onboarding = {
+    profileDone: Boolean(profile?.nombre_completo && profile?.especialidad),
+    clinicDone: Boolean(organization?.adresse),
+    patientDone: (patientCount ?? 0) > 0,
+    appointmentDone: (upcomingCount ?? 0) > 0,
+  }
 
-  const countsByStatus = (appointments ?? []).reduce(
-    (acc, a) => {
-      acc[a.statut] = (acc[a.statut] ?? 0) + 1
-      return acc
-    },
-    {} as Record<string, number>
-  )
+  const completedSteps = Object.values(onboarding).filter(Boolean).length
+  const totalSteps = 4
 
   return (
     <DashboardHomeView
       displayName={profile?.nombre_completo || profile?.nom || user?.email || ''}
       greeting={greetingBucket(hour)}
-      total={appointments?.length ?? 0}
-      pending={countsByStatus['pendiente'] ?? 0}
-      paid={countsByStatus['pagado'] ?? 0}
+      onboarding={onboarding}
+      completedSteps={completedSteps}
+      totalSteps={totalSteps}
+      upcomingCount={upcomingCount ?? 0}
+      patientCount={patientCount ?? 0}
     />
   )
 }

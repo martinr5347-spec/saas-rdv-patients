@@ -131,15 +131,36 @@ export default function SettingsView({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('paymentDelay')}</label>
-              <input name="delai_paiement_h" type="number" defaultValue={settings?.delai_paiement_h ?? undefined} className={inputClass} />
+              <select name="delai_paiement_h" defaultValue={settings?.delai_paiement_h ?? 6} className={inputClass}>
+                <option value={1}>1 hora</option>
+                <option value={2}>2 horas</option>
+                <option value={4}>4 horas</option>
+                <option value={6}>6 horas</option>
+                <option value={12}>12 horas</option>
+                <option value={24}>24 horas</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('noticeDelay')}</label>
-              <input name="delai_aviso_h" type="number" defaultValue={settings?.delai_aviso_h ?? undefined} className={inputClass} />
+              <select name="delai_aviso_h" defaultValue={settings?.delai_aviso_h ?? 6} className={inputClass}>
+                <option value={1}>1 hora</option>
+                <option value={2}>2 horas</option>
+                <option value={4}>4 horas</option>
+                <option value={6}>6 horas</option>
+                <option value={12}>12 horas</option>
+                <option value={24}>24 horas</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('reminderDelay')}</label>
-              <input name="delai_rappel_h" type="number" defaultValue={settings?.delai_rappel_h ?? undefined} className={inputClass} />
+              <select name="delai_rappel_h" defaultValue={settings?.delai_rappel_h ?? 24} className={inputClass}>
+                <option value={1}>1 hora</option>
+                <option value={2}>2 horas</option>
+                <option value={4}>4 horas</option>
+                <option value={6}>6 horas</option>
+                <option value={12}>12 horas</option>
+                <option value={24}>24 horas</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('depositAmount')}</label>

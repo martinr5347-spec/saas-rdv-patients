@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import Card from '@/components/ui/Card'
@@ -24,12 +25,73 @@ export interface NotificationRow {
 }
 
 export interface AppointmentDetail {
+  id: string
   fecha_cita: string
   hora_cita: string
   statut: string
   monto_acompte: number
   notas: string | null
   link_pago: string | null
+  presente: boolean | null
+}
+
+function PresenceToggle({ appointmentId, presente }: { appointmentId: string; presente: boolean | null }) {
+  const [value, setValue] = useState<boolean | null>(presente)
+  const [loading, setLoading] = useState(false)
+
+  const mark = async (val: boolean) => {
+    setLoading(true)
+    const res = await fetch(`/api/appointments/${appointmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ presente: val }),
+    })
+    if (res.ok) {
+      setValue(val)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="mb-2 block text-sm text-gray-500">Asistencia</span>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => mark(true)}
+          disabled={loading}
+          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+            value === true
+              ? 'border-green-300 bg-green-50 text-[#059669]'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-[#059669]'
+          }`}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Presente
+        </button>
+        <button
+          type="button"
+          onClick={() => mark(false)}
+          disabled={loading}
+          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+            value === false
+              ? 'border-red-300 bg-red-50 text-red-600'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-red-300 hover:text-red-600'
+          }`}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Ausente
+        </button>
+      </div>
+      {value === null && (
+        <p className="mt-1 text-xs text-gray-400">Marcar la asistencia ayuda a generar estadísticas precisas.</p>
+      )}
+    </div>
+  )
 }
 
 export function AppointmentNotFound() {
@@ -82,6 +144,8 @@ export default function AppointmentDetailView({
             </a>
           </div>
         )}
+
+        <PresenceToggle appointmentId={appointment.id} presente={appointment.presente} />
       </Card>
 
       <TableContainer>

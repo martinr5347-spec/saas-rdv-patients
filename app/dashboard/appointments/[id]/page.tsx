@@ -31,12 +31,14 @@ export default async function AppointmentDetailPage({
   return (
     <AppointmentDetailView
       appointment={{
+        id: appointment.id,
         fecha_cita: appointment.fecha_cita,
         hora_cita: appointment.hora_cita,
         statut: appointment.statut,
         monto_acompte: appointment.monto_acompte,
         notas: appointment.notas,
         link_pago: appointment.link_pago,
+        presente: appointment.presente ?? null,
       }}
       patient={patient}
       notifications={notifications}

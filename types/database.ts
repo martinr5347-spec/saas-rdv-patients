@@ -224,6 +224,7 @@ export interface Database {
           calendly_event_id: string | null
           mp_preference_id: string | null
           mp_external_ref: string | null
+          presente: boolean | null
           created_at: string
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
@@ -244,6 +245,7 @@ export interface Database {
           calendly_event_id?: string | null
           mp_preference_id?: string | null
           mp_external_ref?: string | null
+          presente?: boolean | null
           created_at?: string
         }
         Update: {
@@ -262,6 +264,7 @@ export interface Database {
           calendly_event_id?: string | null
           mp_preference_id?: string | null
           mp_external_ref?: string | null
+          presente?: boolean | null
           created_at?: string
         }
         Relationships: [

@@ -67,7 +67,6 @@ const GREETING_TEXT: Record<'morning' | 'afternoon' | 'night', string> = {
 const STATUT_CONFIG: Record<string, { dot: string; badgeBg: string; badgeText: string; label: string }> = {
   pendiente: { dot: 'bg-[#D97706]', badgeBg: 'bg-amber-50', badgeText: 'text-[#D97706]', label: 'Pendiente' },
   confirmado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Confirmado' },
-  en_curso: { dot: 'bg-[#6926D2]', badgeBg: 'bg-violet-100', badgeText: 'text-[#6926D2]', label: 'En curso' },
   pagado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Pagado' },
   anulado: { dot: 'bg-gray-300', badgeBg: 'bg-gray-100', badgeText: 'text-gray-500', label: 'Anulado' },
 }
@@ -325,7 +324,6 @@ function OperationalView({
   weekStats: WeekStats
   patientCount: number
 }) {
-  const enCursoCount = todayAppointments.filter((a) => a.statut === 'en_curso').length
   const pendientesWeek = Math.max(
     weekStats.appointments - Math.round((weekStats.confirmedPct / 100) * weekStats.appointments),
     0
@@ -378,11 +376,6 @@ function OperationalView({
                 {todayLabel} · {todayAppointments.length} programadas
               </p>
             </div>
-            {enCursoCount > 0 && (
-              <span className="shrink-0 rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-[#6926D2]">
-                {enCursoCount} en curso
-              </span>
-            )}
           </div>
 
           {todayAppointments.length === 0 ? (

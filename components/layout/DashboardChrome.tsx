@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Toaster } from 'react-hot-toast'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { MESSAGES, Locale } from '@/lib/hooks/useLocale'
 import { SidebarProvider } from '@/context/SidebarContext'
@@ -62,6 +63,35 @@ function DashboardChromeContent({
 
   return (
     <SidebarProvider>
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          duration: 3500,
+          style: {
+            fontFamily: 'var(--font-outfit, sans-serif)',
+            fontSize: '13px',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+          },
+          success: {
+            style: {
+              background: '#f0fdf4',
+              border: '0.5px solid #86efac',
+              color: '#15803d',
+            },
+            iconTheme: { primary: '#15803d', secondary: '#f0fdf4' },
+          },
+          error: {
+            style: {
+              background: '#fef2f2',
+              border: '0.5px solid #fca5a5',
+              color: '#b91c1c',
+            },
+            iconTheme: { primary: '#b91c1c', secondary: '#fef2f2' },
+          },
+        }}
+      />
       <div className="min-h-screen bg-gray-50">
         <Sidebar navItems={navItems} />
         <div className="lg:pl-[260px]">

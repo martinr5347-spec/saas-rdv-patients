@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -10,7 +11,6 @@ import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } fr
 const STATUS_BADGE = {
   pendiente: 'warning',
   confirmado: 'success',
-  en_curso: 'brand',
   pagado: 'success',
   anulado: 'error',
 } as const
@@ -48,6 +48,9 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
     })
     if (res.ok) {
       setValue(val)
+      toast.success(val ? 'Asistencia registrada — Presente' : 'Asistencia registrada — Ausente')
+    } else {
+      toast.error('Error al registrar la asistencia. Intenta de nuevo.')
     }
     setLoading(false)
   }

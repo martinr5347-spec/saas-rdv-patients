@@ -35,7 +35,9 @@
     "noAccount": "Ainda não tem conta?",
     "register": "Cadastre-se",
     "featureBadge": "Zero faltas — Confirmação automática via WhatsApp",
-    "dataProtected": "Dados protegidos"
+    "dataProtected": "Dados protegidos",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha"
   },
   "register": {
     "trialBadge": "Teste gratuito de 7 dias",

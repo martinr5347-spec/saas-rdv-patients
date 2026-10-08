@@ -53,8 +53,8 @@ function DashboardChromeContent({
 
   const navItems = [
     { href: '/dashboard', label: t('nav.home'), icon: <HomeIcon /> },
-    { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon /> },
     { href: '/dashboard/patients', label: t('nav.patients'), icon: <UsersIcon /> },
+    { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon /> },
     { href: '/dashboard/ingresos', label: t('nav.ingresos'), icon: <CashIcon /> },
     { href: '/dashboard/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
     ...(isAdmin ? [{ href: '/admin', label: t('nav.admin'), icon: <ShieldIcon /> }] : []),

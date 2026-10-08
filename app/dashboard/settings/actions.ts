@@ -97,15 +97,17 @@ export async function updateSettings(formData: FormData) {
     })
     .eq('organization_id', profile.organization_id)
 
-  const langueField = formData.get('langue')
-  const finalLangue = langueField === 'pt' ? 'pt' : 'es'
-  const orgUpdate: { langue?: 'es' | 'pt'; adresse?: string } = {
-    adresse: String(formData.get('adresse') ?? ''),
-  }
-  if (langueField === 'es' || langueField === 'pt') {
-    orgUpdate.langue = langueField
-  }
-  await supabase.from('organizations').update(orgUpdate).eq('id', profile.organization_id)
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('langue')
+    .eq('id', profile.organization_id)
+    .maybeSingle()
+  const finalLangue = organization?.langue === 'pt' ? 'pt' : 'es'
+
+  await supabase
+    .from('organizations')
+    .update({ adresse: String(formData.get('adresse') ?? '') })
+    .eq('id', profile.organization_id)
 
   for (const type of NOTIFICATION_TYPES) {
     const variantId = variantes[type]

@@ -56,7 +56,7 @@ export default function SettingsView({
   openBillingPortalAction: () => void
 }) {
   const t = useTranslations('dashboard.settings')
-  const [patientLangue, setPatientLangue] = useState<'es' | 'pt'>(organizationLangue === 'pt' ? 'pt' : 'es')
+  const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
   const [fotoPreview, setFotoPreview] = useState<string | null>(fotoUrl)
   const [previewName, setPreviewName] = useState(nombreCompleto ?? '')
 
@@ -157,22 +157,6 @@ export default function SettingsView({
                 ))}
               </select>
             </div>
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupLanguage')}</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">{t('patientMessageLanguage')}</label>
-            <select
-              name="langue"
-              value={patientLangue}
-              onChange={(e) => setPatientLangue(e.target.value === 'pt' ? 'pt' : 'es')}
-              className={inputClass}
-            >
-              <option value="es">{t('languageOptionEs')}</option>
-              <option value="pt">{t('languageOptionPt')}</option>
-            </select>
           </div>
         </Card>
 

@@ -167,12 +167,8 @@ export default function DashboardHomeView({
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                        done ? 'bg-[#6926D2] text-white' : 'bg-violet-100 text-[#6926D2]'
-                      }`}
-                    >
-                      {done ? <CheckIcon className="h-5 w-5" /> : step.icon}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
+                      {done ? <CheckIcon className="h-5 w-5" strokeWidth={2.5} /> : step.icon}
                     </span>
                     <div>
                       <p className={`text-sm font-semibold ${done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>

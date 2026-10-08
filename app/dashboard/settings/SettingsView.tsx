@@ -164,11 +164,11 @@ export default function SettingsView({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('depositAmount')}</label>
-              <input name="monto_acompte" type="number" step="0.01" defaultValue={settings?.monto_acompte ?? undefined} className={inputClass} />
+              <input name="monto_acompte" type="number" step="0.01" min="0" defaultValue={settings?.monto_acompte ?? undefined} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('totalCost')}</label>
-              <input name="costo_total" type="number" step="0.01" defaultValue={settings?.costo_total ?? ''} placeholder={t('totalCostPlaceholder')} className={inputClass} />
+              <input name="costo_total" type="number" step="0.01" min="0" defaultValue={settings?.costo_total ?? ''} placeholder={t('totalCostPlaceholder')} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>

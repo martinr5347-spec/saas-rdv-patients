@@ -109,6 +109,15 @@ export default async function IngresosPage({
     .lt('fecha_pago', end.toISOString())
     .order('fecha_pago', { ascending: false })
 
+  const { data: pagosConsulta } = await supabase
+    .from('appointments')
+    .select('id, montant_consultation, fecha_cita, patients(nom)')
+    .not('montant_consultation', 'is', null)
+    .eq('organization_id', organizationId ?? '')
+    .gte('fecha_cita', startStr)
+    .lt('fecha_cita', endStr)
+    .order('fecha_cita', { ascending: false })
+
   const { data: orgSettings } = await supabase
     .from('org_settings')
     .select('monnaie')
@@ -130,6 +139,12 @@ export default async function IngresosPage({
         monto_acompte: p.monto_acompte,
         notas: p.notas,
         patients: p.patients as { nom: string } | null,
+      }))}
+      pagosConsulta={(pagosConsulta ?? []).map((p) => ({
+        id: p.id,
+        monto: Number(p.montant_consultation),
+        fecha: p.fecha_cita,
+        paciente_nombre: (p.patients as { nom: string } | null)?.nom ?? null,
       }))}
       editingEntry={editingEntry}
       createAction={createIngreso}

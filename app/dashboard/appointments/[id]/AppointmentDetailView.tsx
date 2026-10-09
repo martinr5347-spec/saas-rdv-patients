@@ -30,6 +30,7 @@ export interface AppointmentDetail {
   hora_cita: string
   statut: string
   monto_acompte: number
+  montant_consultation: number | null
   notas: string | null
   link_pago: string | null
   presente: boolean | null
@@ -97,6 +98,119 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
   )
 }
 
+function MontantConsultationInput({ appointmentId, initial }: { appointmentId: string; initial: number | null }) {
+  const [value, setValue] = useState<string>(initial !== null ? String(initial) : '')
+  const [saved, setSaved] = useState(initial !== null)
+  const [loading, setLoading] = useState(false)
+
+  const save = async () => {
+    const num = parseFloat(value)
+    if (value === '' || isNaN(num) || num < 0) {
+      toast.error('Ingresa un monto válido')
+      return
+    }
+    setLoading(true)
+    const res = await fetch(`/api/appointments/${appointmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ montant_consultation: num }),
+    })
+    if (res.ok) {
+      setSaved(true)
+      toast.success('Monto registrado')
+    } else {
+      toast.error('Error al guardar el monto')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="mb-2 block text-sm text-gray-500">Monto cobrado en consulta</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setSaved(false)
+          }}
+          placeholder="0.00"
+          className="w-36 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={loading || saved}
+          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+            saved
+              ? 'border-green-300 bg-green-50 text-[#059669]'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'
+          }`}
+        >
+          {saved ? '✓ Guardado' : loading ? '...' : 'Guardar'}
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-gray-400">Este monto se registra en Mis Ingresos automáticamente.</p>
+    </div>
+  )
+}
+
+function FechaNacimientoInput({ patientId, initial }: { patientId: string; initial: string | null }) {
+  const [value, setValue] = useState(initial ?? '')
+  const [saved, setSaved] = useState(Boolean(initial))
+  const [loading, setLoading] = useState(false)
+
+  const save = async () => {
+    if (!value) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha_nacimiento: value }),
+    })
+    if (res.ok) {
+      setSaved(true)
+      toast.success('Fecha de nacimiento guardada en la ficha del paciente')
+    } else {
+      toast.error('Error al guardar')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="mb-2 block text-sm text-gray-500">Fecha de nacimiento del paciente</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setSaved(false)
+          }}
+          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={loading || saved || !value}
+          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+            saved
+              ? 'border-green-300 bg-green-50 text-[#059669]'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'
+          }`}
+        >
+          {saved ? '✓ Guardado' : loading ? '...' : 'Guardar'}
+        </button>
+      </div>
+      {saved && <p className="mt-1 text-xs text-gray-400">Ya guardado en la ficha del paciente.</p>}
+    </div>
+  )
+}
+
 export function AppointmentNotFound() {
   const t = useTranslations('dashboard.appointmentDetail')
   return <div className="text-error-600">{t('notFound')}</div>
@@ -108,7 +222,7 @@ export default function AppointmentDetailView({
   notifications,
 }: {
   appointment: AppointmentDetail
-  patient: { nom: string; email: string | null; telefono: string | null } | null
+  patient: { id: string; nom: string; email: string | null; telefono: string | null; fecha_nacimiento: string | null } | null
   notifications: NotificationRow[]
 }) {
   const t = useTranslations('dashboard.appointmentDetail')
@@ -149,6 +263,10 @@ export default function AppointmentDetailView({
         )}
 
         <PresenceToggle appointmentId={appointment.id} presente={appointment.presente} />
+
+        <MontantConsultationInput appointmentId={appointment.id} initial={appointment.montant_consultation} />
+
+        {patient && <FechaNacimientoInput patientId={patient.id} initial={patient.fecha_nacimiento} />}
       </Card>
 
       <TableContainer>

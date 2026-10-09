@@ -185,6 +185,7 @@ export interface Database {
           nom: string
           email: string | null
           telefono: string | null
+          fecha_nacimiento: string | null
           created_at: string
         }
         Insert: {
@@ -193,6 +194,7 @@ export interface Database {
           nom: string
           email?: string | null
           telefono?: string | null
+          fecha_nacimiento?: string | null
           created_at?: string
         }
         Update: {
@@ -201,6 +203,7 @@ export interface Database {
           nom?: string
           email?: string | null
           telefono?: string | null
+          fecha_nacimiento?: string | null
           created_at?: string
         }
         Relationships: [
@@ -225,6 +228,7 @@ export interface Database {
           mp_preference_id: string | null
           mp_external_ref: string | null
           presente: boolean | null
+          montant_consultation: number | null
           created_at: string
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
@@ -246,6 +250,7 @@ export interface Database {
           mp_preference_id?: string | null
           mp_external_ref?: string | null
           presente?: boolean | null
+          montant_consultation?: number | null
           created_at?: string
         }
         Update: {
@@ -265,6 +270,7 @@ export interface Database {
           mp_preference_id?: string | null
           mp_external_ref?: string | null
           presente?: boolean | null
+          montant_consultation?: number | null
           created_at?: string
         }
         Relationships: [

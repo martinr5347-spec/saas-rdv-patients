@@ -18,7 +18,13 @@ export default async function AppointmentDetailPage({
     return <AppointmentNotFound />
   }
 
-  const patient = appointment.patients as { nom: string; email: string | null; telefono: string | null } | null
+  const patient = appointment.patients as {
+    id: string
+    nom: string
+    email: string | null
+    telefono: string | null
+    fecha_nacimiento: string | null
+  } | null
   const notifications = (appointment.notifications ?? []) as Array<{
     id: string
     canal: string
@@ -36,6 +42,7 @@ export default async function AppointmentDetailPage({
         hora_cita: appointment.hora_cita,
         statut: appointment.statut,
         monto_acompte: appointment.monto_acompte,
+        montant_consultation: appointment.montant_consultation ?? null,
         notas: appointment.notas,
         link_pago: appointment.link_pago,
         presente: appointment.presente ?? null,

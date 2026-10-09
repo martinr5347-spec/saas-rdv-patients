@@ -28,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const supabase = createClient()
   const body = await req.json().catch(() => ({}))
 
-  const updateData: Pick<AppointmentUpdate, 'statut' | 'presente'> = {}
+  const updateData: Pick<AppointmentUpdate, 'statut' | 'presente' | 'montant_consultation'> = {}
 
   if (body.statut !== undefined) {
     const statuts = ['pendiente', 'confirmado', 'en_curso', 'pagado', 'anulado'] as const
@@ -43,6 +43,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Présence invalide' }, { status: 400 })
     }
     updateData.presente = body.presente
+  }
+
+  if (body.montant_consultation !== undefined) {
+    if (
+      body.montant_consultation !== null &&
+      (isNaN(Number(body.montant_consultation)) || Number(body.montant_consultation) < 0)
+    ) {
+      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
+    }
+    updateData.montant_consultation = body.montant_consultation === null ? null : Number(body.montant_consultation)
   }
 
   if (Object.keys(updateData).length === 0) {

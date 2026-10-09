@@ -24,13 +24,21 @@ export interface McPayment {
   patients: { nom: string } | null
 }
 
-type MetodoBadge = 'efectivo' | 'transferencia' | 'otro' | 'mercadopago'
+export interface ConsultaPayment {
+  id: string
+  monto: number
+  fecha: string
+  paciente_nombre: string | null
+}
+
+type MetodoBadge = 'efectivo' | 'transferencia' | 'otro' | 'mercadopago' | 'consulta'
 
 const BADGE_COLOR: Record<MetodoBadge, 'success' | 'gray' | 'brand' | 'warning'> = {
   mercadopago: 'success',
   efectivo: 'gray',
   transferencia: 'brand',
   otro: 'warning',
+  consulta: 'success',
 }
 
 function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -54,6 +62,7 @@ export default function IngresosView({
   monnaie,
   manuales,
   pagosMp,
+  pagosConsulta,
   editingEntry,
   createAction,
   updateAction,
@@ -63,6 +72,7 @@ export default function IngresosView({
   monnaie: string
   manuales: ManualEntry[]
   pagosMp: McPayment[]
+  pagosConsulta: ConsultaPayment[]
   editingEntry: ManualEntry | null
   createAction: (formData: FormData) => void
   updateAction: (formData: FormData) => void
@@ -74,7 +84,8 @@ export default function IngresosView({
 
   const totalManual = manuales.reduce((sum, m) => sum + Number(m.monto), 0)
   const totalMp = pagosMp.reduce((sum, p) => sum + Number(p.monto_acompte), 0)
-  const totalMonth = totalManual + totalMp
+  const totalConsulta = pagosConsulta.reduce((sum, p) => sum + Number(p.monto), 0)
+  const totalMonth = totalManual + totalMp + totalConsulta
 
   type Row = {
     key: string
@@ -105,6 +116,15 @@ export default function IngresosView({
       monto: Number(p.monto_acompte),
       manual: null,
     })),
+    ...pagosConsulta.map((p) => ({
+      key: `consulta-${p.id}`,
+      fecha: p.fecha,
+      paciente: p.paciente_nombre ?? '-',
+      concepto: '-',
+      metodo: 'consulta' as MetodoBadge,
+      monto: Number(p.monto),
+      manual: null,
+    })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
 
   const metodoLabel: Record<MetodoBadge, string> = {
@@ -112,6 +132,7 @@ export default function IngresosView({
     transferencia: t('metodoTransferencia'),
     otro: t('metodoOtro'),
     mercadopago: 'MP',
+    consulta: 'Consulta',
   }
 
   function handleDeleteSubmit(e: React.FormEvent<HTMLFormElement>) {

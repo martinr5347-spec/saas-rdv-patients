@@ -10,7 +10,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('organization_id, nombre_completo, especialidad, foto_url')
+    .select('organization_id, nombre_completo, especialidad, foto_url, codigo_seguridad_updated_at')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
@@ -42,6 +42,7 @@ export default async function SettingsPage() {
       nombreCompleto={profile?.nombre_completo ?? null}
       especialidadTexto={profile?.especialidad ?? null}
       fotoUrl={profile?.foto_url ?? null}
+      codigoSeguridadUpdatedAt={profile?.codigo_seguridad_updated_at ?? null}
       updateSettingsAction={updateSettings}
       openBillingPortalAction={openBillingPortal}
     />

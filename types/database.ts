@@ -47,6 +47,8 @@ export interface Database {
           nombre_completo: string | null
           especialidad: string | null
           foto_url: string | null
+          codigo_seguridad_hash: string | null
+          codigo_seguridad_updated_at: string | null
           created_at: string
         }
         Insert: {
@@ -59,6 +61,8 @@ export interface Database {
           nombre_completo?: string | null
           especialidad?: string | null
           foto_url?: string | null
+          codigo_seguridad_hash?: string | null
+          codigo_seguridad_updated_at?: string | null
           created_at?: string
         }
         Update: {
@@ -71,6 +75,8 @@ export interface Database {
           nombre_completo?: string | null
           especialidad?: string | null
           foto_url?: string | null
+          codigo_seguridad_hash?: string | null
+          codigo_seguridad_updated_at?: string | null
           created_at?: string
         }
         Relationships: [
@@ -208,6 +214,33 @@ export interface Database {
         }
         Relationships: [
           { foreignKeyName: 'patients_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      patient_notes: {
+        Row: {
+          id: string
+          patient_id: string
+          organization_id: string
+          contenido: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          organization_id: string
+          contenido: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          organization_id?: string
+          contenido?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'patient_notes_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'patient_notes_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
         ]
       }
       appointments: {

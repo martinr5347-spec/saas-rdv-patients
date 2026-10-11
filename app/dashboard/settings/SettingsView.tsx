@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import toast from 'react-hot-toast'
 import Card from '@/components/ui/Card'
 import Avatar from '@/components/ui/Avatar'
 import {
@@ -32,6 +33,80 @@ export interface OrgSettings {
   variantes_mensaje: unknown
 }
 
+function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
+  const [digits, setDigits] = useState(['', '', '', ''])
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    const codigo = digits.join('')
+    if (codigo.length !== 4) {
+      toast.error('Ingresa un código de 4 dígitos')
+      return
+    }
+    setSaving(true)
+    const res = await fetch('/api/users/me/security-code', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo }),
+    })
+    if (res.ok) {
+      toast.success('Código actualizado')
+      setDigits(['', '', '', ''])
+    } else {
+      toast.error('Error al guardar el código')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card>
+      <div className="mb-1 flex items-center gap-1.5">
+        <h2 className="text-sm font-semibold text-gray-800">Código de seguridad para notas clínicas</h2>
+        <div className="group relative inline-flex">
+          <svg className="h-4 w-4 cursor-help text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="10" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01" />
+          </svg>
+          <div className="absolute bottom-full left-1/2 z-10 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-gray-800 p-2.5 text-xs leading-snug text-white group-hover:block">
+            Este código de 4 dígitos protege el acceso a las notas clínicas confidenciales en la ficha de cada paciente.
+          </div>
+        </div>
+      </div>
+      {lastUpdated && (
+        <p className="mb-3 text-xs text-gray-400">Último cambio: {new Date(lastUpdated).toLocaleDateString('es')}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1.5">
+          {digits.map((d, i) => (
+            <input
+              key={i}
+              type="password"
+              inputMode="numeric"
+              maxLength={1}
+              value={d}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '')
+                const next = [...digits]
+                next[i] = val
+                setDigits(next)
+              }}
+              className="h-11 w-10 rounded-lg border border-gray-200 text-center font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5a1fb0] disabled:opacity-50"
+        >
+          {saving ? '...' : 'Guardar'}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 export default function SettingsView({
   settings,
   subscriptionStatut,
@@ -41,6 +116,7 @@ export default function SettingsView({
   nombreCompleto,
   especialidadTexto,
   fotoUrl,
+  codigoSeguridadUpdatedAt,
   updateSettingsAction,
   openBillingPortalAction,
 }: {
@@ -52,6 +128,7 @@ export default function SettingsView({
   nombreCompleto: string | null
   especialidadTexto: string | null
   fotoUrl: string | null
+  codigoSeguridadUpdatedAt: string | null
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
 }) {
@@ -263,6 +340,8 @@ export default function SettingsView({
           {t('save')}
         </button>
       </form>
+
+      <SeguridadNotasCard lastUpdated={codigoSeguridadUpdatedAt} />
     </div>
   )
 }

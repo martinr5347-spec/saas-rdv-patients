@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SidebarProvider } from '@/context/SidebarContext'
 import Sidebar from '@/components/layout/Sidebar'
@@ -13,9 +14,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nom')
+    .select('nom, role')
     .eq('id', user?.id ?? '')
     .maybeSingle()
+
+  if (profile?.role !== 'admin') {
+    redirect('/dashboard')
+  }
 
   const navItems = [
     { href: '/dashboard', label: 'Mon cabinet', icon: <HomeIcon /> },

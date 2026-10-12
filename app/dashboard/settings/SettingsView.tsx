@@ -31,6 +31,7 @@ export interface OrgSettings {
   canal_email: boolean | null
   canal_whatsapp: boolean | null
   variantes_mensaje: unknown
+  categorias_notas: string[] | null
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -130,6 +131,110 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
   )
 }
 
+function CategoriasNotasCard({
+  initial,
+  updateCategoriasNotasAction,
+}: {
+  initial: string[]
+  updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
+}) {
+  const [categorias, setCategorias] = useState<string[]>(initial)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const addCategoria = () => {
+    const val = draft.trim().slice(0, 24)
+    if (!val) return
+    if (categorias.some((c) => c.toLowerCase() === val.toLowerCase())) {
+      toast.error('Esa categoría ya existe')
+      return
+    }
+    if (categorias.length >= 10) {
+      toast.error('Máximo 10 categorías')
+      return
+    }
+    setCategorias((prev) => [...prev, val])
+    setDraft('')
+  }
+
+  const removeCategoria = (val: string) => {
+    setCategorias((prev) => prev.filter((c) => c !== val))
+  }
+
+  const save = async () => {
+    setSaving(true)
+    const res = await updateCategoriasNotasAction(categorias)
+    if (res.ok) {
+      if (res.categorias) setCategorias(res.categorias)
+      toast.success('Categorías guardadas')
+    } else {
+      toast.error(res.error ?? 'Error al guardar las categorías')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold text-gray-800">Categorías de notas clínicas</h2>
+      <p className="mb-3 mt-1 text-xs text-gray-500">
+        Estas categorías aparecerán como filtros y etiquetas en las notas clínicas de tus pacientes.
+      </p>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {categorias.map((c) => (
+          <span
+            key={c}
+            className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-[#6926D2]"
+          >
+            {c}
+            <button
+              type="button"
+              onClick={() => removeCategoria(c)}
+              aria-label={`Quitar ${c}`}
+              className="text-[#6926D2]/60 hover:text-[#6926D2]"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {categorias.length === 0 && <p className="text-xs text-gray-400">Sin categorías configuradas.</p>}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.slice(0, 24))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addCategoria()
+            }
+          }}
+          maxLength={24}
+          placeholder="Nueva categoría"
+          disabled={categorias.length >= 10}
+          className="w-48 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2] disabled:opacity-50"
+        />
+        <button
+          type="button"
+          onClick={addCategoria}
+          disabled={categorias.length >= 10 || !draft.trim()}
+          className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
+        >
+          Agregar
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="ml-auto rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
+        >
+          {saving ? '...' : 'Guardar'}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 export default function SettingsView({
   settings,
   subscriptionStatut,
@@ -142,6 +247,7 @@ export default function SettingsView({
   codigoSeguridadUpdatedAt,
   updateSettingsAction,
   openBillingPortalAction,
+  updateCategoriasNotasAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -154,6 +260,7 @@ export default function SettingsView({
   codigoSeguridadUpdatedAt: string | null
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
+  updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
 }) {
   const t = useTranslations('dashboard.settings')
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
@@ -416,6 +523,11 @@ export default function SettingsView({
       </form>
 
       <SeguridadNotasCard lastUpdated={codigoSeguridadUpdatedAt} />
+
+      <CategoriasNotasCard
+        initial={settings?.categorias_notas ?? []}
+        updateCategoriasNotasAction={updateCategoriasNotasAction}
+      />
     </div>
   )
 }

@@ -8,7 +8,23 @@ import Badge from '@/components/ui/Badge'
 interface PatientNote {
   id: string
   contenido: string
+  categoria: string | null
   created_at: string
+}
+
+const CATEGORY_COLORS = [
+  'bg-blue-100 text-blue-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-amber-100 text-amber-700',
+  'bg-rose-100 text-rose-700',
+  'bg-violet-100 text-violet-700',
+  'bg-cyan-100 text-cyan-700',
+]
+
+function categoryColor(categoria: string) {
+  let hash = 0
+  for (let i = 0; i < categoria.length; i++) hash = (hash * 31 + categoria.charCodeAt(i)) >>> 0
+  return CATEGORY_COLORS[hash % CATEGORY_COLORS.length]
 }
 
 function LockIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -23,14 +39,65 @@ function LockIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
+    </svg>
+  )
+}
+
+function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  )
+}
+
+function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 9v3.75m0 3.75h.008M10.29 3.86L1.82 18a1.5 1.5 0 001.3 2.25h17.76a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.42 0z"
+      />
+    </svg>
+  )
+}
+
 function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [state, setState] = useState<'locked' | 'pin' | 'unlocked'>('locked')
   const [pinDigits, setPinDigits] = useState(['', '', '', ''])
   const [codigo, setCodigo] = useState<string | null>(null) // gardé en mémoire uniquement, jamais persisté
   const [notes, setNotes] = useState<PatientNote[]>([])
   const [newNote, setNewNote] = useState('')
+  const [newNoteCategoria, setNewNoteCategoria] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [categorias, setCategorias] = useState<string[]>([])
+  const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null)
+
+  const [alerta, setAlerta] = useState<string | null>(null)
+  const [alertaUpdatedAt, setAlertaUpdatedAt] = useState<string | null>(null)
+  const [editingAlerta, setEditingAlerta] = useState(false)
+  const [alertaDraft, setAlertaDraft] = useState('')
+  const [confirmingClearAlerta, setConfirmingClearAlerta] = useState(false)
+
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingContenido, setEditingContenido] = useState('')
+  const [editingCategoria, setEditingCategoria] = useState<string | null>(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
 
   const lock = useCallback(() => {
     setState('locked')
@@ -38,7 +105,19 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setPinDigits(['', '', '', ''])
     setNotes([])
     setNewNote('')
+    setNewNoteCategoria(null)
     setError(null)
+    setCategorias([])
+    setFiltroCategoria(null)
+    setAlerta(null)
+    setAlertaUpdatedAt(null)
+    setEditingAlerta(false)
+    setAlertaDraft('')
+    setConfirmingClearAlerta(false)
+    setEditingNoteId(null)
+    setEditingContenido('')
+    setEditingCategoria(null)
+    setConfirmingDeleteId(null)
   }, [])
 
   // Re-verrouillage automatique si l'onglet passe en arrière-plan
@@ -67,6 +146,9 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     if (res.ok) {
       setCodigo(pin)
       setNotes(data.notes)
+      setCategorias(data.categorias ?? [])
+      setAlerta(data.alerta ?? null)
+      setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
       setState('unlocked')
     } else {
       setError(data.error ?? 'Código incorrecto')
@@ -81,12 +163,13 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     const res = await fetch(`/api/patients/${patientId}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo, contenido: newNote.trim() }),
+      body: JSON.stringify({ codigo, contenido: newNote.trim(), categoria: newNoteCategoria }),
     })
     const data = await res.json()
     if (res.ok) {
       setNotes((prev) => [data.note, ...prev])
       setNewNote('')
+      setNewNoteCategoria(null)
       toast.success('Nota guardada')
     } else {
       toast.error(data.error ?? 'Error al guardar la nota')
@@ -94,6 +177,109 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     }
     setLoading(false)
   }
+
+  const startEditNote = (note: PatientNote) => {
+    setEditingNoteId(note.id)
+    setEditingContenido(note.contenido)
+    setEditingCategoria(note.categoria)
+    setConfirmingDeleteId(null)
+  }
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null)
+    setEditingContenido('')
+    setEditingCategoria(null)
+  }
+
+  const saveEditNote = async () => {
+    if (!codigo || !editingNoteId || !editingContenido.trim()) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/notes/${editingNoteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo, contenido: editingContenido.trim(), categoria: editingCategoria }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? data.note : n)))
+      toast.success('Nota actualizada')
+      cancelEditNote()
+    } else {
+      toast.error(data.error ?? 'Error al actualizar la nota')
+      if (res.status === 403) lock()
+    }
+    setLoading(false)
+  }
+
+  const confirmDeleteNote = async (noteId: string) => {
+    if (!codigo) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/notes/${noteId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo }),
+    })
+    if (res.ok) {
+      setNotes((prev) => prev.filter((n) => n.id !== noteId))
+      toast.success('Nota eliminada')
+      setConfirmingDeleteId(null)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Error al eliminar la nota')
+      if (res.status === 403) lock()
+    }
+    setLoading(false)
+  }
+
+  const startEditAlerta = () => {
+    setAlertaDraft(alerta ?? '')
+    setEditingAlerta(true)
+    setConfirmingClearAlerta(false)
+  }
+
+  const saveAlerta = async () => {
+    if (!codigo) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/alert`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo, alerta: alertaDraft.trim() }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setAlerta(data.alerta ?? null)
+      setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
+      setEditingAlerta(false)
+      toast.success('Alerta clínica guardada')
+    } else {
+      toast.error(data.error ?? 'Error al guardar la alerta')
+      if (res.status === 403) lock()
+    }
+    setLoading(false)
+  }
+
+  const clearAlerta = async () => {
+    if (!codigo) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/alert`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo, alerta: null }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setAlerta(null)
+      setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
+      setConfirmingClearAlerta(false)
+      toast.success('Alerta clínica eliminada')
+    } else {
+      toast.error(data.error ?? 'Error al eliminar la alerta')
+      if (res.status === 403) lock()
+    }
+    setLoading(false)
+  }
+
+  const filteredNotes = filtroCategoria ? notes.filter((n) => n.categoria === filtroCategoria) : notes
 
   if (state === 'locked') {
     return (
@@ -181,17 +367,263 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         </button>
       </div>
 
-      <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">
-        {notes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">Sin notas registradas.</p>}
-        {notes.map((note) => (
-          <div key={note.id} className="rounded-lg bg-gray-50 p-3">
-            <p className="mb-1 text-xs text-gray-400">
-              {new Date(note.created_at).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}
-            </p>
-            <p className="text-sm leading-relaxed text-gray-700">{note.contenido}</p>
+      {/* Alerta clínica épinglée */}
+      {alerta && !editingAlerta && (
+        <div className="group mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <WarningIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">{alerta}</p>
+                {alertaUpdatedAt && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    Actualizado el {new Date(alertaUpdatedAt).toLocaleDateString('es')}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={startEditAlerta}
+                aria-label="Editar alerta"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100"
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingClearAlerta(true)}
+                aria-label="Eliminar alerta"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          {confirmingClearAlerta && (
+            <div className="mt-3 flex items-center justify-between rounded-lg bg-white/60 px-3 py-2">
+              <p className="text-xs text-amber-800">¿Eliminar esta alerta clínica?</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClearAlerta(false)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAlerta}
+                  disabled={loading}
+                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!alerta && !editingAlerta && (
+        <button
+          type="button"
+          onClick={startEditAlerta}
+          className="mb-4 text-xs font-medium text-gray-400 hover:text-gray-600"
+        >
+          + Agregar alerta clínica
+        </button>
+      )}
+
+      {editingAlerta && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-xs font-medium text-amber-800" htmlFor="alerta-draft">
+              Alerta clínica (ej. alergias)
+            </label>
+            <span className="text-xs text-amber-600">{alertaDraft.length}/300</span>
+          </div>
+          <textarea
+            id="alerta-draft"
+            value={alertaDraft}
+            onChange={(e) => setAlertaDraft(e.target.value.slice(0, 300))}
+            rows={2}
+            placeholder="Ej: Alergia a la penicilina"
+            className="w-full resize-none rounded-lg border border-amber-200 bg-white p-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEditingAlerta(false)}
+              className="flex-1 rounded-lg border border-amber-200 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={saveAlerta}
+              disabled={loading}
+              className="flex-1 rounded-lg bg-amber-600 py-2 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filtros por categoría */}
+      {categorias.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria(null)}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+              filtroCategoria === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Todas
+          </button>
+          {categorias.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setFiltroCategoria(cat)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                filtroCategoria === cat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="mb-4 max-h-80 space-y-2 overflow-y-auto">
+        {filteredNotes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">Sin notas registradas.</p>}
+        {filteredNotes.map((note) => (
+          <div key={note.id} className="group rounded-lg bg-gray-50 p-3">
+            {editingNoteId === note.id ? (
+              <div>
+                <textarea
+                  value={editingContenido}
+                  onChange={(e) => setEditingContenido(e.target.value.slice(0, 500))}
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2.5 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                />
+                {categorias.length > 0 && (
+                  <select
+                    value={editingCategoria ?? ''}
+                    onChange={(e) => setEditingCategoria(e.target.value || null)}
+                    className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                  >
+                    <option value="">Sin categoría</option>
+                    {categorias.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelEditNote}
+                    className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEditNote}
+                    disabled={loading || !editingContenido.trim()}
+                    className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-gray-400">
+                      {new Date(note.created_at).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                    {note.categoria && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryColor(note.categoria)}`}>
+                        {note.categoria}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => startEditNote(note)}
+                      aria-label="Editar nota"
+                      className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                    >
+                      <PencilIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDeleteId(note.id)}
+                      aria-label="Eliminar nota"
+                      className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-red-600"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm leading-relaxed text-gray-700">{note.contenido}</p>
+                {confirmingDeleteId === note.id && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                    <p className="text-xs text-gray-600">¿Eliminar esta nota?</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDeleteId(null)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirmDeleteNote(note.id)}
+                        disabled={loading}
+                        className="text-xs font-medium text-red-600 hover:text-red-700"
+                      >
+                        Confirmar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ))}
       </div>
+
+      {categorias.length > 0 && (
+        <div className="mb-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor="new-note-categoria">
+            Categoría <span className="text-gray-400">(opcional)</span>
+          </label>
+          <select
+            id="new-note-categoria"
+            value={newNoteCategoria ?? ''}
+            onChange={(e) => setNewNoteCategoria(e.target.value || null)}
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          >
+            <option value="">Sin categoría</option>
+            {categorias.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="mb-1 flex items-center justify-between">
         <label className="text-xs font-medium text-gray-600" htmlFor="new-note">

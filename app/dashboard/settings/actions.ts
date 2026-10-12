@@ -131,6 +131,35 @@ export async function updateSettings(formData: FormData) {
   redirect(`/dashboard/settings?saved=${Date.now()}`)
 }
 
+export async function updateCategoriasNotas(categorias: string[]) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return { ok: false, error: 'No autorizado' }
+
+  const cleaned = Array.from(new Set(categorias.map((c) => c.trim()).filter(Boolean)))
+    .slice(0, 10)
+    .map((c) => c.slice(0, 24))
+
+  const { error } = await supabase
+    .from('org_settings')
+    .update({ categorias_notas: cleaned })
+    .eq('organization_id', profile.organization_id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/dashboard/settings')
+  return { ok: true, categorias: cleaned }
+}
+
 export async function openBillingPortal() {
   const supabase = createClient()
   const {

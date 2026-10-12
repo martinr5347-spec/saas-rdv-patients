@@ -17,7 +17,7 @@ async function verifyCodigo(supabase: ReturnType<typeof createClient>, userId: s
   return { ok: match, reason: match ? null : 'Código incorrecto' }
 }
 
-// POST = déverrouille ET retourne la liste des notes existantes
+// POST = déverrouille ET retourne la liste des notes existantes, l'alerte clínica y las categorías disponibles
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const {
@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { data: notes, error } = await supabase
     .from('patient_notes')
-    .select('id, contenido, created_at')
+    .select('id, contenido, categoria, created_at')
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
 
@@ -48,7 +48,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ notes: notes ?? [] })
+  const { data: patientRow } = await supabase
+    .from('patients')
+    .select('alerta_clinica, alerta_clinica_updated_at, organization_id')
+    .eq('id', params.id)
+    .single()
+
+  let categorias: string[] = []
+  if (patientRow?.organization_id) {
+    const { data: orgSettings } = await supabase
+      .from('org_settings')
+      .select('categorias_notas')
+      .eq('organization_id', patientRow.organization_id)
+      .single()
+    categorias = orgSettings?.categorias_notas ?? []
+  }
+
+  return NextResponse.json({
+    notes: notes ?? [],
+    alerta: patientRow?.alerta_clinica ?? null,
+    alertaUpdatedAt: patientRow?.alerta_clinica_updated_at ?? null,
+    categorias,
+  })
 }
 
 // PUT = ajoute une nouvelle note (revérifie le code à chaque écriture)
@@ -64,6 +85,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const body = await req.json().catch(() => ({}))
   const codigo = body.codigo as string | undefined
   const contenido = (body.contenido as string | undefined)?.trim()
+  const categoria = (body.categoria as string | undefined)?.trim() || null
 
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
@@ -94,8 +116,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       patient_id: params.id,
       organization_id: patientRow.organization_id,
       contenido,
+      categoria,
     })
-    .select('id, contenido, created_at')
+    .select('id, contenido, categoria, created_at')
     .single()
 
   if (error) {

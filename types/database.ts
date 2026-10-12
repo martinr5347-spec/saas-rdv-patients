@@ -142,6 +142,7 @@ export interface Database {
           monnaie: string
           costo_total: number | null
           variantes_mensaje: Json
+          categorias_notas: string[]
           updated_at: string
         }
         Insert: {
@@ -160,6 +161,7 @@ export interface Database {
           monnaie?: string
           costo_total?: number | null
           variantes_mensaje?: Json
+          categorias_notas?: string[]
           updated_at?: string
         }
         Update: {
@@ -178,6 +180,7 @@ export interface Database {
           monnaie?: string
           costo_total?: number | null
           variantes_mensaje?: Json
+          categorias_notas?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -192,6 +195,8 @@ export interface Database {
           email: string | null
           telefono: string | null
           fecha_nacimiento: string | null
+          alerta_clinica: string | null
+          alerta_clinica_updated_at: string | null
           created_at: string
         }
         Insert: {
@@ -201,6 +206,8 @@ export interface Database {
           email?: string | null
           telefono?: string | null
           fecha_nacimiento?: string | null
+          alerta_clinica?: string | null
+          alerta_clinica_updated_at?: string | null
           created_at?: string
         }
         Update: {
@@ -210,6 +217,8 @@ export interface Database {
           email?: string | null
           telefono?: string | null
           fecha_nacimiento?: string | null
+          alerta_clinica?: string | null
+          alerta_clinica_updated_at?: string | null
           created_at?: string
         }
         Relationships: [
@@ -222,6 +231,7 @@ export interface Database {
           patient_id: string
           organization_id: string
           contenido: string
+          categoria: string | null
           created_at: string
         }
         Insert: {
@@ -229,6 +239,7 @@ export interface Database {
           patient_id: string
           organization_id: string
           contenido: string
+          categoria?: string | null
           created_at?: string
         }
         Update: {
@@ -236,6 +247,7 @@ export interface Database {
           patient_id?: string
           organization_id?: string
           contenido?: string
+          categoria?: string | null
           created_at?: string
         }
         Relationships: [

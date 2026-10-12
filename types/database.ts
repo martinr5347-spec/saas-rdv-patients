@@ -233,6 +233,7 @@ export interface Database {
           contenido: string
           categoria: string | null
           created_at: string
+          patient_note_photos?: patient_note_photosRow[] | null
         }
         Insert: {
           id?: string
@@ -253,6 +254,33 @@ export interface Database {
         Relationships: [
           { foreignKeyName: 'patient_notes_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
           { foreignKeyName: 'patient_notes_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      patient_note_photos: {
+        Row: {
+          id: string
+          note_id: string
+          organization_id: string
+          storage_path: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          note_id: string
+          organization_id: string
+          storage_path: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          note_id?: string
+          organization_id?: string
+          storage_path?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'patient_note_photos_note_id_fkey'; columns: ['note_id']; isOneToOne: false; referencedRelation: 'patient_notes'; referencedColumns: ['id'] },
+          { foreignKeyName: 'patient_note_photos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
         ]
       }
       appointments: {
@@ -481,3 +509,4 @@ export interface Database {
 type patientsRow = Database['public']['Tables']['patients']['Row']
 type organizationsRow = Database['public']['Tables']['organizations']['Row']
 type org_settingsRow = Database['public']['Tables']['org_settings']['Row']
+type patient_note_photosRow = Database['public']['Tables']['patient_note_photos']['Row']

@@ -1,16 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Badge from '@/components/ui/Badge'
+
+interface PatientNotePhoto {
+  id: string
+  url: string | null
+  created_at: string
+}
 
 interface PatientNote {
   id: string
   contenido: string
   categoria: string | null
   created_at: string
+  photos?: PatientNotePhoto[]
 }
+
+const MAX_PHOTOS_PER_NOTE = 2
 
 const CATEGORY_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -63,6 +72,26 @@ function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function PhotoIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 16.5l5.47-5.47a1.5 1.5 0 012.12 0L16 16.5m-3-3l1.47-1.47a1.5 1.5 0 012.12 0L21 16.5M6.5 5h11A2.5 2.5 0 0120 7.5v9a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-9A2.5 2.5 0 016.5 5z"
+      />
+    </svg>
+  )
+}
+
+function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
 function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -99,6 +128,12 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [editingCategoria, setEditingCategoria] = useState<string | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
 
+  const [uploadTargetNoteId, setUploadTargetNoteId] = useState<string | null>(null)
+  const [uploadingNoteId, setUploadingNoteId] = useState<string | null>(null)
+  const [confirmingDeletePhoto, setConfirmingDeletePhoto] = useState<{ noteId: string; photoId: string } | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const lock = useCallback(() => {
     setState('locked')
     setCodigo(null)
@@ -118,6 +153,10 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setEditingContenido('')
     setEditingCategoria(null)
     setConfirmingDeleteId(null)
+    setUploadTargetNoteId(null)
+    setUploadingNoteId(null)
+    setConfirmingDeletePhoto(null)
+    setLightboxUrl(null)
   }, [])
 
   // Re-verrouillage automatique si l'onglet passe en arrière-plan
@@ -167,7 +206,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     })
     const data = await res.json()
     if (res.ok) {
-      setNotes((prev) => [data.note, ...prev])
+      setNotes((prev) => [{ ...data.note, photos: [] }, ...prev])
       setNewNote('')
       setNewNoteCategoria(null)
       toast.success('Nota guardada')
@@ -201,7 +240,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     })
     const data = await res.json()
     if (res.ok) {
-      setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? data.note : n)))
+      setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? { ...data.note, photos: n.photos } : n)))
       toast.success('Nota actualizada')
       cancelEditNote()
     } else {
@@ -226,6 +265,61 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     } else {
       const data = await res.json().catch(() => ({}))
       toast.error(data.error ?? 'Error al eliminar la nota')
+      if (res.status === 403) lock()
+    }
+    setLoading(false)
+  }
+
+  const openFilePicker = (noteId: string) => {
+    setUploadTargetNoteId(noteId)
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const noteId = uploadTargetNoteId
+    e.target.value = '' // permet de re-sélectionner le même fichier ensuite
+    if (!file || !noteId || !codigo) return
+
+    setUploadingNoteId(noteId)
+    const formData = new FormData()
+    formData.append('codigo', codigo)
+    formData.append('file', file)
+    const res = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setNotes((prev) =>
+        prev.map((n) => (n.id === noteId ? { ...n, photos: [...(n.photos ?? []), data.photo] } : n))
+      )
+      toast.success('Foto agregada')
+    } else {
+      toast.error(data.error ?? 'Error al subir la foto')
+      if (res.status === 403) lock()
+    }
+    setUploadingNoteId(null)
+    setUploadTargetNoteId(null)
+  }
+
+  const confirmDeletePhoto = async (noteId: string, photoId: string) => {
+    if (!codigo) return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo }),
+    })
+    if (res.ok) {
+      setNotes((prev) =>
+        prev.map((n) => (n.id === noteId ? { ...n, photos: (n.photos ?? []).filter((p) => p.id !== photoId) } : n))
+      )
+      toast.success('Foto eliminada')
+      setConfirmingDeletePhoto(null)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Error al eliminar la foto')
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -280,6 +374,77 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   }
 
   const filteredNotes = filtroCategoria ? notes.filter((n) => n.categoria === filtroCategoria) : notes
+
+  const renderPhotosRow = (note: PatientNote) => {
+    const photos = note.photos ?? []
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {photos.map((photo) => (
+          <div key={photo.id} className="group/photo relative h-14 w-14 flex-shrink-0">
+            {photo.url ? (
+              <button
+                type="button"
+                onClick={() => setLightboxUrl(photo.url)}
+                className="h-full w-full overflow-hidden rounded-lg border border-gray-200"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt="Foto clínica" className="h-full w-full object-cover" />
+              </button>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-400">
+                <PhotoIcon className="h-5 w-5" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setConfirmingDeletePhoto({ noteId: note.id, photoId: photo.id })}
+              aria-label="Eliminar foto"
+              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white opacity-0 transition-opacity group-hover/photo:opacity-100"
+            >
+              <CloseIcon className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+        {photos.length < MAX_PHOTOS_PER_NOTE && (
+          <button
+            type="button"
+            onClick={() => openFilePicker(note.id)}
+            disabled={uploadingNoteId === note.id}
+            className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50"
+          >
+            {uploadingNoteId === note.id ? (
+              <span className="text-[10px]">...</span>
+            ) : (
+              <>
+                <PhotoIcon className="h-4 w-4" />
+                <span className="text-[9px]">+ Foto</span>
+              </>
+            )}
+          </button>
+        )}
+        {confirmingDeletePhoto?.noteId === note.id && (
+          <div className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs">
+            <span className="text-gray-600">¿Eliminar foto?</span>
+            <button
+              type="button"
+              onClick={() => setConfirmingDeletePhoto(null)}
+              className="font-medium text-gray-500 hover:text-gray-700"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => confirmDeletePhoto(note.id, confirmingDeletePhoto.photoId)}
+              disabled={loading}
+              className="font-medium text-red-600 hover:text-red-700"
+            >
+              Confirmar
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (state === 'locked') {
     return (
@@ -352,6 +517,32 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFileSelected}
+        className="hidden"
+      />
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            aria-label="Cerrar"
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxUrl} alt="Foto clínica" className="max-h-full max-w-full rounded-lg object-contain" />
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-gray-800">Notas clínicas</h3>
@@ -525,6 +716,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     ))}
                   </select>
                 )}
+                {renderPhotosRow(note)}
                 <div className="mt-2 flex gap-2">
                   <button
                     type="button"
@@ -576,6 +768,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-700">{note.contenido}</p>
+                {renderPhotosRow(note)}
                 {confirmingDeleteId === note.id && (
                   <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3 py-2">
                     <p className="text-xs text-gray-600">¿Eliminar esta nota?</p>
@@ -639,6 +832,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         placeholder="Escribe una observación clínica privada..."
         className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
       />
+      <button
+        type="button"
+        disabled
+        title="Guarda la nota antes de agregar una foto"
+        className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-300"
+      >
+        <PhotoIcon className="h-4 w-4" />
+      </button>
       <button
         type="button"
         onClick={saveNote}

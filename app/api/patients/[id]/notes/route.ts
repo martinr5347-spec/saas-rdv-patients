@@ -40,13 +40,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { data: notes, error } = await supabase
     .from('patient_notes')
-    .select('id, contenido, categoria, created_at')
+    .select('id, contenido, categoria, created_at, patient_note_photos(id, storage_path, created_at)')
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // URLs signées régénérées à chaque déverrouillage — jamais stockées en clair, seul storage_path l'est.
+  const notesWithPhotoUrls = await Promise.all(
+    (notes ?? []).map(async (note) => {
+      const photos = await Promise.all(
+        (note.patient_note_photos ?? []).map(async (photo) => {
+          const { data: signed } = await supabase.storage
+            .from('clinical-photos')
+            .createSignedUrl(photo.storage_path, 300)
+          return { id: photo.id, url: signed?.signedUrl ?? null, created_at: photo.created_at }
+        })
+      )
+      return { id: note.id, contenido: note.contenido, categoria: note.categoria, created_at: note.created_at, photos }
+    })
+  )
 
   const { data: patientRow } = await supabase
     .from('patients')
@@ -65,7 +80,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   return NextResponse.json({
-    notes: notes ?? [],
+    notes: notesWithPhotoUrls,
     alerta: patientRow?.alerta_clinica ?? null,
     alertaUpdatedAt: patientRow?.alerta_clinica_updated_at ?? null,
     categorias,

@@ -94,6 +94,7 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
           {digits.map((d, i) => (
             <input
               key={i}
+              id={`settings-pin-${i}`}
               type="password"
               inputMode="numeric"
               maxLength={1}
@@ -103,6 +104,14 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
                 const next = [...digits]
                 next[i] = val
                 setDigits(next)
+                if (val && i < 3) {
+                  document.getElementById(`settings-pin-${i + 1}`)?.focus()
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Backspace' && !digits[i] && i > 0) {
+                  document.getElementById(`settings-pin-${i - 1}`)?.focus()
+                }
               }}
               className="h-11 w-10 rounded-lg border border-gray-200 text-center font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
             />

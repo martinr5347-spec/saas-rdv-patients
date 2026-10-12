@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import toast from 'react-hot-toast'
 import Card from '@/components/ui/Card'
@@ -31,6 +31,20 @@ export interface OrgSettings {
   canal_email: boolean | null
   canal_whatsapp: boolean | null
   variantes_mensaje: unknown
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <div className="group relative inline-flex">
+      <svg className="h-4 w-4 cursor-help text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <circle cx="12" cy="12" r="10" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01" />
+      </svg>
+      <div className="absolute bottom-full left-1/2 z-10 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-gray-800 p-2.5 text-xs leading-snug text-white group-hover:block">
+        {text}
+      </div>
+    </div>
+  )
 }
 
 function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
@@ -98,7 +112,7 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
           type="button"
           onClick={save}
           disabled={saving}
-          className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5a1fb0] disabled:opacity-50"
+          className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
         >
           {saving ? '...' : 'Guardar'}
         </button>
@@ -136,6 +150,20 @@ export default function SettingsView({
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
   const [fotoPreview, setFotoPreview] = useState<string | null>(fotoUrl)
   const [previewName, setPreviewName] = useState(nombreCompleto ?? '')
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (file: File | undefined) => {
+    if (file && file.type.startsWith('image/')) {
+      setFotoPreview(URL.createObjectURL(file))
+      // Synchroniser avec l'input caché pour que le FormData du submit le récupère
+      if (fileInputRef.current) {
+        const dt = new DataTransfer()
+        dt.items.add(file)
+        fileInputRef.current.files = dt.files
+      }
+    }
+  }
 
   const inputClass =
     'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400'
@@ -163,20 +191,33 @@ export default function SettingsView({
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupProfile')}</h2>
           <div className="flex items-center gap-4 mb-4">
             <Avatar name={previewName || '?'} photoUrl={fotoPreview} size={56} />
-            <div>
-              <label htmlFor="foto" className="inline-block cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                {t('profilePhoto')}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDragging(true)
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsDragging(false)
+                handleFile(e.dataTransfer.files?.[0])
+              }}
+              className={`rounded-lg border-2 border-dashed px-4 py-3 text-center transition-colors ${
+                isDragging ? 'border-[#6926D2] bg-violet-50' : 'border-gray-300'
+              }`}
+            >
+              <label htmlFor="foto" className="cursor-pointer text-sm font-medium text-gray-700">
+                {isDragging ? 'Suelta la imagen aquí' : t('profilePhoto')}
               </label>
+              <p className="mt-0.5 text-xs text-gray-400">o arrastra una imagen aquí</p>
               <input
+                ref={fileInputRef}
                 id="foto"
                 name="foto"
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) setFotoPreview(URL.createObjectURL(file))
-                }}
+                onChange={(e) => handleFile(e.target.files?.[0])}
               />
             </div>
           </div>
@@ -207,7 +248,10 @@ export default function SettingsView({
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupBilling')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('paymentDelay')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('paymentDelay')}
+                <InfoTooltip text="Tiempo máximo que tiene el paciente para pagar antes de que la cita se cancele automáticamente." />
+              </label>
               <select name="delai_paiement_h" defaultValue={settings?.delai_paiement_h ?? 6} className={inputClass}>
                 <option value={1}>1 hora</option>
                 <option value={2}>2 horas</option>
@@ -218,7 +262,10 @@ export default function SettingsView({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('noticeDelay')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('noticeDelay')}
+                <InfoTooltip text="Tiempo después del cual se envía un recordatorio de pago si el paciente aún no pagó." />
+              </label>
               <select name="delai_aviso_h" defaultValue={settings?.delai_aviso_h ?? 6} className={inputClass}>
                 <option value={1}>1 hora</option>
                 <option value={2}>2 horas</option>
@@ -229,7 +276,10 @@ export default function SettingsView({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('reminderDelay')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('reminderDelay')}
+                <InfoTooltip text="Tiempo antes de la cita en que se envía un recordatorio automático al paciente." />
+              </label>
               <select name="delai_rappel_h" defaultValue={settings?.delai_rappel_h ?? 24} className={inputClass}>
                 <option value={1}>1 hora</option>
                 <option value={2}>2 horas</option>
@@ -240,11 +290,17 @@ export default function SettingsView({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('depositAmount')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('depositAmount')}
+                <InfoTooltip text="Monto que el paciente paga por adelantado al reservar la cita." />
+              </label>
               <input name="monto_acompte" type="number" step="0.01" min="0" defaultValue={settings?.monto_acompte ?? undefined} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('totalCost')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('totalCost')}
+                <InfoTooltip text="Tarifa fija de la consulta. Útil si tu servicio tiene un precio único (ej. psicología)." />
+              </label>
               <input name="costo_total" type="number" step="0.01" min="0" defaultValue={settings?.costo_total ?? ''} placeholder={t('totalCostPlaceholder')} className={inputClass} />
             </div>
             <div>
@@ -266,7 +322,10 @@ export default function SettingsView({
               <input name="adresse" defaultValue={organizationAdresse ?? ''} placeholder={t('clinicAddressPlaceholder')} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('calendlyUrl')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('calendlyUrl')}
+                <InfoTooltip text="Enlace de tu página de reservas de Calendly, usado para sincronizar tu disponibilidad." />
+              </label>
               <input name="calendly_url" type="url" defaultValue={settings?.calendly_url ?? ''} className={inputClass} />
             </div>
             <div>
@@ -274,11 +333,17 @@ export default function SettingsView({
               <input name="unipile_account_id" defaultValue={settings?.unipile_account_id ?? ''} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('mpToken')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('mpToken')}
+                <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
+              </label>
               <input name="mp_access_token" defaultValue={settings?.mp_access_token ?? ''} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('mpWebhookUrl')}</label>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('mpWebhookUrl')}
+                <InfoTooltip text="URL que MercadoPago usa para avisarte automáticamente cuando un paciente paga." />
+              </label>
               <input name="mp_notification_url" defaultValue={settings?.mp_notification_url ?? ''} className={inputClass} />
             </div>
           </div>
@@ -336,7 +401,7 @@ export default function SettingsView({
           </div>
         </Card>
 
-        <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+        <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]">
           {t('save')}
         </button>
       </form>

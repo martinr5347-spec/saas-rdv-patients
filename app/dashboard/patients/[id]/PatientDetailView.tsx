@@ -106,7 +106,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         <button
           type="button"
           onClick={() => setState('pin')}
-          className="w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#5a1fb0]"
+          className="w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
         >
           Desbloquear
         </button>
@@ -155,7 +155,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             type="button"
             onClick={submitPin}
             disabled={loading}
-            className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#5a1fb0] disabled:opacity-50"
+            className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? '...' : 'Confirmar'}
           </button>
@@ -211,7 +211,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         type="button"
         onClick={saveNote}
         disabled={loading || !newNote.trim()}
-        className="mt-2 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#5a1fb0] disabled:opacity-50"
+        className="mt-2 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
       >
         Guardar nota
       </button>

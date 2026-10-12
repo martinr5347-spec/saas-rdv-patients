@@ -65,7 +65,7 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
           type="button"
           onClick={() => mark(true)}
           disabled={loading}
-          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
             value === true
               ? 'border-green-300 bg-green-50 text-[#059669]'
               : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-[#059669]'
@@ -80,7 +80,7 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
           type="button"
           onClick={() => mark(false)}
           disabled={loading}
-          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
             value === false
               ? 'border-red-300 bg-red-50 text-red-600'
               : 'border-gray-200 bg-white text-gray-500 hover:border-red-300 hover:text-red-600'
@@ -157,7 +157,7 @@ function MontantConsultationInput({
           type="button"
           onClick={save}
           disabled={loading || saved}
-          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
             saved
               ? 'border-green-300 bg-green-50 text-[#059669]'
               : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'
@@ -226,7 +226,7 @@ function FechaNacimientoInput({ patientId, initial }: { patientId: string; initi
           type="button"
           onClick={save}
           disabled={loading || saved || !value}
-          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
             saved
               ? 'border-green-300 bg-green-50 text-[#059669]'
               : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'

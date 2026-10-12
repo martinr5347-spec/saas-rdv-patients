@@ -290,13 +290,23 @@ export default function AppointmentDetailView({
           </div>
         )}
 
-        {appointment.monto_acompte > 0 && (
+        {appointment.statut === 'pagado' && appointment.monto_acompte > 0 && (
           <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
             <div>
               <p className="text-xs uppercase tracking-wide text-gray-400">Ya pagado (MercadoPago)</p>
               <p className="text-base font-semibold text-gray-800">{appointment.monto_acompte.toFixed(2)}</p>
             </div>
             <Badge color="success">Confirmado</Badge>
+          </div>
+        )}
+
+        {appointment.statut !== 'pagado' && appointment.monto_acompte > 0 && (
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-amber-700">Depósito pendiente (MercadoPago)</p>
+              <p className="text-base font-semibold text-amber-900">{appointment.monto_acompte.toFixed(2)}</p>
+            </div>
+            <Badge color="warning">Pendiente</Badge>
           </div>
         )}
 

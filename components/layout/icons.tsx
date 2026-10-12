@@ -45,6 +45,15 @@ export function CashIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+export function TrendingUpIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 7h6v6" />
+    </svg>
+  )
+}
+
 export function ShieldIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>

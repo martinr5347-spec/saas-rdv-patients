@@ -1,21 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { parseRango, rangeSpan, formatPeriodo } from '@/lib/ingresos/rango'
 import IngresosView from './IngresosView'
-
-function parsePeriodo(periodo: string | undefined): { mes: number; ano: number } {
-  if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
-    const [anoStr, mesStr] = periodo.split('-')
-    return { ano: Number(anoStr), mes: Number(mesStr) }
-  }
-  const now = new Date()
-  return { ano: now.getUTCFullYear(), mes: now.getUTCMonth() + 1 }
-}
-
-function monthRange(mes: number, ano: number) {
-  const start = new Date(Date.UTC(ano, mes - 1, 1))
-  const end = new Date(Date.UTC(ano, mes, 1))
-  return { start, end, startStr: start.toISOString().slice(0, 10), endStr: end.toISOString().slice(0, 10) }
-}
 
 async function getOrganizationId() {
   const supabase = createClient()
@@ -45,7 +31,7 @@ async function createIngreso(formData: FormData) {
     created_by: userId,
   })
 
-  redirect(`/dashboard/ingresos?periodo=${formData.get('periodo')}`)
+  redirect(`/dashboard/ingresos?desde=${formData.get('desde')}&hasta=${formData.get('hasta')}`)
 }
 
 async function updateIngreso(formData: FormData) {
@@ -65,7 +51,7 @@ async function updateIngreso(formData: FormData) {
     .eq('id', String(formData.get('id')))
     .eq('organization_id', organizationId)
 
-  redirect(`/dashboard/ingresos?periodo=${formData.get('periodo')}`)
+  redirect(`/dashboard/ingresos?desde=${formData.get('desde')}&hasta=${formData.get('hasta')}`)
 }
 
 async function deleteIngreso(formData: FormData) {
@@ -79,18 +65,19 @@ async function deleteIngreso(formData: FormData) {
     .eq('id', String(formData.get('id')))
     .eq('organization_id', organizationId)
 
-  redirect(`/dashboard/ingresos?periodo=${formData.get('periodo')}`)
+  redirect(`/dashboard/ingresos?desde=${formData.get('desde')}&hasta=${formData.get('hasta')}`)
 }
 
 export default async function IngresosPage({
   searchParams,
 }: {
-  searchParams: { periodo?: string; edit?: string }
+  searchParams: { desde?: string; hasta?: string; edit?: string }
 }) {
   const { supabase, organizationId } = await getOrganizationId()
-  const { mes, ano } = parsePeriodo(searchParams.periodo)
-  const periodo = `${ano}-${String(mes).padStart(2, '0')}`
-  const { start, end, startStr, endStr } = monthRange(mes, ano)
+  const { desdeAno, desdeMes, hastaAno, hastaMes } = parseRango(searchParams.desde, searchParams.hasta)
+  const desde = formatPeriodo(desdeAno, desdeMes)
+  const hasta = formatPeriodo(hastaAno, hastaMes)
+  const { start, end, startStr, endStr } = rangeSpan(desdeAno, desdeMes, hastaAno, hastaMes)
 
   const { data: manuales } = await supabase
     .from('ingresos_manuales')
@@ -130,7 +117,8 @@ export default async function IngresosPage({
 
   return (
     <IngresosView
-      periodo={periodo}
+      desde={desde}
+      hasta={hasta}
       monnaie={orgSettings?.monnaie ?? 'PEN'}
       manuales={manuales ?? []}
       pagosMp={(pagosMp ?? []).map((p) => ({

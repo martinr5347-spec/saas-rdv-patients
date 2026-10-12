@@ -42,6 +42,38 @@ const BADGE_COLOR: Record<MetodoBadge, 'success' | 'gray' | 'brand' | 'warning'>
   consulta: 'success',
 }
 
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function rangeFromMonthsAgo(monthsAgo: number) {
+  const now = new Date()
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 1))
+  const desde = `${start.getUTCFullYear()}-${pad2(start.getUTCMonth() + 1)}`
+  const hasta = `${now.getUTCFullYear()}-${pad2(now.getUTCMonth() + 1)}`
+  return { desde, hasta }
+}
+
+const PRESETS = [
+  {
+    label: 'Este mes',
+    getRange: () => {
+      const n = new Date()
+      const p = `${n.getUTCFullYear()}-${pad2(n.getUTCMonth() + 1)}`
+      return { desde: p, hasta: p }
+    },
+  },
+  { label: 'Últimos 3 meses', getRange: () => rangeFromMonthsAgo(2) },
+  { label: 'Últimos 6 meses', getRange: () => rangeFromMonthsAgo(5) },
+  {
+    label: 'Este año',
+    getRange: () => {
+      const n = new Date()
+      return { desde: `${n.getUTCFullYear()}-01`, hasta: `${n.getUTCFullYear()}-${pad2(n.getUTCMonth() + 1)}` }
+    },
+  },
+]
+
 function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
@@ -59,7 +91,8 @@ function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function IngresosView({
-  periodo,
+  desde,
+  hasta,
   monnaie,
   manuales,
   pagosMp,
@@ -69,7 +102,8 @@ export default function IngresosView({
   updateAction,
   deleteAction,
 }: {
-  periodo: string
+  desde: string
+  hasta: string
   monnaie: string
   manuales: ManualEntry[]
   pagosMp: McPayment[]
@@ -81,7 +115,8 @@ export default function IngresosView({
 }) {
   const t = useTranslations('dashboard.ingresos')
   const months = t.raw('months') as string[]
-  const [ano] = periodo.split('-').map(Number)
+  const [desdeAno] = desde.split('-').map(Number)
+  const [hastaAno] = hasta.split('-').map(Number)
 
   const totalManual = manuales.reduce((sum, m) => sum + Number(m.monto), 0)
   const totalMp = pagosMp.reduce((sum, p) => sum + Number(p.monto_acompte), 0)
@@ -140,9 +175,21 @@ export default function IngresosView({
     if (!confirm(t('deleteConfirm'))) e.preventDefault()
   }
 
+  const isRange = desde !== hasta
+  const [, desdeMesNum] = desde.split('-').map(Number)
+  const [, hastaMesNum] = hasta.split('-').map(Number)
+  const abbrev = (m: number) => months[m - 1]?.slice(0, 3).toLowerCase()
+  const rangeTitle = isRange
+    ? `${t('title')} — ${abbrev(desdeMesNum)} ${desdeAno} a ${abbrev(hastaMesNum)} ${hastaAno}`
+    : t('title')
+
+  const minAno = Math.min(desdeAno, hastaAno) - 1
+  const maxAno = Math.max(desdeAno, hastaAno) + 1
+  const yearOptions = Array.from({ length: maxAno - minAno + 1 }, (_, i) => minAno + i)
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+      <h1 className="text-2xl font-semibold text-gray-800">{rangeTitle}</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={`${t('totalMonth')} (${monnaie})`} value={totalMonth.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
@@ -157,7 +204,8 @@ export default function IngresosView({
         </h2>
         <form action={editingEntry ? updateAction : createAction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {editingEntry && <input type="hidden" name="id" value={editingEntry.id} />}
-          <input type="hidden" name="periodo" value={periodo} />
+          <input type="hidden" name="desde" value={desde} />
+          <input type="hidden" name="hasta" value={hasta} />
           <div>
             <label className="block text-sm font-medium text-gray-700">{t('fieldFecha')}</label>
             <input
@@ -216,7 +264,7 @@ export default function IngresosView({
             </button>
             {editingEntry && (
               <a
-                href={`/dashboard/ingresos?periodo=${periodo}`}
+                href={`/dashboard/ingresos?desde=${desde}&hasta=${hasta}`}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 {t('cancelEdit')}
@@ -227,32 +275,63 @@ export default function IngresosView({
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <form method="get" className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">{t('monthLabel')}</label>
-          <select
-            name="periodo"
-            defaultValue={periodo}
-            onChange={(e) => e.currentTarget.form?.submit()}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-          >
-            {[ano - 1, ano, ano + 1].flatMap((y) =>
-              Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={`${y}-${m}`} value={`${y}-${String(m).padStart(2, '0')}`}>
-                  {months[m - 1]} {y}
-                </option>
-              ))
-            )}
-          </select>
-        </form>
+        <div className="flex flex-wrap items-center gap-3">
+          <form method="get" className="flex flex-wrap items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Desde</label>
+            <select
+              name="desde"
+              defaultValue={desde}
+              onChange={(e) => e.currentTarget.form?.submit()}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            >
+              {yearOptions.flatMap((y) =>
+                Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={`desde-${y}-${m}`} value={`${y}-${pad2(m)}`}>
+                    {months[m - 1]} {y}
+                  </option>
+                ))
+              )}
+            </select>
+            <label className="text-sm font-medium text-gray-700">Hasta</label>
+            <select
+              name="hasta"
+              defaultValue={hasta}
+              onChange={(e) => e.currentTarget.form?.submit()}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            >
+              {yearOptions.flatMap((y) =>
+                Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={`hasta-${y}-${m}`} value={`${y}-${pad2(m)}`}>
+                    {months[m - 1]} {y}
+                  </option>
+                ))
+              )}
+            </select>
+          </form>
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((p) => {
+              const range = p.getRange()
+              return (
+                <a
+                  key={p.label}
+                  href={`/dashboard/ingresos?desde=${range.desde}&hasta=${range.hasta}`}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]"
+                >
+                  {p.label}
+                </a>
+              )
+            })}
+          </div>
+        </div>
         <div className="flex gap-2">
           <a
-            href={`/api/ingresos/export?periodo=${periodo}`}
+            href={`/api/ingresos/export?desde=${desde}&hasta=${hasta}`}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             {t('exportCsv')}
           </a>
           <a
-            href={`/api/ingresos/export-pdf?periodo=${periodo}`}
+            href={`/api/ingresos/export-pdf?desde=${desde}&hasta=${hasta}`}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             {t('exportPdf')}
@@ -295,7 +374,7 @@ export default function IngresosView({
                   {row.manual ? (
                     <div className="flex items-center gap-3">
                       <a
-                        href={`/dashboard/ingresos?periodo=${periodo}&edit=${row.manual.id}`}
+                        href={`/dashboard/ingresos?desde=${desde}&hasta=${hasta}&edit=${row.manual.id}`}
                         aria-label={t('edit')}
                         className="text-gray-500 hover:text-brand-600"
                       >
@@ -303,7 +382,8 @@ export default function IngresosView({
                       </a>
                       <form action={deleteAction} onSubmit={handleDeleteSubmit}>
                         <input type="hidden" name="id" value={row.manual.id} />
-                        <input type="hidden" name="periodo" value={periodo} />
+                        <input type="hidden" name="desde" value={desde} />
+                        <input type="hidden" name="hasta" value={hasta} />
                         <button type="submit" aria-label={t('delete')} className="text-gray-500 hover:text-error-600">
                           <TrashIcon className="h-4 w-4" />
                         </button>

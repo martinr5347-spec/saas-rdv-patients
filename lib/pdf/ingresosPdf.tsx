@@ -8,7 +8,7 @@ export interface IngresoPdfRow {
   fecha: string
   paciente: string
   concepto: string
-  metodo: 'efectivo' | 'transferencia' | 'otro' | 'mercadopago'
+  metodo: 'efectivo' | 'transferencia' | 'otro' | 'mercadopago' | 'consulta'
   monto: number
 }
 
@@ -114,22 +114,22 @@ const METODO_LABEL: Record<string, { es: string; pt: string }> = {
   transferencia: { es: 'Transferencia', pt: 'Transferência' },
   otro: { es: 'Otro', pt: 'Outro' },
   mercadopago: { es: 'MercadoPago', pt: 'MercadoPago' },
+  consulta: { es: 'Consulta', pt: 'Consulta' },
 }
 
 export async function renderIngresosPdf(params: {
   locale: 'es' | 'pt'
   clinicName: string
-  mes: number
-  ano: number
+  periodoLabel: string
   monnaie: string
   totalMonth: number
   totalMp: number
+  totalConsulta: number
   totalManual: number
   rows: IngresoPdfRow[]
 }): Promise<Buffer> {
-  const { locale, clinicName, mes, ano, monnaie, totalMonth, totalMp, totalManual, rows } = params
+  const { locale, clinicName, periodoLabel, monnaie, totalMonth, totalMp, totalConsulta, totalManual, rows } = params
   const t = MESSAGES[locale].dashboard.ingresos
-  const monthName = t.months[mes - 1]
 
   const doc = (
     <Document>
@@ -139,7 +139,7 @@ export async function renderIngresosPdf(params: {
             Núcleo<Text style={styles.brandAccent}> · {t.title}</Text>
           </Text>
           <Text style={styles.clinicName}>{clinicName}</Text>
-          <Text style={styles.periodo}>{monthName} {ano}</Text>
+          <Text style={styles.periodo}>{periodoLabel}</Text>
         </View>
 
         <View style={styles.body}>
@@ -151,6 +151,10 @@ export async function renderIngresosPdf(params: {
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>{t.totalMp}</Text>
               <Text style={styles.summaryValue}>{monnaie} {totalMp.toFixed(2)}</Text>
+            </View>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryLabel}>Total consulta</Text>
+              <Text style={styles.summaryValue}>{monnaie} {totalConsulta.toFixed(2)}</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>{t.totalManual}</Text>

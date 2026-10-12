@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-function parsePeriodo(periodo: string | null): { mes: number; ano: number } {
-  if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
-    const [anoStr, mesStr] = periodo.split('-')
-    return { ano: Number(anoStr), mes: Number(mesStr) }
-  }
-  const now = new Date()
-  return { ano: now.getUTCFullYear(), mes: now.getUTCMonth() + 1 }
-}
+import { parseRango, rangeSpan } from '@/lib/ingresos/rango'
 
 function csvEscape(value: string) {
   if (/[",\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"'
@@ -32,11 +24,11 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url)
-  const { mes, ano } = parsePeriodo(url.searchParams.get('periodo'))
-  const start = new Date(Date.UTC(ano, mes - 1, 1))
-  const end = new Date(Date.UTC(ano, mes, 1))
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
+  const { desdeAno, desdeMes, hastaAno, hastaMes } = parseRango(
+    url.searchParams.get('desde'),
+    url.searchParams.get('hasta')
+  )
+  const { start, end, startStr, endStr } = rangeSpan(desdeAno, desdeMes, hastaAno, hastaMes)
 
   const { data: manuales } = await supabase
     .from('ingresos_manuales')
@@ -52,6 +44,14 @@ export async function GET(req: Request) {
     .eq('statut', 'pagado')
     .gte('fecha_pago', start.toISOString())
     .lt('fecha_pago', end.toISOString())
+
+  const { data: pagosConsulta } = await supabase
+    .from('appointments')
+    .select('montant_consultation, concepto_consultation, fecha_cita, patients(nom)')
+    .not('montant_consultation', 'is', null)
+    .eq('organization_id', profile.organization_id)
+    .gte('fecha_cita', startStr)
+    .lt('fecha_cita', endStr)
 
   type Row = { fecha: string; paciente: string; concepto: string; metodo: string; monto: number }
 
@@ -70,6 +70,13 @@ export async function GET(req: Request) {
       metodo: 'mercadopago',
       monto: Number(p.monto_acompte),
     })),
+    ...(pagosConsulta ?? []).map((p) => ({
+      fecha: p.fecha_cita,
+      paciente: (p.patients as { nom: string } | null)?.nom ?? '',
+      concepto: p.concepto_consultation ?? '',
+      metodo: 'consulta',
+      monto: Number(p.montant_consultation),
+    })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
 
   const lines = ['Fecha,Paciente,Concepto,Metodo,Monto']
@@ -78,10 +85,15 @@ export async function GET(req: Request) {
   }
   const csv = String.fromCharCode(0xfeff) + lines.join('\n')
 
+  const filename =
+    desdeAno === hastaAno && desdeMes === hastaMes
+      ? `ingresos_${desdeAno}-${String(desdeMes).padStart(2, '0')}.csv`
+      : `ingresos_${desdeAno}-${String(desdeMes).padStart(2, '0')}_${hastaAno}-${String(hastaMes).padStart(2, '0')}.csv`
+
   return new NextResponse(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="ingresos_${ano}-${String(mes).padStart(2, '0')}.csv"`,
+      'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
 }

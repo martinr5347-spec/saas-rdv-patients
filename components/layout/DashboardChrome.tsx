@@ -7,7 +7,7 @@ import { MESSAGES, Locale } from '@/lib/hooks/useLocale'
 import { SidebarProvider } from '@/context/SidebarContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
-import { HomeIcon, CalendarIcon, UsersIcon, CashIcon, SettingsIcon, ShieldIcon } from '@/components/layout/icons'
+import { HomeIcon, CalendarIcon, UsersIcon, CashIcon, SettingsIcon, ShieldIcon, TrendingUpIcon } from '@/components/layout/icons'
 
 export default function DashboardChrome({
   locale,
@@ -57,6 +57,7 @@ function DashboardChromeContent({
     { href: '/dashboard/patients', label: t('nav.patients'), icon: <UsersIcon /> },
     { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon /> },
     { href: '/dashboard/ingresos', label: t('nav.ingresos'), icon: <CashIcon /> },
+    { href: '/dashboard/analisis', label: t('nav.analisis'), icon: <TrendingUpIcon /> },
     { href: '/dashboard/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
     ...(isAdmin ? [{ href: '/admin', label: t('nav.admin'), icon: <ShieldIcon /> }] : []),
   ]

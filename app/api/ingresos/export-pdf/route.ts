@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { renderIngresosPdf, type IngresoPdfRow } from '@/lib/pdf/ingresosPdf'
+import { parseRango, rangeSpan } from '@/lib/ingresos/rango'
+import esMessages from '@/messages/es.json'
+import ptMessages from '@/messages/pt.json'
 
-function parsePeriodo(periodo: string | null): { mes: number; ano: number } {
-  if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
-    const [anoStr, mesStr] = periodo.split('-')
-    return { ano: Number(anoStr), mes: Number(mesStr) }
-  }
-  const now = new Date()
-  return { ano: now.getUTCFullYear(), mes: now.getUTCMonth() + 1 }
-}
+const MESSAGES = { es: esMessages, pt: ptMessages }
 
 export async function GET(req: Request) {
   const supabase = createClient()
@@ -28,29 +24,37 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url)
-  const { mes, ano } = parsePeriodo(url.searchParams.get('periodo'))
-  const start = new Date(Date.UTC(ano, mes - 1, 1))
-  const end = new Date(Date.UTC(ano, mes, 1))
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
+  const { desdeAno, desdeMes, hastaAno, hastaMes } = parseRango(
+    url.searchParams.get('desde'),
+    url.searchParams.get('hasta')
+  )
+  const { start, end, startStr, endStr } = rangeSpan(desdeAno, desdeMes, hastaAno, hastaMes)
 
-  const [{ data: organization }, { data: orgSettings }, { data: manuales }, { data: pagosMp }] = await Promise.all([
-    supabase.from('organizations').select('nom').eq('id', profile.organization_id).maybeSingle(),
-    supabase.from('org_settings').select('monnaie').eq('organization_id', profile.organization_id).maybeSingle(),
-    supabase
-      .from('ingresos_manuales')
-      .select('fecha, monto, metodo_pago, paciente_nombre, concepto')
-      .eq('organization_id', profile.organization_id)
-      .gte('fecha', startStr)
-      .lt('fecha', endStr),
-    supabase
-      .from('appointments')
-      .select('fecha_pago, monto_acompte, notas, patients(nom)')
-      .eq('organization_id', profile.organization_id)
-      .eq('statut', 'pagado')
-      .gte('fecha_pago', start.toISOString())
-      .lt('fecha_pago', end.toISOString()),
-  ])
+  const [{ data: organization }, { data: orgSettings }, { data: manuales }, { data: pagosMp }, { data: pagosConsulta }] =
+    await Promise.all([
+      supabase.from('organizations').select('nom').eq('id', profile.organization_id).maybeSingle(),
+      supabase.from('org_settings').select('monnaie').eq('organization_id', profile.organization_id).maybeSingle(),
+      supabase
+        .from('ingresos_manuales')
+        .select('fecha, monto, metodo_pago, paciente_nombre, concepto')
+        .eq('organization_id', profile.organization_id)
+        .gte('fecha', startStr)
+        .lt('fecha', endStr),
+      supabase
+        .from('appointments')
+        .select('fecha_pago, monto_acompte, notas, patients(nom)')
+        .eq('organization_id', profile.organization_id)
+        .eq('statut', 'pagado')
+        .gte('fecha_pago', start.toISOString())
+        .lt('fecha_pago', end.toISOString()),
+      supabase
+        .from('appointments')
+        .select('montant_consultation, concepto_consultation, fecha_cita, patients(nom)')
+        .not('montant_consultation', 'is', null)
+        .eq('organization_id', profile.organization_id)
+        .gte('fecha_cita', startStr)
+        .lt('fecha_cita', endStr),
+    ])
 
   const rows: IngresoPdfRow[] = [
     ...(manuales ?? []).map((m) => ({
@@ -67,27 +71,47 @@ export async function GET(req: Request) {
       metodo: 'mercadopago' as const,
       monto: Number(p.monto_acompte),
     })),
+    ...(pagosConsulta ?? []).map((p) => ({
+      fecha: p.fecha_cita,
+      paciente: (p.patients as { nom: string } | null)?.nom ?? '',
+      concepto: p.concepto_consultation ?? '',
+      metodo: 'consulta' as const,
+      monto: Number(p.montant_consultation),
+    })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
 
   const totalManual = (manuales ?? []).reduce((sum, m) => sum + Number(m.monto), 0)
   const totalMp = (pagosMp ?? []).reduce((sum, p) => sum + Number(p.monto_acompte), 0)
+  const totalConsulta = (pagosConsulta ?? []).reduce((sum, p) => sum + Number(p.montant_consultation), 0)
+
+  const locale = profile.idioma === 'pt' ? 'pt' : 'es'
+  const months = MESSAGES[locale].dashboard.ingresos.months
+  const periodoLabel =
+    desdeAno === hastaAno && desdeMes === hastaMes
+      ? `${months[desdeMes - 1]} ${desdeAno}`
+      : `${months[desdeMes - 1]} ${desdeAno} - ${months[hastaMes - 1]} ${hastaAno}`
 
   const pdfBuffer = await renderIngresosPdf({
-    locale: profile.idioma === 'pt' ? 'pt' : 'es',
+    locale,
     clinicName: organization?.nom ?? '',
-    mes,
-    ano,
+    periodoLabel,
     monnaie: orgSettings?.monnaie ?? 'PEN',
-    totalMonth: totalManual + totalMp,
+    totalMonth: totalManual + totalMp + totalConsulta,
     totalMp,
+    totalConsulta,
     totalManual,
     rows,
   })
 
+  const filename =
+    desdeAno === hastaAno && desdeMes === hastaMes
+      ? `ingresos_${desdeAno}-${String(desdeMes).padStart(2, '0')}.pdf`
+      : `ingresos_${desdeAno}-${String(desdeMes).padStart(2, '0')}_${hastaAno}-${String(hastaMes).padStart(2, '0')}.pdf`
+
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="ingresos_${ano}-${String(mes).padStart(2, '0')}.pdf"`,
+      'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
 }

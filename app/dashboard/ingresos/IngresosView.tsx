@@ -29,6 +29,7 @@ export interface ConsultaPayment {
   monto: number
   fecha: string
   paciente_nombre: string | null
+  concepto: string | null
 }
 
 type MetodoBadge = 'efectivo' | 'transferencia' | 'otro' | 'mercadopago' | 'consulta'
@@ -120,7 +121,7 @@ export default function IngresosView({
       key: `consulta-${p.id}`,
       fecha: p.fecha,
       paciente: p.paciente_nombre ?? '-',
-      concepto: '-',
+      concepto: p.concepto ?? '-',
       metodo: 'consulta' as MetodoBadge,
       monto: Number(p.monto),
       manual: null,
@@ -143,9 +144,10 @@ export default function IngresosView({
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={`${t('totalMonth')} (${monnaie})`} value={totalMonth.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalMp')} (${monnaie})`} value={totalMp.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
+        <StatCard label={`Total consulta (${monnaie})`} value={totalConsulta.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalManual')} (${monnaie})`} value={totalManual.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
       </div>
 

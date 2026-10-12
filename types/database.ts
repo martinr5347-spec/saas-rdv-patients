@@ -262,6 +262,7 @@ export interface Database {
           mp_external_ref: string | null
           presente: boolean | null
           montant_consultation: number | null
+          concepto_consultation: string | null
           created_at: string
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
@@ -284,6 +285,7 @@ export interface Database {
           mp_external_ref?: string | null
           presente?: boolean | null
           montant_consultation?: number | null
+          concepto_consultation?: string | null
           created_at?: string
         }
         Update: {
@@ -304,6 +306,7 @@ export interface Database {
           mp_external_ref?: string | null
           presente?: boolean | null
           montant_consultation?: number | null
+          concepto_consultation?: string | null
           created_at?: string
         }
         Relationships: [

@@ -111,7 +111,7 @@ export default async function IngresosPage({
 
   const { data: pagosConsulta } = await supabase
     .from('appointments')
-    .select('id, montant_consultation, fecha_cita, patients(nom)')
+    .select('id, montant_consultation, concepto_consultation, fecha_cita, patients(nom)')
     .not('montant_consultation', 'is', null)
     .eq('organization_id', organizationId ?? '')
     .gte('fecha_cita', startStr)
@@ -145,6 +145,7 @@ export default async function IngresosPage({
         monto: Number(p.montant_consultation),
         fecha: p.fecha_cita,
         paciente_nombre: (p.patients as { nom: string } | null)?.nom ?? null,
+        concepto: p.concepto_consultation ?? null,
       }))}
       editingEntry={editingEntry}
       createAction={createIngreso}

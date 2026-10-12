@@ -43,6 +43,7 @@ export default async function AppointmentDetailPage({
         statut: appointment.statut,
         monto_acompte: appointment.monto_acompte,
         montant_consultation: appointment.montant_consultation ?? null,
+        concepto_consultation: appointment.concepto_consultation ?? null,
         notas: appointment.notas,
         link_pago: appointment.link_pago,
         presente: appointment.presente ?? null,

@@ -31,6 +31,7 @@ export interface AppointmentDetail {
   statut: string
   monto_acompte: number
   montant_consultation: number | null
+  concepto_consultation: string | null
   notas: string | null
   link_pago: string | null
   presente: boolean | null
@@ -98,8 +99,17 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
   )
 }
 
-function MontantConsultationInput({ appointmentId, initial }: { appointmentId: string; initial: number | null }) {
+function MontantConsultationInput({
+  appointmentId,
+  initial,
+  initialConcepto,
+}: {
+  appointmentId: string
+  initial: number | null
+  initialConcepto: string | null
+}) {
   const [value, setValue] = useState<string>(initial !== null ? String(initial) : '')
+  const [concepto, setConcepto] = useState(initialConcepto ?? '')
   const [saved, setSaved] = useState(initial !== null)
   const [loading, setLoading] = useState(false)
 
@@ -113,7 +123,10 @@ function MontantConsultationInput({ appointmentId, initial }: { appointmentId: s
     const res = await fetch(`/api/appointments/${appointmentId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ montant_consultation: num }),
+      body: JSON.stringify({
+        montant_consultation: num,
+        concepto_consultation: concepto.trim() || null,
+      }),
     })
     if (res.ok) {
       setSaved(true)
@@ -153,6 +166,22 @@ function MontantConsultationInput({ appointmentId, initial }: { appointmentId: s
           {saved ? '✓ Guardado' : loading ? '...' : 'Guardar'}
         </button>
       </div>
+
+      <span className="mb-2 mt-3 block text-sm text-gray-500">
+        Concepto <span className="text-gray-400">(opcional)</span>
+      </span>
+      <input
+        type="text"
+        maxLength={120}
+        value={concepto}
+        onChange={(e) => {
+          setConcepto(e.target.value)
+          setSaved(false)
+        }}
+        placeholder="Ej: Botox, peeling, relleno..."
+        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+      />
+
       <p className="mt-1 text-xs text-gray-400">Este monto se registra en Mis Ingresos automáticamente.</p>
     </div>
   )
@@ -243,7 +272,6 @@ export default function AppointmentDetailView({
           <div><span className="text-gray-500">{t('phone')}</span><p className="text-gray-800">{patient?.telefono ?? '-'}</p></div>
           <div><span className="text-gray-500">{t('dateTime')}</span><p className="text-gray-800">{appointment.fecha_cita} {t('at')} {appointment.hora_cita}</p></div>
           <div><span className="text-gray-500">{t('status')}</span><p><Badge color={STATUS_BADGE[appointment.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{appointment.statut}</Badge></p></div>
-          <div><span className="text-gray-500">{t('deposit')}</span><p className="text-gray-800">{appointment.monto_acompte}</p></div>
         </div>
 
         {appointment.notas && (
@@ -262,9 +290,23 @@ export default function AppointmentDetailView({
           </div>
         )}
 
+        {appointment.monto_acompte > 0 && (
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-400">Ya pagado (MercadoPago)</p>
+              <p className="text-base font-semibold text-gray-800">{appointment.monto_acompte.toFixed(2)}</p>
+            </div>
+            <Badge color="success">Confirmado</Badge>
+          </div>
+        )}
+
         <PresenceToggle appointmentId={appointment.id} presente={appointment.presente} />
 
-        <MontantConsultationInput appointmentId={appointment.id} initial={appointment.montant_consultation} />
+        <MontantConsultationInput
+          appointmentId={appointment.id}
+          initial={appointment.montant_consultation}
+          initialConcepto={appointment.concepto_consultation}
+        />
 
         {patient && <FechaNacimientoInput patientId={patient.id} initial={patient.fecha_nacimiento} />}
       </Card>

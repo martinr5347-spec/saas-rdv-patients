@@ -36,6 +36,21 @@ function categoryColor(categoria: string) {
   return CATEGORY_COLORS[hash % CATEGORY_COLORS.length]
 }
 
+const CATEGORY_RING_COLORS = [
+  'ring-blue-400',
+  'ring-emerald-400',
+  'ring-amber-400',
+  'ring-rose-400',
+  'ring-violet-400',
+  'ring-cyan-400',
+]
+
+function categoryRingColor(categoria: string) {
+  let hash = 0
+  for (let i = 0; i < categoria.length; i++) hash = (hash * 31 + categoria.charCodeAt(i)) >>> 0
+  return CATEGORY_RING_COLORS[hash % CATEGORY_RING_COLORS.length]
+}
+
 function LockIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -56,6 +71,22 @@ function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
       />
+    </svg>
+  )
+}
+
+function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
+function NotesIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   )
 }
@@ -544,9 +575,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       )}
 
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-800">Notas clínicas</h3>
-          <p className="text-xs text-gray-400">Acceso autenticado por sesión</p>
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <NotesIcon className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800">Notas clínicas</h3>
+            <p className="text-xs text-gray-400">Acceso autenticado por sesión</p>
+          </div>
         </div>
         <button
           type="button"
@@ -670,7 +706,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             type="button"
             onClick={() => setFiltroCategoria(null)}
             className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-              filtroCategoria === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filtroCategoria === null ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             Todas
@@ -680,8 +716,8 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               key={cat}
               type="button"
               onClick={() => setFiltroCategoria(cat)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                filtroCategoria === cat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(cat)} ${
+                filtroCategoria === cat ? `ring-2 ${categoryRingColor(cat)}` : 'opacity-60 hover:opacity-100'
               }`}
             >
               {cat}
@@ -860,6 +896,18 @@ const STATUS_BADGE = {
   anulado: 'error',
 } as const
 
+// Prefixees par ! (important) : le parent "divide-y divide-gray-50" genere une regle
+// composite (.divide-gray-50 > :not([hidden]) ~ :not([hidden])) de specificite plus
+// elevee qu'une simple classe et fixe border-color (shorthand 4 cotes) sur chaque ligne
+// sauf la premiere -- sans !important elle ecrase silencieusement border-l-*-400 ici.
+const STATUS_BORDER = {
+  pendiente: '!border-l-warning-400',
+  confirmado: '!border-l-success-400',
+  en_curso: '!border-l-brand-400',
+  pagado: '!border-l-success-400',
+  anulado: '!border-l-error-400',
+} as const
+
 export function PatientNotFound() {
   return <div className="text-error-600">Paciente no encontrado.</div>
 }
@@ -929,7 +977,10 @@ export default function PatientDetailView({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         {/* Historique des RDV */}
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-5 py-4">
+          <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <CalendarIcon className="h-4 w-4" />
+            </div>
             <h2 className="font-semibold text-gray-800">Historial de citas</h2>
           </div>
           <div className="divide-y divide-gray-50">
@@ -940,7 +991,9 @@ export default function PatientDetailView({
               <Link
                 key={appt.id}
                 href={`/dashboard/appointments/${appt.id}`}
-                className="group flex items-center justify-between px-5 py-3 transition-colors hover:bg-gray-50"
+                className={`group flex items-center justify-between border-l-[3px] px-5 py-3 transition-colors hover:bg-gray-50 ${
+                  STATUS_BORDER[appt.statut as keyof typeof STATUS_BORDER] ?? '!border-l-gray-200'
+                }`}
               >
                 <div className="flex items-center gap-4">
                   <span className="text-lg">

@@ -23,7 +23,8 @@
     "react-hot-toast": "^2.6.1",
     "recharts": "^3.10.1",
     "resend": "^6.20.0",
-    "stripe": "^22.4.0"
+    "stripe": "^22.4.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

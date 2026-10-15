@@ -1,8 +1,11 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import ImportPatientsModal from './ImportPatientsModal'
 
 export interface PatientRow {
   id: string
@@ -13,10 +16,21 @@ export interface PatientRow {
 
 export default function PatientsView({ patients }: { patients: PatientRow[] }) {
   const t = useTranslations('dashboard.patients')
+  const router = useRouter()
+  const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+        >
+          Importar pacientes
+        </button>
+      </div>
       <TableContainer>
         <Table>
           <TableHeader>
@@ -41,6 +55,15 @@ export default function PatientsView({ patients }: { patients: PatientRow[] }) {
           </TableBody>
         </Table>
       </TableContainer>
+      {importOpen && (
+        <ImportPatientsModal
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            setImportOpen(false)
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ export interface Database {
           fuseau: string
           langue: string
           especialidad: 'estetica_dermato' | 'clinica_medica' | null
+          slug: string | null
           created_at: string
         }
         Insert: {
@@ -22,6 +23,7 @@ export interface Database {
           fuseau?: string
           langue?: string
           especialidad?: 'estetica_dermato' | 'clinica_medica' | null
+          slug?: string | null
           created_at?: string
         }
         Update: {
@@ -32,6 +34,7 @@ export interface Database {
           fuseau?: string
           langue?: string
           especialidad?: 'estetica_dermato' | 'clinica_medica' | null
+          slug?: string | null
           created_at?: string
         }
         Relationships: []
@@ -146,6 +149,10 @@ export interface Database {
           categorias_con_foto: string[]
           variante_control_recall: string
           control_recall_anticipacion_dias: number
+          duracion_cita_min: number
+          buffer_min: number
+          anticipacion_min_horas: number
+          anticipacion_max_dias: number
           updated_at: string
         }
         Insert: {
@@ -168,6 +175,10 @@ export interface Database {
           categorias_con_foto?: string[]
           variante_control_recall?: string
           control_recall_anticipacion_dias?: number
+          duracion_cita_min?: number
+          buffer_min?: number
+          anticipacion_min_horas?: number
+          anticipacion_max_dias?: number
           updated_at?: string
         }
         Update: {
@@ -190,10 +201,69 @@ export interface Database {
           categorias_con_foto?: string[]
           variante_control_recall?: string
           control_recall_anticipacion_dias?: number
+          duracion_cita_min?: number
+          buffer_min?: number
+          anticipacion_min_horas?: number
+          anticipacion_max_dias?: number
           updated_at?: string
         }
         Relationships: [
           { foreignKeyName: 'org_settings_organization_id_fkey'; columns: ['organization_id']; isOneToOne: true; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      org_availability: {
+        Row: {
+          id: string
+          organization_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fin: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fin: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          dia_semana?: number
+          hora_inicio?: string
+          hora_fin?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'org_availability_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      org_blocked_dates: {
+        Row: {
+          id: string
+          organization_id: string
+          fecha: string
+          motivo: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          fecha: string
+          motivo?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          fecha?: string
+          motivo?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'org_blocked_dates_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
         ]
       }
       patients: {

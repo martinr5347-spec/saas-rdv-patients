@@ -9,6 +9,7 @@ import {
   NotificationType,
   VariantId,
   getVariantContent,
+  getControlRecallVariantContent,
 } from '@/lib/dispatcher/templateVariants'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
@@ -76,6 +77,9 @@ export async function updateSettings(formData: FormData) {
   for (const type of NOTIFICATION_TYPES) {
     variantes[type] = formData.get(`variante_${type}`) === 'calido' ? 'calido' : 'standard'
   }
+  const varianteControlRecall: VariantId = formData.get('variante_control_recall') === 'calido' ? 'calido' : 'standard'
+  const anticipacionDiasRaw = Number(formData.get('control_recall_anticipacion_dias'))
+  const anticipacionDias = Number.isFinite(anticipacionDiasRaw) ? Math.min(90, Math.max(0, Math.round(anticipacionDiasRaw))) : 14
 
   await supabase
     .from('org_settings')
@@ -94,6 +98,8 @@ export async function updateSettings(formData: FormData) {
       monnaie: String(formData.get('monnaie') ?? 'PEN'),
       costo_total: formData.get('costo_total') ? Number(formData.get('costo_total')) : null,
       variantes_mensaje: variantes,
+      variante_control_recall: varianteControlRecall,
+      control_recall_anticipacion_dias: anticipacionDias,
     })
     .eq('organization_id', profile.organization_id)
 
@@ -126,6 +132,20 @@ export async function updateSettings(formData: FormData) {
       )
     }
   }
+
+  // "control_recall" n'a qu'un canal (email) -- pas de boucle CANALES ici, contrairement aux 5 types ci-dessus.
+  const controlRecallContent = getControlRecallVariantContent(varianteControlRecall, finalLangue)
+  await supabase.from('message_templates').upsert(
+    {
+      organization_id: profile.organization_id,
+      type: 'control_recall',
+      canal: 'email',
+      langue: finalLangue,
+      sujet: controlRecallContent.sujet ?? null,
+      corps: controlRecallContent.corps,
+    },
+    { onConflict: 'organization_id,type,canal,langue' }
+  )
 
   revalidatePath('/dashboard', 'layout')
   redirect(`/dashboard/settings?saved=${Date.now()}`)

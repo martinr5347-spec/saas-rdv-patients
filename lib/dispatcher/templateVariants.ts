@@ -483,3 +483,103 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
 export function getPreview(type: NotificationType, variant: VariantId, langue: Langue): string {
   return PREVIEWS[type][variant][langue]
 }
+
+// "control_recall" reste hors de NotificationType/Catalog volontairement : ce type n'a qu'un canal
+// (email), alors que Catalog impose une variante whatsapp pour chaque type -- inutile ici. Stocké
+// dans sa propre colonne org_settings.variante_control_recall plutôt que dans variantes_mensaje.
+export const CONTROL_RECALL_LABEL: Record<Langue, string> = {
+  es: 'Recordatorio de control',
+  pt: 'Lembrete de retorno',
+}
+
+export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantContent>> = {
+  standard: {
+    es: {
+      sujet: 'Es momento de tu control',
+      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+  <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
+    <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128197;</div>
+    <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">Es momento de tu control</h1>
+  </div>
+  <div style="padding:28px 24px;">
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, ha llegado el momento de programar tu consulta de control con <strong>{{nombre_cabinet}}</strong>.</p>
+    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
+  </div>
+  <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
+  </div>
+</div>`,
+    },
+    pt: {
+      sujet: 'É hora do seu retorno',
+      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+  <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
+    <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128197;</div>
+    <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">É hora do seu retorno</h1>
+  </div>
+  <div style="padding:28px 24px;">
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Olá {{nom_patient}}, chegou a hora de agendar sua consulta de retorno com <strong>{{nombre_cabinet}}</strong>.</p>
+    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
+  </div>
+  <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
+  </div>
+</div>`,
+    },
+  },
+  // Même écart de ton que les variantes "cálido" des 5 types existants ci-dessus (emoji discret,
+  // formule plus personnelle). Contenu rédigé directement ici -- non issu d'un brouillon externe.
+  calido: {
+    es: {
+      sujet: '¡Hora de tu controlcito! 😊',
+      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+  <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
+    <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128204;</div>
+    <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">¡Hola {{nom_patient}}! 😊</h1>
+  </div>
+  <div style="padding:28px 24px;">
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Ha llegado el momento de tu control con <strong>{{nombre_cabinet}}</strong>. ¡Nos encantaría verte de nuevo!</p>
+    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
+  </div>
+  <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
+  </div>
+</div>`,
+    },
+    pt: {
+      sujet: 'Hora do seu retornozinho! 😊',
+      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+  <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
+    <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128204;</div>
+    <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">Olá {{nom_patient}}! 😊</h1>
+  </div>
+  <div style="padding:28px 24px;">
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Chegou a hora do seu retorno com <strong>{{nombre_cabinet}}</strong>. Ficaríamos muito felizes em te ver de novo!</p>
+    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
+  </div>
+  <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
+  </div>
+</div>`,
+    },
+  },
+}
+
+export function getControlRecallVariantContent(variant: VariantId, langue: Langue): VariantContent {
+  return CONTROL_RECALL_VARIANTS[variant][langue]
+}
+
+const CONTROL_RECALL_PREVIEWS: Record<VariantId, Record<Langue, string>> = {
+  standard: {
+    es: 'Es momento de tu control\nHola [Nombre], ha llegado el momento de programar tu consulta de control con [Clínica].',
+    pt: 'É hora do seu retorno. Olá [Nome], chegou a hora de agendar sua consulta de retorno com [Clínica].',
+  },
+  calido: {
+    es: '¡Hora de tu controlcito! 😊\n¡Hola [Nombre]! Ha llegado el momento de tu control con [Clínica]. ¡Nos encantaría verte de nuevo!',
+    pt: 'Hora do seu retornozinho! 😊 Olá [Nome]! Chegou a hora do seu retorno com [Clínica]. Ficaríamos muito felizes em te ver de novo!',
+  },
+}
+
+export function getControlRecallPreview(variant: VariantId, langue: Langue): string {
+  return CONTROL_RECALL_PREVIEWS[variant][langue]
+}

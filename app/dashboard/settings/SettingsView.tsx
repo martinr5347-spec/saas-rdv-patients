@@ -12,6 +12,8 @@ import {
   VARIANT_LABELS,
   NOTIFICATION_TYPE_LABELS,
   getPreview,
+  CONTROL_RECALL_LABEL,
+  getControlRecallPreview,
 } from '@/lib/dispatcher/templateVariants'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
@@ -33,6 +35,8 @@ export interface OrgSettings {
   variantes_mensaje: unknown
   categorias_notas: string[] | null
   categorias_con_foto: string[] | null
+  variante_control_recall: string | null
+  control_recall_anticipacion_dias: number | null
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -546,6 +550,54 @@ export default function SettingsView({
                 </fieldset>
               )
             })}
+            {(() => {
+              const currentControlVariant = settings?.variante_control_recall === 'calido' ? 'calido' : 'standard'
+              return (
+                <fieldset>
+                  <legend className="block text-sm font-medium text-gray-700 mb-2">{CONTROL_RECALL_LABEL[patientLangue]}</legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {VARIANT_IDS.map((variantId: VariantId) => (
+                      <label
+                        key={variantId}
+                        className="block rounded-lg border border-gray-200 p-3 text-sm cursor-pointer hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+                      >
+                        <span className="flex items-center gap-2 font-medium text-gray-800">
+                          <input
+                            type="radio"
+                            name="variante_control_recall"
+                            value={variantId}
+                            defaultChecked={currentControlVariant === variantId}
+                            className="accent-brand-600"
+                          />
+                          {VARIANT_LABELS[patientLangue][variantId]}
+                        </span>
+                        <p className="mt-2 text-xs text-gray-500 whitespace-pre-line">
+                          {getControlRecallPreview(variantId, patientLangue)}
+                        </p>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )
+            })()}
+          </div>
+
+          <div className="mt-5 border-t border-gray-100 pt-5">
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium text-gray-700" htmlFor="control_recall_anticipacion_dias">
+                Anticipación del recordatorio de control (días)
+              </label>
+              <InfoTooltip text="Cuántos días antes de la fecha de control se envía la invitación. Cuanto más largo este plazo, más lejos debes mantener abierta tu disponibilidad de Calendly — si no, la invitación llega sin horarios disponibles." />
+            </div>
+            <input
+              id="control_recall_anticipacion_dias"
+              name="control_recall_anticipacion_dias"
+              type="number"
+              min={0}
+              max={90}
+              defaultValue={settings?.control_recall_anticipacion_dias ?? 14}
+              className="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            />
           </div>
         </Card>
 

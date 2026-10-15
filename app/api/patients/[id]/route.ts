@@ -11,6 +11,7 @@ type UpdatableFields = Pick<
   | 'proximo_control_fecha'
   | 'proximo_control_enviado'
   | 'proximo_control_enviado_at'
+  | 'proximo_control_relanzado'
   | 'proximo_control_photo_note_id'
 >
 
@@ -36,6 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updateData.proximo_control_fecha = null
       updateData.proximo_control_enviado = false
       updateData.proximo_control_enviado_at = null
+      updateData.proximo_control_relanzado = false
       // on n'efface PAS proximo_control_photo_note_id ici volontairement : si body ne le précise
       // pas explicitement, on ne touche pas au lien photo existant (voir bloc dédié plus bas)
     } else {
@@ -52,6 +54,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updateData.proximo_control_fecha = format(fecha, 'yyyy-MM-dd')
       updateData.proximo_control_enviado = false
       updateData.proximo_control_enviado_at = null
+      updateData.proximo_control_relanzado = false
     }
   }
 

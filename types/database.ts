@@ -144,6 +144,8 @@ export interface Database {
           variantes_mensaje: Json
           categorias_notas: string[]
           categorias_con_foto: string[]
+          variante_control_recall: string
+          control_recall_anticipacion_dias: number
           updated_at: string
         }
         Insert: {
@@ -164,6 +166,8 @@ export interface Database {
           variantes_mensaje?: Json
           categorias_notas?: string[]
           categorias_con_foto?: string[]
+          variante_control_recall?: string
+          control_recall_anticipacion_dias?: number
           updated_at?: string
         }
         Update: {
@@ -184,6 +188,8 @@ export interface Database {
           variantes_mensaje?: Json
           categorias_notas?: string[]
           categorias_con_foto?: string[]
+          variante_control_recall?: string
+          control_recall_anticipacion_dias?: number
           updated_at?: string
         }
         Relationships: [
@@ -204,6 +210,7 @@ export interface Database {
           proximo_control_meses: number | null
           proximo_control_enviado: boolean
           proximo_control_enviado_at: string | null
+          proximo_control_relanzado: boolean
           proximo_control_photo_note_id: string | null
           created_at: string
         }
@@ -220,6 +227,7 @@ export interface Database {
           proximo_control_meses?: number | null
           proximo_control_enviado?: boolean
           proximo_control_enviado_at?: string | null
+          proximo_control_relanzado?: boolean
           proximo_control_photo_note_id?: string | null
           created_at?: string
         }
@@ -236,6 +244,7 @@ export interface Database {
           proximo_control_meses?: number | null
           proximo_control_enviado?: boolean
           proximo_control_enviado_at?: string | null
+          proximo_control_relanzado?: boolean
           proximo_control_photo_note_id?: string | null
           created_at?: string
         }

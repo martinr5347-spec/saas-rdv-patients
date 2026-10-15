@@ -8,7 +8,7 @@ export async function handleAppointmentReminders() {
   const { data: appointments, error } = await supabase
     .from('appointments')
     .select('id, organization_id, fecha_cita, hora_cita, organizations(fuseau, org_settings(delai_rappel_h))')
-    .eq('statut', 'pagado')
+    .in('statut', ['pagado', 'confirmado'])
 
   if (error || !appointments) {
     console.error('handleAppointmentReminders error:', error)

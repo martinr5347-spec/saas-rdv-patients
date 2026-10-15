@@ -93,9 +93,9 @@ export const MESSAGE_VARIANTS: Catalog = {
             '#2563eb', '#1d4ed8', '📅', 'Tu cita está reservada',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> está reservada para:</p>
 ${dateBox('a las')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmarla, realiza el adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmarla, realiza el adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Costo total de la consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de adelanto ahora y <strong>{{resto_pagar}} {{monnaie}}</strong> en el consultorio el día de tu cita.</p>{{/if}}
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto</a>`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto</a>{{/if}}`
           ),
         },
         pt: {
@@ -104,18 +104,18 @@ ${dateBox('a las')}
             '#2563eb', '#1d4ed8', '📅', 'Sua consulta está reservada',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Olá {{nom_patient}}, sua consulta com <strong>{{nombre_cabinet}}</strong> está reservada para:</p>
 ${dateBox('às')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmar, realize o sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmar, realize o sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Valor total da consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de sinal agora e <strong>{{resto_pagar}} {{monnaie}}</strong> no consultório no dia da consulta.</p>{{/if}}
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar sinal</a>`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar sinal</a>{{/if}}`
           ),
         },
       },
       whatsapp: {
         es: {
-          corps: `📅 Hola {{nom_patient}}!\n\nTu cita con {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nPara confirmarla, realiza el adelanto de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `📅 Hola {{nom_patient}}!\n\nTu cita con {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}Para confirmarla, realiza el adelanto de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
         },
         pt: {
-          corps: `📅 Ola {{nom_patient}}!\n\nSua consulta com {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nPara confirmar, realize o sinal de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `📅 Ola {{nom_patient}}!\n\nSua consulta com {{nombre_cabinet}} esta reservada:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}Para confirmar, realize o sinal de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
         },
       },
     },
@@ -127,9 +127,9 @@ ${dateBox('às')}
             '#2563eb', '#1d4ed8', '💙', '¡Qué alegría, {{nom_patient}}!',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Quedó todo listo para tu cita con <strong>{{nombre_cabinet}}</strong>. Este es el detalle:</p>
 ${dateBox('a las')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">El costo total es de <strong>{{costo_total}} {{monnaie}}</strong>: dejas {{monto_acompte}} {{monnaie}} ahora y el resto (<strong>{{resto_pagar}} {{monnaie}}</strong>) lo abonas tranquilamente en el consultorio.</p>{{/if}}
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar mi cita</a>`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar mi cita</a>{{/if}}`
           ),
         },
         pt: {
@@ -138,18 +138,18 @@ ${dateBox('a las')}
             '#2563eb', '#1d4ed8', '💙', 'Que alegria, {{nom_patient}}!',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Ficou tudo certo para sua consulta com <strong>{{nombre_cabinet}}</strong>. Aqui está o resumo:</p>
 ${dateBox('às')}
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Só falta confirmar seu horário com um sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>
+    {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Só falta confirmar seu horário com um sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">O valor total é de <strong>{{costo_total}} {{monnaie}}</strong>: você deixa {{monto_acompte}} {{monnaie}} agora e paga o restante (<strong>{{resto_pagar}} {{monnaie}}</strong>) tranquilamente no consultório.</p>{{/if}}
-    <a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar minha consulta</a>`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar minha consulta</a>{{/if}}`
           ),
         },
       },
       whatsapp: {
         es: {
-          corps: `💙 ¡Qué alegría, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nSolo falta confirmar tu lugar con un adelanto de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `💙 ¡Qué alegría, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}Solo falta confirmar tu lugar con un adelanto de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
         },
         pt: {
-          corps: `💙 Que alegria, {{nom_patient}}!\n\nFicou tudo certo para sua consulta com {{nombre_cabinet}}:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\nSo falta confirmar seu horario com um sinal de {{monto_acompte}} {{monnaie}}:\n{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}\n{{link_pago}}`,
+          corps: `💙 Que alegria, {{nom_patient}}!\n\nFicou tudo certo para sua consulta com {{nombre_cabinet}}:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}So falta confirmar seu horario com um sinal de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
         },
       },
     },

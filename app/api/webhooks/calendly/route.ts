@@ -169,6 +169,8 @@ export async function POST(req: Request) {
   const horaCita = toTenantTime(startTime, fuseau)
   const horaFin = endTime ? toTenantTime(endTime, fuseau) : null
   const montoAcompte = Number(orgWithSettings.monto_acompte) || 0
+  // Rien a payer -> le RDV passe directement 'confirmado' (pas de statut 'pendiente' pour un acompte nul).
+  const statutInicial = montoAcompte > 0 ? 'pendiente' : 'confirmado'
 
   let patientId: string | null = null
   if (patientPhone) {
@@ -220,7 +222,7 @@ export async function POST(req: Request) {
       fecha_cita: fechaCita,
       hora_cita: horaCita,
       hora_fin: horaFin,
-      statut: 'pendiente',
+      statut: statutInicial,
       monto_acompte: montoAcompte,
       calendly_event_id: calendlyEventId,
       mp_external_ref: externalRef,
@@ -237,28 +239,30 @@ export async function POST(req: Request) {
   let linkPago: string | null = null
   let mpPreferenceId: string | null = null
 
-  try {
-    const accessToken = orgWithSettings.mp_access_token || process.env.MP_ACCESS_TOKEN_TEST
-    if (!accessToken) {
-      console.warn('Calendly webhook: aucun token MercadoPago disponible')
-    } else {
-      const notificationUrl =
-        orgWithSettings.mp_notification_url || `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`
-      const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/appointments`
-      const mpResult = await createPaymentLink({
-        accessToken,
-        externalRef,
-        amount: montoAcompte,
-        currency: orgWithSettings.monnaie || 'PEN',
-        patientName,
-        notificationUrl,
-        successUrl,
-      })
-      linkPago = mpResult.initPoint
-      mpPreferenceId = mpResult.preferenceId
+  if (montoAcompte > 0) {
+    try {
+      const accessToken = orgWithSettings.mp_access_token || process.env.MP_ACCESS_TOKEN_TEST
+      if (!accessToken) {
+        console.warn('Calendly webhook: aucun token MercadoPago disponible')
+      } else {
+        const notificationUrl =
+          orgWithSettings.mp_notification_url || `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`
+        const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/appointments`
+        const mpResult = await createPaymentLink({
+          accessToken,
+          externalRef,
+          amount: montoAcompte,
+          currency: orgWithSettings.monnaie || 'PEN',
+          patientName,
+          notificationUrl,
+          successUrl,
+        })
+        linkPago = mpResult.initPoint
+        mpPreferenceId = mpResult.preferenceId
+      }
+    } catch (e) {
+      console.error('Calendly webhook: erreur création lien MercadoPago', e)
     }
-  } catch (e) {
-    console.error('Calendly webhook: erreur création lien MercadoPago', e)
   }
 
   if (linkPago) {

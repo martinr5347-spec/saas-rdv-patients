@@ -36,6 +36,7 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
     direccion: Boolean(org?.adresse),
     costo_desglose: hasCostoDesglose,
     calendly_url: Boolean(settings?.calendly_url),
+    link_pago: Boolean(appt.link_pago),
   }
 
   const values: Record<string, string> = {

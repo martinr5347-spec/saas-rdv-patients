@@ -19,7 +19,17 @@ interface PatientNote {
   photos?: PatientNotePhoto[]
 }
 
+interface ProximoControl {
+  fecha: string | null
+  meses: number | null
+  enviado: boolean
+  enviadoAt: string | null
+  photoNoteId: string | null
+  photoThumbUrl: string | null
+}
+
 const MAX_PHOTOS_PER_NOTE = 2
+const CATEGORIA_CONTROL = 'Control' // catégorie réservée, jamais dans categorias_notas
 
 const CATEGORY_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -31,6 +41,7 @@ const CATEGORY_COLORS = [
 ]
 
 function categoryColor(categoria: string) {
+  if (categoria === CATEGORIA_CONTROL) return 'bg-orange-100 text-orange-700'
   let hash = 0
   for (let i = 0; i < categoria.length; i++) hash = (hash * 31 + categoria.charCodeAt(i)) >>> 0
   return CATEGORY_COLORS[hash % CATEGORY_COLORS.length]
@@ -46,9 +57,30 @@ const CATEGORY_RING_COLORS = [
 ]
 
 function categoryRingColor(categoria: string) {
+  if (categoria === CATEGORIA_CONTROL) return 'ring-orange-400'
   let hash = 0
   for (let i = 0; i < categoria.length; i++) hash = (hash * 31 + categoria.charCodeAt(i)) >>> 0
   return CATEGORY_RING_COLORS[hash % CATEGORY_RING_COLORS.length]
+}
+
+// Date locale (es-PE) sans l'heure, utilisée comme clé de regroupement des notes du même jour.
+function fechaKey(createdAt: string) {
+  return new Date(createdAt).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+// Regroupe les notes par jour calendaire, en conservant l'ordre déjà trié (desc) du state `notes`.
+function groupNotesByFecha(notes: PatientNote[]) {
+  const groups: { key: string; notes: PatientNote[] }[] = []
+  for (const note of notes) {
+    const key = fechaKey(note.created_at)
+    const lastGroup = groups[groups.length - 1]
+    if (lastGroup && lastGroup.key === key) {
+      lastGroup.notes.push(note)
+    } else {
+      groups.push({ key, notes: [note] })
+    }
+  }
+  return groups
 }
 
 function LockIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -165,6 +197,13 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>([])
+  const [proximoControl, setProximoControl] = useState<ProximoControl | null>(null)
+  const [bannerDismissed, setBannerDismissed] = useState(false) // dismiss purement local, pas persisté
+  const [composerMode, setComposerMode] = useState<'categoria' | 'control'>('categoria')
+  const [controlMeses, setControlMeses] = useState<number | ''>('')
+  const [programarRecordatorio, setProgramarRecordatorio] = useState(false)
+
   const lock = useCallback(() => {
     setState('locked')
     setCodigo(null)
@@ -188,6 +227,12 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setUploadingNoteId(null)
     setConfirmingDeletePhoto(null)
     setLightboxUrl(null)
+    setCategoriasConFoto([])
+    setProximoControl(null)
+    setBannerDismissed(false)
+    setComposerMode('categoria')
+    setControlMeses('')
+    setProgramarRecordatorio(false)
   }, [])
 
   // Re-verrouillage automatique si l'onglet passe en arrière-plan
@@ -219,6 +264,8 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setCategorias(data.categorias ?? [])
       setAlerta(data.alerta ?? null)
       setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
+      setCategoriasConFoto(data.categoriasConFoto ?? [])
+      setProximoControl(data.proximoControl ?? null)
       setState('unlocked')
     } else {
       setError(data.error ?? 'Código incorrecto')
@@ -230,21 +277,59 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const saveNote = async () => {
     if (!newNote.trim() || !codigo) return
     setLoading(true)
+    const categoria = composerMode === 'control' ? CATEGORIA_CONTROL : newNoteCategoria
     const res = await fetch(`/api/patients/${patientId}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo, contenido: newNote.trim(), categoria: newNoteCategoria }),
+      body: JSON.stringify({ codigo, contenido: newNote.trim(), categoria }),
     })
     const data = await res.json()
-    if (res.ok) {
-      setNotes((prev) => [{ ...data.note, photos: [] }, ...prev])
-      setNewNote('')
-      setNewNoteCategoria(null)
-      toast.success('Nota guardada')
-    } else {
+    if (!res.ok) {
       toast.error(data.error ?? 'Error al guardar la nota')
-      if (res.status === 403) lock() // code invalidé entre-temps → reverrouille
+      if (res.status === 403) lock()
+      setLoading(false)
+      return
     }
+
+    const savedNote: PatientNote = { ...data.note, photos: [] }
+    setNotes((prev) => [savedNote, ...prev])
+
+    // Mode "Control" avec la case "Programar recordatorio" cochée : on programme en plus la relance,
+    // en liant la photo de diagnostic la plus récente (sinon rien).
+    if (composerMode === 'control' && programarRecordatorio && controlMeses !== '') {
+      const diagnosticoConFoto = notes.find((n) => n.categoria === 'Diagnóstico' && (n.photos?.length ?? 0) > 0)
+      const patchRes = await fetch(`/api/patients/${patientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proximo_control_meses: controlMeses,
+          proximo_control_photo_note_id: diagnosticoConFoto?.id ?? null,
+        }),
+      })
+      if (patchRes.ok) {
+        const patchData = await patchRes.json()
+        setProximoControl({
+          fecha: patchData.patient.proximo_control_fecha,
+          meses: patchData.patient.proximo_control_meses,
+          enviado: false,
+          enviadoAt: null,
+          photoNoteId: patchData.patient.proximo_control_photo_note_id,
+          photoThumbUrl: diagnosticoConFoto?.photos?.[0]?.url ?? null,
+        })
+        setBannerDismissed(false)
+        toast.success('Control programado')
+      } else {
+        toast.error('Nota guardada, pero no se pudo programar el recordatorio')
+      }
+    } else {
+      toast.success('Nota guardada')
+    }
+
+    setNewNote('')
+    setNewNoteCategoria(null)
+    setComposerMode('categoria')
+    setControlMeses('')
+    setProgramarRecordatorio(false)
     setLoading(false)
   }
 
@@ -406,7 +491,19 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
 
   const filteredNotes = filtroCategoria ? notes.filter((n) => n.categoria === filtroCategoria) : notes
 
+  function allowsPhoto(categoria: string | null) {
+    if (!categoria) return false
+    return categoria === CATEGORIA_CONTROL || categoriasConFoto.includes(categoria)
+  }
+
+  // Catégories déjà utilisées aujourd'hui -- bornage "une entrée par catégorie par jour" (pas de 10 000 entrées).
+  const todayKey = fechaKey(new Date().toISOString())
+  const categoriasUtiliseesAujourdhui = new Set(
+    notes.filter((n) => fechaKey(n.created_at) === todayKey && n.categoria).map((n) => n.categoria as string)
+  )
+
   const renderPhotosRow = (note: PatientNote) => {
+    if (!allowsPhoto(note.categoria)) return null
     const photos = note.photos ?? []
     return (
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -699,8 +796,45 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         </div>
       )}
 
+      {/* Encart épinglé : photo de diagnóstico associée au próximo control */}
+      {proximoControl?.fecha && !bannerDismissed && (
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+          {proximoControl.photoThumbUrl ? (
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(proximoControl.photoThumbUrl)}
+              className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg border border-orange-200"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={proximoControl.photoThumbUrl} alt="Foto de diagnóstico" className="h-full w-full object-cover" />
+            </button>
+          ) : (
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-400">
+              <CalendarIcon className="h-5 w-5" />
+            </div>
+          )}
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-orange-800">
+              {proximoControl.photoThumbUrl ? 'Foto de diagnóstico asociada' : 'Control programado'}
+            </p>
+            <p className="text-xs text-orange-600">
+              {new Date(proximoControl.fecha).toLocaleDateString('es-PE')}
+              {proximoControl.meses ? ` · dentro de ${proximoControl.meses} ${proximoControl.meses === 1 ? 'mes' : 'meses'}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Ocultar"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-orange-400 hover:bg-orange-100"
+          >
+            <CloseIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Filtros por categoría */}
-      {categorias.length > 0 && (
+      {(categorias.length > 0 || notes.some((n) => n.categoria === CATEGORIA_CONTROL)) && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           <button
             type="button"
@@ -723,14 +857,31 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               {cat}
             </button>
           ))}
+          {notes.some((n) => n.categoria === CATEGORIA_CONTROL) && (
+            <button
+              type="button"
+              onClick={() => setFiltroCategoria(CATEGORIA_CONTROL)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(CATEGORIA_CONTROL)} ${
+                filtroCategoria === CATEGORIA_CONTROL ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
+              }`}
+            >
+              ⏰ Control
+            </button>
+          )}
         </div>
       )}
 
-      <div className="mb-4 max-h-80 space-y-2 overflow-y-auto">
+      <div className="mb-4 max-h-96 space-y-4 overflow-y-auto">
         {filteredNotes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">Sin notas registradas.</p>}
-        {filteredNotes.map((note) => (
-          <div key={note.id} className="group rounded-lg bg-gray-50 p-3">
-            {editingNoteId === note.id ? (
+        {groupNotesByFecha(filteredNotes).map((group) => (
+          <div key={group.key}>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+              {group.key} · {group.notes.length} {group.notes.length === 1 ? 'entrada' : 'entradas'}
+            </p>
+            <div className="space-y-2">
+              {group.notes.map((note) => (
+                <div key={note.id} className="group rounded-lg bg-gray-50 p-3">
+                  {editingNoteId === note.id ? (
               <div>
                 <textarea
                   value={editingContenido}
@@ -830,27 +981,91 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               </>
             )}
           </div>
+                ))}
+            </div>
+          </div>
         ))}
       </div>
 
-      {categorias.length > 0 && (
-        <div className="mb-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor="new-note-categoria">
-            Categoría <span className="text-gray-400">(opcional)</span>
-          </label>
-          <select
-            id="new-note-categoria"
-            value={newNoteCategoria ?? ''}
-            onChange={(e) => setNewNoteCategoria(e.target.value || null)}
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {categorias.map((cat) => {
+          const dejaUtilisee = categoriasUtiliseesAujourdhui.has(cat)
+          const selected = composerMode === 'categoria' && newNoteCategoria === cat
+          return (
+            <button
+              key={cat}
+              type="button"
+              disabled={dejaUtilisee && !selected}
+              onClick={() => {
+                setComposerMode('categoria')
+                setNewNoteCategoria(cat)
+              }}
+              title={dejaUtilisee && !selected ? 'Ya hay una entrada de esta categoría hoy' : undefined}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(cat)} ${
+                selected ? `ring-2 ${categoryRingColor(cat)}` : dejaUtilisee ? 'opacity-30' : 'opacity-60 hover:opacity-100'
+              }`}
+            >
+              {cat}
+            </button>
+          )
+        })}
+        {!categoriasUtiliseesAujourdhui.has(CATEGORIA_CONTROL) && (
+          <button
+            type="button"
+            onClick={() => {
+              setComposerMode('control')
+              setNewNoteCategoria(null)
+            }}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(CATEGORIA_CONTROL)} ${
+              composerMode === 'control' ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
+            }`}
           >
-            <option value="">Sin categoría</option>
-            {categorias.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+            ⏰ Control
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setComposerMode('categoria')
+            setNewNoteCategoria(null)
+          }}
+          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+            composerMode === 'categoria' && newNoteCategoria === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 opacity-60 hover:opacity-100'
+          }`}
+        >
+          Sin categoría
+        </button>
+      </div>
+
+      {composerMode === 'control' && (
+        <div className="mb-2 rounded-xl border border-dashed border-orange-300 bg-orange-50 p-3">
+          <label className="flex items-center gap-2 text-xs font-medium text-orange-800">
+            <input
+              type="checkbox"
+              checked={programarRecordatorio}
+              onChange={(e) => setProgramarRecordatorio(e.target.checked)}
+            />
+            Programar recordatorio automático
+          </label>
+          {programarRecordatorio && (
+            <select
+              value={controlMeses}
+              onChange={(e) => setControlMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
+              className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none"
+            >
+              <option value="">Elegir...</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Dentro de {m} {m === 1 ? 'mes' : 'meses'}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1.5 text-[11px] text-orange-500">
+            {programarRecordatorio
+              ? 'Se enviará un email automático con link de reserva cuando llegue la fecha.'
+              : 'Déjalo sin marcar si solo quieres registrar el resultado de este control.'}
+          </p>
         </div>
       )}
 
@@ -868,18 +1083,20 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         placeholder="Escribe una observación clínica privada..."
         className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
       />
-      <button
-        type="button"
-        disabled
-        title="Guarda la nota antes de agregar una foto"
-        className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-300"
-      >
-        <PhotoIcon className="h-4 w-4" />
-      </button>
+      {(composerMode === 'control' || allowsPhoto(newNoteCategoria)) && (
+        <button
+          type="button"
+          disabled
+          title="Guarda la nota antes de agregar una foto"
+          className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-300"
+        >
+          <PhotoIcon className="h-4 w-4" />
+        </button>
+      )}
       <button
         type="button"
         onClick={saveNote}
-        disabled={loading || !newNote.trim()}
+        disabled={loading || !newNote.trim() || (composerMode === 'control' && programarRecordatorio && controlMeses === '')}
         className="mt-2 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
       >
         Guardar nota

@@ -24,6 +24,10 @@ export default async function AppointmentDetailPage({
     email: string | null
     telefono: string | null
     fecha_nacimiento: string | null
+    proximo_control_fecha: string | null
+    proximo_control_meses: number | null
+    proximo_control_enviado: boolean
+    proximo_control_enviado_at: string | null
   } | null
   const notifications = (appointment.notifications ?? []) as Array<{
     id: string

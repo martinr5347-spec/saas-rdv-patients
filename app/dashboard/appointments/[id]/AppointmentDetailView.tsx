@@ -240,6 +240,102 @@ function FechaNacimientoInput({ patientId, initial }: { patientId: string; initi
   )
 }
 
+function ProximoControlInput({
+  patientId,
+  referenciaFecha,
+  initialFecha,
+  initialMeses,
+}: {
+  patientId: string
+  referenciaFecha: string
+  initialFecha: string | null
+  initialMeses: number | null
+}) {
+  const [meses, setMeses] = useState<number | ''>(initialMeses ?? '')
+  const [fecha, setFecha] = useState(initialFecha)
+  const [loading, setLoading] = useState(false)
+
+  const save = async () => {
+    if (meses === '') return
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proximo_control_meses: meses, proximo_control_referencia_fecha: referenciaFecha }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setFecha(data.patient.proximo_control_fecha)
+      toast.success('Control programado')
+    } else {
+      toast.error('Error al programar el control')
+    }
+    setLoading(false)
+  }
+
+  const cancelar = async () => {
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proximo_control_meses: null }),
+    })
+    if (res.ok) {
+      setFecha(null)
+      setMeses('')
+      toast.success('Control cancelado')
+    } else {
+      toast.error('Error al cancelar')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="mb-2 block text-sm text-gray-500">Próximo control</span>
+      {fecha ? (
+        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-gray-800">{new Date(fecha).toLocaleDateString('es-PE')}</p>
+            <p className="text-xs text-gray-400">Recordatorio por email programado</p>
+          </div>
+          <button
+            type="button"
+            onClick={cancelar}
+            disabled={loading}
+            className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select
+            value={meses}
+            onChange={(e) => setMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          >
+            <option value="">Elegir...</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                Dentro de {m} {m === 1 ? 'mes' : 'meses'}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={save}
+            disabled={loading || meses === ''}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
+          >
+            Programar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AppointmentNotFound() {
   const t = useTranslations('dashboard.appointmentDetail')
   return <div className="text-error-600">{t('notFound')}</div>
@@ -251,7 +347,17 @@ export default function AppointmentDetailView({
   notifications,
 }: {
   appointment: AppointmentDetail
-  patient: { id: string; nom: string; email: string | null; telefono: string | null; fecha_nacimiento: string | null } | null
+  patient: {
+    id: string
+    nom: string
+    email: string | null
+    telefono: string | null
+    fecha_nacimiento: string | null
+    proximo_control_fecha: string | null
+    proximo_control_meses: number | null
+    proximo_control_enviado: boolean
+    proximo_control_enviado_at: string | null
+  } | null
   notifications: NotificationRow[]
 }) {
   const t = useTranslations('dashboard.appointmentDetail')
@@ -319,6 +425,15 @@ export default function AppointmentDetailView({
         />
 
         {patient && <FechaNacimientoInput patientId={patient.id} initial={patient.fecha_nacimiento} />}
+
+        {patient && (
+          <ProximoControlInput
+            patientId={patient.id}
+            referenciaFecha={appointment.fecha_cita}
+            initialFecha={patient.proximo_control_fecha}
+            initialMeses={patient.proximo_control_meses}
+          />
+        )}
       </Card>
 
       <TableContainer>

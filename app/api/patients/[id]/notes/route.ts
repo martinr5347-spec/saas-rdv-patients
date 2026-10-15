@@ -65,25 +65,43 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { data: patientRow } = await supabase
     .from('patients')
-    .select('alerta_clinica, alerta_clinica_updated_at, organization_id')
+    .select(
+      'alerta_clinica, alerta_clinica_updated_at, organization_id, proximo_control_fecha, proximo_control_meses, proximo_control_enviado, proximo_control_enviado_at, proximo_control_photo_note_id'
+    )
     .eq('id', params.id)
     .single()
 
   let categorias: string[] = []
+  let categoriasConFoto: string[] = []
   if (patientRow?.organization_id) {
     const { data: orgSettings } = await supabase
       .from('org_settings')
-      .select('categorias_notas')
+      .select('categorias_notas, categorias_con_foto')
       .eq('organization_id', patientRow.organization_id)
       .single()
     categorias = orgSettings?.categorias_notas ?? []
+    categoriasConFoto = orgSettings?.categorias_con_foto ?? []
   }
+
+  // Réutilise les URLs déjà signées ci-dessus plutôt que de re-signer -- évite un appel Storage en plus.
+  const linkedPhotoNote = patientRow?.proximo_control_photo_note_id
+    ? notesWithPhotoUrls.find((n) => n.id === patientRow.proximo_control_photo_note_id)
+    : undefined
 
   return NextResponse.json({
     notes: notesWithPhotoUrls,
     alerta: patientRow?.alerta_clinica ?? null,
     alertaUpdatedAt: patientRow?.alerta_clinica_updated_at ?? null,
     categorias,
+    categoriasConFoto,
+    proximoControl: {
+      fecha: patientRow?.proximo_control_fecha ?? null,
+      meses: patientRow?.proximo_control_meses ?? null,
+      enviado: patientRow?.proximo_control_enviado ?? false,
+      enviadoAt: patientRow?.proximo_control_enviado_at ?? null,
+      photoNoteId: patientRow?.proximo_control_photo_note_id ?? null,
+      photoThumbUrl: linkedPhotoNote?.photos?.[0]?.url ?? null,
+    },
   })
 }
 

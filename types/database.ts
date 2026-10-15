@@ -143,6 +143,7 @@ export interface Database {
           costo_total: number | null
           variantes_mensaje: Json
           categorias_notas: string[]
+          categorias_con_foto: string[]
           updated_at: string
         }
         Insert: {
@@ -162,6 +163,7 @@ export interface Database {
           costo_total?: number | null
           variantes_mensaje?: Json
           categorias_notas?: string[]
+          categorias_con_foto?: string[]
           updated_at?: string
         }
         Update: {
@@ -181,6 +183,7 @@ export interface Database {
           costo_total?: number | null
           variantes_mensaje?: Json
           categorias_notas?: string[]
+          categorias_con_foto?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -197,6 +200,11 @@ export interface Database {
           fecha_nacimiento: string | null
           alerta_clinica: string | null
           alerta_clinica_updated_at: string | null
+          proximo_control_fecha: string | null
+          proximo_control_meses: number | null
+          proximo_control_enviado: boolean
+          proximo_control_enviado_at: string | null
+          proximo_control_photo_note_id: string | null
           created_at: string
         }
         Insert: {
@@ -208,6 +216,11 @@ export interface Database {
           fecha_nacimiento?: string | null
           alerta_clinica?: string | null
           alerta_clinica_updated_at?: string | null
+          proximo_control_fecha?: string | null
+          proximo_control_meses?: number | null
+          proximo_control_enviado?: boolean
+          proximo_control_enviado_at?: string | null
+          proximo_control_photo_note_id?: string | null
           created_at?: string
         }
         Update: {
@@ -219,6 +232,11 @@ export interface Database {
           fecha_nacimiento?: string | null
           alerta_clinica?: string | null
           alerta_clinica_updated_at?: string | null
+          proximo_control_fecha?: string | null
+          proximo_control_meses?: number | null
+          proximo_control_enviado?: boolean
+          proximo_control_enviado_at?: string | null
+          proximo_control_photo_note_id?: string | null
           created_at?: string
         }
         Relationships: [

@@ -32,6 +32,7 @@ export interface OrgSettings {
   canal_whatsapp: boolean | null
   variantes_mensaje: unknown
   categorias_notas: string[] | null
+  categorias_con_foto: string[] | null
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -133,14 +134,20 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
 
 function CategoriasNotasCard({
   initial,
+  initialConFoto,
   updateCategoriasNotasAction,
+  updateCategoriasConFotoAction,
 }: {
   initial: string[]
+  initialConFoto: string[]
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
+  updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
 }) {
   const [categorias, setCategorias] = useState<string[]>(initial)
+  const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>(initialConFoto)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingFoto, setSavingFoto] = useState(false)
 
   const addCategoria = () => {
     const val = draft.trim().slice(0, 24)
@@ -173,28 +180,51 @@ function CategoriasNotasCard({
     setSaving(false)
   }
 
+  const toggleFoto = async (cat: string, checked: boolean) => {
+    const next = checked ? [...categoriasConFoto, cat] : categoriasConFoto.filter((c) => c !== cat)
+    setCategoriasConFoto(next)
+    setSavingFoto(true)
+    const res = await updateCategoriasConFotoAction(next)
+    if (res.ok) {
+      if (res.categorias) setCategoriasConFoto(res.categorias)
+    } else {
+      toast.error(res.error ?? 'Error al guardar')
+      setCategoriasConFoto(categoriasConFoto) // revert
+    }
+    setSavingFoto(false)
+  }
+
   return (
     <Card>
       <h2 className="text-sm font-semibold text-gray-800">Categorías de notas clínicas</h2>
       <p className="mb-3 mt-1 text-xs text-gray-500">
-        Estas categorías aparecerán como filtros y etiquetas en las notas clínicas de tus pacientes.
+        Estas categorías aparecerán como filtros y etiquetas en las notas clínicas de tus pacientes. &ldquo;Permite foto&rdquo;
+        controla si se puede adjuntar una foto a las notas de esa categoría.
       </p>
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 space-y-1.5">
         {categorias.map((c) => (
-          <span
-            key={c}
-            className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-[#6926D2]"
-          >
-            {c}
-            <button
-              type="button"
-              onClick={() => removeCategoria(c)}
-              aria-label={`Quitar ${c}`}
-              className="text-[#6926D2]/60 hover:text-[#6926D2]"
-            >
-              ×
-            </button>
-          </span>
+          <div key={c} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700">
+              {c}
+              <button
+                type="button"
+                onClick={() => removeCategoria(c)}
+                aria-label={`Quitar ${c}`}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </span>
+            <label className="flex items-center gap-1.5 text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={categoriasConFoto.includes(c)}
+                disabled={savingFoto}
+                onChange={(e) => toggleFoto(c, e.target.checked)}
+              />
+              Permite foto
+            </label>
+          </div>
         ))}
         {categorias.length === 0 && <p className="text-xs text-gray-400">Sin categorías configuradas.</p>}
       </div>
@@ -248,6 +278,7 @@ export default function SettingsView({
   updateSettingsAction,
   openBillingPortalAction,
   updateCategoriasNotasAction,
+  updateCategoriasConFotoAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -261,6 +292,7 @@ export default function SettingsView({
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
+  updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
 }) {
   const t = useTranslations('dashboard.settings')
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
@@ -526,7 +558,9 @@ export default function SettingsView({
 
       <CategoriasNotasCard
         initial={settings?.categorias_notas ?? []}
+        initialConFoto={settings?.categorias_con_foto ?? []}
         updateCategoriasNotasAction={updateCategoriasNotasAction}
+        updateCategoriasConFotoAction={updateCategoriasConFotoAction}
       />
     </div>
   )

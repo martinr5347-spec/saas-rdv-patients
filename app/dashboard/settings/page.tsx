@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import SettingsView from './SettingsView'
-import { updateSettings, openBillingPortal, updateCategoriasNotas } from './actions'
+import { updateSettings, openBillingPortal, updateCategoriasNotas, updateCategoriasConFoto } from './actions'
 
 export default async function SettingsPage() {
   const supabase = createClient()
@@ -46,6 +46,7 @@ export default async function SettingsPage() {
       updateSettingsAction={updateSettings}
       openBillingPortalAction={openBillingPortal}
       updateCategoriasNotasAction={updateCategoriasNotas}
+      updateCategoriasConFotoAction={updateCategoriasConFoto}
     />
   )
 }

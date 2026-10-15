@@ -885,7 +885,7 @@ export default function PatientDetailView({
   markedAppointments: number
 }) {
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-6xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -925,44 +925,47 @@ export default function PatientDetailView({
         </div>
       </div>
 
-      {/* Historique des RDV */}
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-5 py-4">
-          <h2 className="font-semibold text-gray-800">Historial de citas</h2>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {appointments.length === 0 && (
-            <p className="px-5 py-6 text-center text-sm text-gray-400">Sin citas registradas.</p>
-          )}
-          {appointments.map((appt) => (
-            <Link
-              key={appt.id}
-              href={`/dashboard/appointments/${appt.id}`}
-              className="group flex items-center justify-between px-5 py-3 transition-colors hover:bg-gray-50"
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-lg">
-                  {appt.presente === true ? '✓' : appt.presente === false ? '✗' : '·'}
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">
-                    {appt.fecha_cita} a las {appt.hora_cita}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {appt.presente === true ? 'Presente' : appt.presente === false ? 'Ausente' : 'Sin marcar'}
-                  </p>
+      {/* Historique des RDV + Notas clínicas côte à côte sur desktop, empilés sur mobile */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        {/* Historique des RDV */}
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-5 py-4">
+            <h2 className="font-semibold text-gray-800">Historial de citas</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {appointments.length === 0 && (
+              <p className="px-5 py-6 text-center text-sm text-gray-400">Sin citas registradas.</p>
+            )}
+            {appointments.map((appt) => (
+              <Link
+                key={appt.id}
+                href={`/dashboard/appointments/${appt.id}`}
+                className="group flex items-center justify-between px-5 py-3 transition-colors hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-lg">
+                    {appt.presente === true ? '✓' : appt.presente === false ? '✗' : '·'}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      {appt.fecha_cita} a las {appt.hora_cita}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {appt.presente === true ? 'Presente' : appt.presente === false ? 'Ausente' : 'Sin marcar'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{appt.statut}</Badge>
-                <span className="text-gray-300 group-hover:text-gray-400">›</span>
-              </div>
-            </Link>
-          ))}
+                <div className="flex items-center gap-3">
+                  <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{appt.statut}</Badge>
+                  <span className="text-gray-300 group-hover:text-gray-400">›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <NotasClinicasCard patientId={patient.id} />
+        <NotasClinicasCard patientId={patient.id} />
+      </div>
     </div>
   )
 }

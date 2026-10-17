@@ -18,7 +18,7 @@ export default async function ReservaPage({ params }: { params: { slug: string }
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, nom, langue, pays')
+    .select('id, nom, langue, pays, adresse')
     .eq('slug', params.slug)
     .maybeSingle()
 
@@ -34,5 +34,13 @@ export default async function ReservaPage({ params }: { params: { slug: string }
     )
   }
 
-  return <ReservaView organizationNombre={org.nom} organizationPais={org.pays} slug={params.slug} langue={org.langue as 'es' | 'pt'} />
+  return (
+    <ReservaView
+      organizationNombre={org.nom}
+      organizationPais={org.pays}
+      organizationAdresse={org.adresse}
+      slug={params.slug}
+      langue={org.langue as 'es' | 'pt'}
+    />
+  )
 }

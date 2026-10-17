@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
+import { formatDisplayDate } from '@/lib/utils/timezone'
 
 const BOOKING_MESSAGES: Record<'es' | 'pt', typeof esMessages.booking> = {
   es: esMessages.booking,
@@ -61,11 +62,13 @@ interface MesResponse {
 export default function ReservaView({
   organizationNombre,
   organizationPais,
+  organizationAdresse,
   slug,
   langue,
 }: {
   organizationNombre: string
   organizationPais: string
+  organizationAdresse: string | null
   slug: string
   langue: 'es' | 'pt'
 }) {
@@ -257,7 +260,7 @@ export default function ReservaView({
               <button type="button" onClick={volverAlCalendario} className="mb-3 text-xs font-medium text-[#6926D2] hover:underline">
                 ← {m.back}
               </button>
-              <p className="mb-3 text-sm font-semibold text-gray-800">{selectedDate}</p>
+              <p className="mb-3 text-sm font-semibold text-gray-800">{formatDisplayDate(selectedDate, langue)}</p>
               {loadingSlots ? (
                 <p className="py-10 text-center text-sm text-gray-400">{m.loading}</p>
               ) : slots.length === 0 ? (
@@ -285,7 +288,7 @@ export default function ReservaView({
                 ← {m.back}
               </button>
               <div className="mb-4 rounded-xl bg-violet-50 px-4 py-3 text-sm font-medium text-[#6926D2]">
-                {selectedDate} · {selectedSlot}
+                {formatDisplayDate(selectedDate, langue)} · {selectedSlot}
               </div>
 
               <div className="space-y-3">
@@ -352,6 +355,9 @@ export default function ReservaView({
               <p className="mb-4 text-sm font-semibold text-gray-800">
                 {reservaConfirmada.linkPago ? m.confirmedTitle : m.confirmedNoPayment}
               </p>
+              {organizationAdresse && (
+                <p className="mb-4 text-sm text-gray-500">📍 {organizationAdresse}</p>
+              )}
               {reservaConfirmada.linkPago && (
                 <a
                   href={reservaConfirmada.linkPago}

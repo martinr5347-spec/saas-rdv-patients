@@ -22,6 +22,18 @@ export function toTenantParts(iso: string, timeZone: string) {
   }
 }
 
+// "Maintenant" dans le fuseau du tenant, sous la forme utilisee par calcularSlotsDelDia
+// (date du jour + minutes depuis minuit). Factorise ici car utilise par 3 appelants
+// (GET/POST de la reservation publique, et la gestion patient) -- auparavant duplique
+// localement dans app/api/public/reservar/[slug]/route.ts.
+export function ahoraEnFuseau(fuseau: string): { fecha: string; minutosDesdeMedianoche: number } {
+  const p = toTenantParts(new Date().toISOString(), fuseau)
+  return {
+    fecha: `${p.year}-${p.month}-${p.day}`,
+    minutosDesdeMedianoche: Number(p.hour) * 60 + Number(p.minute),
+  }
+}
+
 export function toTenantDate(iso: string, timeZone: string) {
   const p = toTenantParts(iso, timeZone)
   return `${p.year}-${p.month}-${p.day}`

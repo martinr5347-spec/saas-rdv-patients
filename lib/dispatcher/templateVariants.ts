@@ -8,7 +8,7 @@
 // blocs {{#if}} intacts) est copié dans un override org-spécifique de message_templates
 // (voir app/dashboard/settings/page.tsx) — le moteur de rendu ne change pas.
 
-export type NotificationType = 'confirmation' | 'aviso' | 'pago' | 'anulacion' | 'recordatorio'
+export type NotificationType = 'confirmation' | 'aviso' | 'pago' | 'anulacion' | 'recordatorio' | 'reprogramacion'
 export type VariantId = 'standard' | 'calido'
 export type Canal = 'email' | 'whatsapp'
 export type Langue = 'es' | 'pt'
@@ -36,6 +36,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, s
     pago: 'Pago recibido',
     anulacion: 'Anulación automática',
     recordatorio: 'Recordatorio de cita (24h)',
+    reprogramacion: 'Reprogramación de cita',
   },
   pt: {
     confirmation: 'Confirmação de consulta',
@@ -43,6 +44,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, s
     pago: 'Pagamento recebido',
     anulacion: 'Cancelamento automático',
     recordatorio: 'Lembrete de consulta (24h)',
+    reprogramacion: 'Remarcação de consulta',
   },
 }
 
@@ -95,7 +97,8 @@ export const MESSAGE_VARIANTS: Catalog = {
 ${dateBox('a las')}
     {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmarla, realiza el adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Costo total de la consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de adelanto ahora y <strong>{{resto_pagar}} {{monnaie}}</strong> en el consultorio el día de tu cita.</p>{{/if}}
-    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto</a>{{/if}}`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar adelanto</a>{{/if}}
+    <p style="margin:20px 0 0;text-align:center;"><a href="{{gestion_link}}" style="color:#6b7280;font-size:13px;text-decoration:underline;">Cancelar o reprogramar</a></p>`
           ),
         },
         pt: {
@@ -106,7 +109,8 @@ ${dateBox('a las')}
 ${dateBox('às')}
     {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Para confirmar, realize o sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">Valor total da consulta: <strong>{{costo_total}} {{monnaie}}</strong> — {{monto_acompte}} {{monnaie}} de sinal agora e <strong>{{resto_pagar}} {{monnaie}}</strong> no consultório no dia da consulta.</p>{{/if}}
-    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar sinal</a>{{/if}}`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Pagar sinal</a>{{/if}}
+    <p style="margin:20px 0 0;text-align:center;"><a href="{{gestion_link}}" style="color:#6b7280;font-size:13px;text-decoration:underline;">Cancelar ou remarcar</a></p>`
           ),
         },
       },
@@ -129,7 +133,8 @@ ${dateBox('às')}
 ${dateBox('a las')}
     {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">El costo total es de <strong>{{costo_total}} {{monnaie}}</strong>: dejas {{monto_acompte}} {{monnaie}} ahora y el resto (<strong>{{resto_pagar}} {{monnaie}}</strong>) lo abonas tranquilamente en el consultorio.</p>{{/if}}
-    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar mi cita</a>{{/if}}`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar mi cita</a>{{/if}}
+    <p style="margin:20px 0 0;text-align:center;"><a href="{{gestion_link}}" style="color:#6b7280;font-size:13px;text-decoration:underline;">Cancelar o reprogramar</a></p>`
           ),
         },
         pt: {
@@ -140,7 +145,8 @@ ${dateBox('a las')}
 ${dateBox('às')}
     {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Só falta confirmar seu horário com um sinal de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
     {{#if costo_desglose}}<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b7280;">O valor total é de <strong>{{costo_total}} {{monnaie}}</strong>: você deixa {{monto_acompte}} {{monnaie}} agora e paga o restante (<strong>{{resto_pagar}} {{monnaie}}</strong>) tranquilamente no consultório.</p>{{/if}}
-    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar minha consulta</a>{{/if}}`
+    {{#if link_pago}}<a href="{{link_pago}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Confirmar minha consulta</a>{{/if}}
+    <p style="margin:20px 0 0;text-align:center;"><a href="{{gestion_link}}" style="color:#6b7280;font-size:13px;text-decoration:underline;">Cancelar ou remarcar</a></p>`
           ),
         },
       },
@@ -418,6 +424,53 @@ ${dateBox('às')}
       },
     },
   },
+
+  // Format plus simple (pas card()) que les 5 types ci-dessus -- le "standard" reprend ici
+  // exactement les templates par defaut seedes par la migration 034 (message_templates,
+  // organization_id null), qui n'utilisent pas l'enveloppe card() a gradient. "calido" garde la
+  // meme structure simple pour rester coherent avec "standard" (pas de saut visuel brusque).
+  reprogramacion: {
+    standard: {
+      email: {
+        es: {
+          sujet: 'Tu cita fue reprogramada',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:20px;color:#111827;">Tu cita fue reprogramada</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> fue movida a:</p><p style="margin:0 0 20px;font-size:15px;line-height:1.5;"><strong>{{fecha_cita}}</strong> a las <strong>{{hora_cita}}</strong></p></div>`,
+        },
+        pt: {
+          sujet: 'Sua consulta foi remarcada',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:20px;color:#111827;">Sua consulta foi remarcada</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Olá {{nom_patient}}, sua consulta com <strong>{{nombre_cabinet}}</strong> foi movida para:</p><p style="margin:0 0 20px;font-size:15px;line-height:1.5;"><strong>{{fecha_cita}}</strong> às <strong>{{hora_cita}}</strong></p></div>`,
+        },
+      },
+      whatsapp: {
+        es: {
+          corps: `🔄 Hola {{nom_patient}}! Tu cita con {{nombre_cabinet}} fue reprogramada:\n{{fecha_cita}} a las {{hora_cita}}`,
+        },
+        pt: {
+          corps: `🔄 Olá {{nom_patient}}! Sua consulta com {{nombre_cabinet}} foi remarcada:\n{{fecha_cita}} às {{hora_cita}}`,
+        },
+      },
+    },
+    calido: {
+      email: {
+        es: {
+          sujet: '¡Listo, tu cita quedó reprogramada!',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:20px;color:#111827;">¡Todo listo, {{nom_patient}}! 😊</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Tu cita con <strong>{{nombre_cabinet}}</strong> quedó reprogramada para:</p><p style="margin:0 0 20px;font-size:15px;line-height:1.5;"><strong>{{fecha_cita}}</strong> a las <strong>{{hora_cita}}</strong></p><p style="margin:0;font-size:14px;line-height:1.5;color:#4b5563;">¡Nos vemos pronto!</p></div>`,
+        },
+        pt: {
+          sujet: 'Prontinho, sua consulta foi remarcada!',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:20px;color:#111827;">Tudo certo, {{nom_patient}}! 😊</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Sua consulta com <strong>{{nombre_cabinet}}</strong> foi remarcada para:</p><p style="margin:0 0 20px;font-size:15px;line-height:1.5;"><strong>{{fecha_cita}}</strong> às <strong>{{hora_cita}}</strong></p><p style="margin:0;font-size:14px;line-height:1.5;color:#4b5563;">Até breve!</p></div>`,
+        },
+      },
+      whatsapp: {
+        es: {
+          corps: `😊 ¡Listo, {{nom_patient}}! Tu cita con {{nombre_cabinet}} quedó reprogramada:\n{{fecha_cita}} a las {{hora_cita}}\n\n¡Nos vemos pronto!`,
+        },
+        pt: {
+          corps: `😊 Prontinho, {{nom_patient}}! Sua consulta com {{nombre_cabinet}} foi remarcada:\n{{fecha_cita}} às {{hora_cita}}\n\nAté breve!`,
+        },
+      },
+    },
+  },
 }
 
 export function getVariantContent(type: NotificationType, variant: VariantId, canal: Canal, langue: Langue): VariantContent {
@@ -476,6 +529,16 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
     calido: {
       es: '¡Te esperamos, [Nombre]!\nSolo un recordatorio cariñoso de tu cita con [Clínica]: [Fecha] a las [Hora].',
       pt: 'Te esperamos, [Nome]! Só um lembrete carinhoso da sua consulta com [Clínica]: [Data] às [Hora].',
+    },
+  },
+  reprogramacion: {
+    standard: {
+      es: 'Tu cita fue reprogramada\nHola [Nombre], tu cita con [Clínica] fue movida a: [Fecha] a las [Hora].',
+      pt: 'Sua consulta foi remarcada. Olá [Nome], sua consulta com [Clínica] foi movida para: [Data] às [Hora].',
+    },
+    calido: {
+      es: '¡Todo listo, [Nombre]! 😊\nTu cita con [Clínica] quedó reprogramada para: [Fecha] a las [Hora]. ¡Nos vemos pronto!',
+      pt: 'Tudo certo, [Nome]! 😊 Sua consulta com [Clínica] foi remarcada para: [Data] às [Hora]. Até breve!',
     },
   },
 }

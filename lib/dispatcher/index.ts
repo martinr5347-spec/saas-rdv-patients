@@ -17,7 +17,7 @@ interface AppointmentWithRelations extends Appointment {
   organizations: (Organization & { org_settings: OrgSettings | null }) | null
 }
 
-function renderTemplate(corps: string, appt: AppointmentWithRelations) {
+function renderTemplate(corps: string, appt: AppointmentWithRelations, extraConditions: Record<string, boolean> = {}) {
   const patient = appt.patients
   const org = appt.organizations
   const settings = org?.org_settings
@@ -37,6 +37,7 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
     costo_desglose: hasCostoDesglose,
     calendly_url: Boolean(settings?.calendly_url),
     link_pago: Boolean(appt.link_pago),
+    ...extraConditions,
   }
 
   const values: Record<string, string> = {
@@ -51,10 +52,16 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations) {
     calendly_url: settings?.calendly_url ?? '',
     costo_total: typeof costoTotal === 'number' ? costoTotal.toFixed(2) : '',
     resto_pagar: restoPagar !== null ? restoPagar.toFixed(2) : '',
+    gestion_link: `${process.env.NEXT_PUBLIC_APP_URL}/gestionar/${appt.gestion_token}`,
   }
 
-  let out = corps.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_match, varName: string, inner: string) =>
-    conditions[varName] ? inner : ''
+  // Supporte un {{else}} optionnel -- necessaire pour cambio_praticien ("annule" vs "reprogramme"
+  // dans le meme sujet/corps). Les templates existants sans {{else}} continuent de fonctionner
+  // a l'identique (le groupe non capturant est simplement absent).
+  let out = corps.replace(
+    /\{\{#if (\w+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g,
+    (_match, varName: string, ifPart: string, elsePart: string | undefined) =>
+      conditions[varName] ? ifPart : elsePart ?? ''
   )
 
   for (const [key, val] of Object.entries(values)) {
@@ -186,6 +193,48 @@ async function sendPraticienAlert(appt: AppointmentWithRelations, job: Notificat
   })
 }
 
+// Alerte praticien pour une annulation ou reprogrammation faite par le patient lui-meme
+// (page /gestionar/[token]) -- meme pattern que sendPraticienAlert (template unique, pas de
+// variante, emails des praticien/admin de l'organisation).
+async function sendCambioPraticienAlert(appt: AppointmentWithRelations, job: NotificationJob, cancelado: boolean) {
+  const supabase = createServiceRoleClient()
+
+  const { data: praticiens } = await supabase
+    .from('users')
+    .select('email')
+    .eq('organization_id', job.organizationId)
+    .or('role.eq.praticien,role.eq.admin')
+
+  const template = await loadTemplate(job.organizationId, 'cambio_praticien', 'email', appt.organizations?.langue ?? 'es')
+  if (!template) {
+    throw new Error('Template cambio_praticien introuvable')
+  }
+
+  const body = renderTemplate(template.corps, appt, { cancelado })
+  const subject = template.sujet ? renderTemplate(template.sujet, appt, { cancelado }) : 'Alerte praticien'
+
+  const emails = (praticiens ?? []).map((u) => u.email).filter(Boolean)
+  if (emails.length === 0) {
+    throw new Error('Aucun email praticien trouvé')
+  }
+
+  await sendEmail(emails[0], subject, body)
+
+  // upsert (pas insert) : contrairement a pago_praticien, un meme RDV peut etre reprogramme
+  // plusieurs fois -- la contrainte unique (appointment_id, canal, type) ferait echouer un
+  // second insert, alors que l'email, lui, doit repartir a chaque fois.
+  await supabase.from('notifications').upsert(
+    {
+      appointment_id: job.appointmentId,
+      canal: 'email',
+      type: 'cambio_praticien',
+      statut: 'sent',
+      sent_at: new Date().toISOString(),
+    },
+    { onConflict: 'appointment_id,canal,type' }
+  )
+}
+
 export async function dispatch(job: NotificationJob) {
   const supabase = createServiceRoleClient()
 
@@ -214,21 +263,40 @@ export async function dispatch(job: NotificationJob) {
     return
   }
 
+  if (job.type === 'cambio_praticien') {
+    try {
+      await sendCambioPraticienAlert(typedAppt, job, job.cancelado ?? false)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('sendCambioPraticienAlert error:', msg)
+      await alertAdmin(job, 'email', msg)
+    }
+    return
+  }
+
+  // Contrairement aux autres types (lies a un evenement qui n'arrive qu'une fois dans la vie
+  // d'un RDV), 'reprogramacion' peut legitimement se reproduire plusieurs fois pour le meme RDV
+  // (le patient peut reprogrammer plusieurs fois) -- pas de garde "deja envoye", et upsert au lieu
+  // d'insert plus bas pour ne pas violer la contrainte unique (appointment_id, canal, type).
+  const isRepeatable = job.type === 'reprogramacion'
+
   const channels: Array<'email' | 'whatsapp'> = []
   if (settings?.canal_email) channels.push('email')
   if (settings?.canal_whatsapp && settings?.unipile_account_id) channels.push('whatsapp')
 
   for (const canal of channels) {
-    const { data: alreadySent } = await supabase
-      .from('notifications')
-      .select('id')
-      .eq('appointment_id', job.appointmentId)
-      .eq('canal', canal)
-      .eq('type', job.type)
-      .eq('statut', 'sent')
-      .maybeSingle()
+    if (!isRepeatable) {
+      const { data: alreadySent } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('appointment_id', job.appointmentId)
+        .eq('canal', canal)
+        .eq('type', job.type)
+        .eq('statut', 'sent')
+        .maybeSingle()
 
-    if (alreadySent) continue
+      if (alreadySent) continue
+    }
 
     const langue = typedAppt.organizations?.langue ?? 'es'
     const template = await loadTemplate(job.organizationId, job.type, canal, langue)
@@ -244,14 +312,19 @@ export async function dispatch(job: NotificationJob) {
       const warmingCheck = await checkWhatsappWarming(supabase, job.organizationId, settings?.unipile_connected_at ?? null)
       if (!warmingCheck.allowed) {
         console.warn(`dispatch whatsapp throttled: ${warmingCheck.reason}`)
-        await supabase.from('notifications').insert({
+        const warmingRow = {
           appointment_id: job.appointmentId,
           canal,
           type: job.type,
-          statut: 'failed',
+          statut: 'failed' as const,
           error_message: warmingCheck.reason,
           sent_at: null,
-        })
+        }
+        if (isRepeatable) {
+          await supabase.from('notifications').upsert(warmingRow, { onConflict: 'appointment_id,canal,type' })
+        } else {
+          await supabase.from('notifications').insert(warmingRow)
+        }
         continue
       }
     }
@@ -278,13 +351,18 @@ export async function dispatch(job: NotificationJob) {
       await alertAdmin(job, canal, errorMessage)
     }
 
-    await supabase.from('notifications').insert({
+    const resultRow = {
       appointment_id: job.appointmentId,
       canal,
       type: job.type,
       statut,
       error_message: errorMessage,
       sent_at: statut === 'sent' ? new Date().toISOString() : null,
-    })
+    }
+    if (isRepeatable) {
+      await supabase.from('notifications').upsert(resultRow, { onConflict: 'appointment_id,canal,type' })
+    } else {
+      await supabase.from('notifications').insert(resultRow)
+    }
   }
 }

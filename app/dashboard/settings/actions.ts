@@ -12,7 +12,7 @@ import {
   getControlRecallVariantContent,
 } from '@/lib/dispatcher/templateVariants'
 
-const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio']
+const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CANALES = ['email', 'whatsapp'] as const
 
 export async function updateSettings(formData: FormData) {

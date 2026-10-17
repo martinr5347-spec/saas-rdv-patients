@@ -404,6 +404,9 @@ export interface Database {
           // Colonne generee (stored) par la migration 033 -- jamais inseree/mise a jour directement,
           // calculee par Postgres a partir de fecha_cita/hora_cita/hora_fin.
           rango_horario: string | null
+          // Capacite d'acces public (annulation/reprogrammation patient, migration 034) -- distinct
+          // de `id`, genere automatiquement (DEFAULT uuid_generate_v4()), jamais defini par le code.
+          gestion_token: string
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
         }
@@ -491,7 +494,7 @@ export interface Database {
           id: string
           appointment_id: string
           canal: 'email' | 'whatsapp' | 'sms'
-          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio'
+          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien'
           statut: 'pending' | 'sent' | 'failed'
           error_message: string | null
           sent_at: string | null
@@ -501,7 +504,7 @@ export interface Database {
           id?: string
           appointment_id: string
           canal: 'email' | 'whatsapp' | 'sms'
-          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio'
+          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien'
           statut?: 'pending' | 'sent' | 'failed'
           error_message?: string | null
           sent_at?: string | null

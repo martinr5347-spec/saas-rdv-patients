@@ -3,24 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { calcularSlotsDelDia } from '@/lib/booking/calcularSlots'
 import { createPaymentLink } from '@/lib/payments/mercadopago'
 import { dispatch } from '@/lib/dispatcher'
-
-function ahoraEnFuseau(fuseau: string): { fecha: string; minutosDesdeMedianoche: number } {
-  // Intl.DateTimeFormat gere nativement les fuseaux IANA sans dependance supplementaire.
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: fuseau,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(new Date())
-
-  const get = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? '00'
-  const fecha = `${get('year')}-${get('month')}-${get('day')}`
-  const minutosDesdeMedianoche = Number(get('hour')) * 60 + Number(get('minute'))
-  return { fecha, minutosDesdeMedianoche }
-}
+import { ahoraEnFuseau } from '@/lib/utils/timezone'
 
 // Ajoute des jours a une date 'YYYY-MM-DD' en arithmetique UTC explicite -- new Date(`${fecha}T00:00:00`)
 // dependrait du fuseau local du processus Node qui execute cette route, pas de celui de l'organisation ;

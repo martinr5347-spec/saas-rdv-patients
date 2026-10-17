@@ -31,6 +31,48 @@ interface AvailabilityRow {
   hora_fin: string
 }
 
+interface Plage {
+  horaInicio: string
+  horaFin: string
+}
+
+interface DiaHorario {
+  diaSemana: number
+  abierto: boolean
+  plages: Plage[]
+}
+
+// Limite raisonnable cote UI pour eviter un abus (pas de plafond fonctionnel reel -- le schema et
+// calcularSlotsDelDia supportent deja un nombre quelconque de plages par jour). Dupliquee cote
+// serveur dans actions.ts, qui ne doit jamais faire confiance a cette seule limite client.
+const MAX_PLAGES_POR_DIA = 5
+
+function plagesSeSuperponen(a: Plage, b: Plage): boolean {
+  return a.horaInicio < b.horaFin && b.horaInicio < a.horaFin
+}
+
+// Validation client avant sauvegarde, pour un retour immediat -- revalidee cote serveur dans
+// actions.ts (ne jamais faire confiance au seul controle client).
+function validarHorarios(horarios: DiaHorario[]): string | null {
+  for (const dia of horarios) {
+    if (!dia.abierto) continue
+    const label = DIAS_SEMANA.find((d) => d.valor === dia.diaSemana)?.label ?? ''
+    for (const p of dia.plages) {
+      if (!(p.horaFin > p.horaInicio)) {
+        return `${label}: la hora de fin debe ser posterior a la de inicio`
+      }
+    }
+    for (let i = 0; i < dia.plages.length; i++) {
+      for (let j = i + 1; j < dia.plages.length; j++) {
+        if (plagesSeSuperponen(dia.plages[i], dia.plages[j])) {
+          return `${label}: hay horarios que se superponen`
+        }
+      }
+    }
+  }
+  return null
+}
+
 interface BlockedDateRow {
   id: string
   fecha: string
@@ -62,16 +104,23 @@ export default function DisponibilidadView({
   addBlockedDateAction: typeof import('./actions').addBlockedDate
   removeBlockedDateAction: typeof import('./actions').removeBlockedDate
 }) {
-  // État local : un toggle "abierto" + horaInicio/horaFin par jour, pré-rempli depuis availability.
-  // Valeurs par défaut raisonnables si le jour n'a pas encore de ligne : fermé, 09:00-18:00 au cas où activé.
-  const [horarios, setHorarios] = useState(
+  // État local : un toggle "abierto" + une ou plusieurs plages (horaInicio/horaFin) par jour,
+  // pré-rempli depuis availability -- toutes les lignes du jour, pas juste la première (une
+  // pause déjeuner, par ex., se traduit par 2 lignes org_availability pour le même dia_semana).
+  // Valeur par défaut raisonnable si le jour n'a pas encore de ligne : fermé, une plage 09:00-18:00
+  // prête au cas où il est activé.
+  const [horarios, setHorarios] = useState<DiaHorario[]>(() =>
     DIAS_SEMANA.map((d) => {
-      const existing = availability.find((a) => a.dia_semana === d.valor)
+      const existing = availability
+        .filter((a) => a.dia_semana === d.valor)
+        .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
       return {
         diaSemana: d.valor,
-        abierto: Boolean(existing),
-        horaInicio: existing?.hora_inicio?.slice(0, 5) ?? '09:00',
-        horaFin: existing?.hora_fin?.slice(0, 5) ?? '18:00',
+        abierto: existing.length > 0,
+        plages:
+          existing.length > 0
+            ? existing.map((a) => ({ horaInicio: a.hora_inicio.slice(0, 5), horaFin: a.hora_fin.slice(0, 5) }))
+            : [{ horaInicio: '09:00', horaFin: '18:00' }],
       }
     })
   )
@@ -88,12 +137,49 @@ export default function DisponibilidadView({
   const [nuevoMotivo, setNuevoMotivo] = useState('')
   const [blocked, setBlocked] = useState(blockedDates)
 
-  const guardarHorarios = async () => {
-    setLoading(true)
-    const result = await updateDisponibilidadAction(
-      horarios.filter((h) => h.abierto).map((h) => ({ diaSemana: h.diaSemana, horaInicio: h.horaInicio, horaFin: h.horaFin })),
-      { duracionCitaMin: duracion, bufferMin: buffer, anticipacionMinHoras: anticipacionMin, anticipacionMaxDias: anticipacionMax }
+  const toggleDia = (i: number, abierto: boolean) => {
+    setHorarios((prev) => prev.map((h, j) => (j === i ? { ...h, abierto } : h)))
+  }
+
+  const updatePlage = (diaIdx: number, plageIdx: number, campo: keyof Plage, valor: string) => {
+    setHorarios((prev) =>
+      prev.map((h, j) =>
+        j === diaIdx ? { ...h, plages: h.plages.map((p, k) => (k === plageIdx ? { ...p, [campo]: valor } : p)) } : h
+      )
     )
+  }
+
+  const agregarPlage = (diaIdx: number) => {
+    setHorarios((prev) =>
+      prev.map((h, j) =>
+        j === diaIdx && h.plages.length < MAX_PLAGES_POR_DIA ? { ...h, plages: [...h.plages, { horaInicio: '09:00', horaFin: '18:00' }] } : h
+      )
+    )
+  }
+
+  // Jamais sur la premiere plage (index 0) -- elle reste liee au toggle jour actif/inactif, seules
+  // les plages additionnelles ont un bouton de suppression.
+  const quitarPlage = (diaIdx: number, plageIdx: number) => {
+    if (plageIdx === 0) return
+    setHorarios((prev) => prev.map((h, j) => (j === diaIdx ? { ...h, plages: h.plages.filter((_, k) => k !== plageIdx) } : h)))
+  }
+
+  const guardarHorarios = async () => {
+    const errorValidacion = validarHorarios(horarios)
+    if (errorValidacion) {
+      toast.error(errorValidacion)
+      return
+    }
+    setLoading(true)
+    const payload = horarios
+      .filter((h) => h.abierto)
+      .flatMap((h) => h.plages.map((p) => ({ diaSemana: h.diaSemana, horaInicio: p.horaInicio, horaFin: p.horaFin })))
+    const result = await updateDisponibilidadAction(payload, {
+      duracionCitaMin: duracion,
+      bufferMin: buffer,
+      anticipacionMinHoras: anticipacionMin,
+      anticipacionMaxDias: anticipacionMax,
+    })
     if (result.ok) {
       toast.success('Disponibilidad guardada')
     } else {
@@ -168,36 +254,53 @@ export default function DisponibilidadView({
         </div>
       </div>
 
-      {/* Horaires par jour */}
-      <div className="mb-5 space-y-2">
+      {/* Horaires par jour -- une ou plusieurs plages (ex. pause déjeuner) */}
+      <div className="mb-5 space-y-3">
         {DIAS_SEMANA.map((d, i) => (
-          <div key={d.valor} className="flex items-center gap-3">
-            <label className="flex w-28 items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={horarios[i].abierto}
-                onChange={(e) =>
-                  setHorarios((prev) => prev.map((h, j) => (j === i ? { ...h, abierto: e.target.checked } : h)))
-                }
-              />
+          <div key={d.valor} className="flex items-start gap-3">
+            <label className="flex w-28 shrink-0 items-center gap-2 pt-1.5 text-sm text-gray-700">
+              <input type="checkbox" checked={horarios[i].abierto} onChange={(e) => toggleDia(i, e.target.checked)} />
               {d.label}
             </label>
             {horarios[i].abierto && (
-              <>
-                <input
-                  type="time"
-                  value={horarios[i].horaInicio}
-                  onChange={(e) => setHorarios((prev) => prev.map((h, j) => (j === i ? { ...h, horaInicio: e.target.value } : h)))}
-                  className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="time"
-                  value={horarios[i].horaFin}
-                  onChange={(e) => setHorarios((prev) => prev.map((h, j) => (j === i ? { ...h, horaFin: e.target.value } : h)))}
-                  className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
-                />
-              </>
+              <div className="flex flex-1 flex-col gap-1.5">
+                {horarios[i].plages.map((p, k) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={p.horaInicio}
+                      onChange={(e) => updatePlage(i, k, 'horaInicio', e.target.value)}
+                      className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
+                    />
+                    <span className="text-gray-400">-</span>
+                    <input
+                      type="time"
+                      value={p.horaFin}
+                      onChange={(e) => updatePlage(i, k, 'horaFin', e.target.value)}
+                      className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
+                    />
+                    {k > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => quitarPlage(i, k)}
+                        aria-label="Quitar franja"
+                        className="text-xs text-gray-400 hover:text-red-500"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {horarios[i].plages.length < MAX_PLAGES_POR_DIA && (
+                  <button
+                    type="button"
+                    onClick={() => agregarPlage(i)}
+                    className="self-start text-xs font-medium text-[#6926D2] hover:underline"
+                  >
+                    + Agregar franja
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))}

@@ -13,6 +13,14 @@ function slugify(texto: string): string {
     .slice(0, 60)
 }
 
+// Doit matcher la limite cote client (DisponibilidadView.tsx) -- jamais se fier au seul controle
+// client, qu'il s'agisse de la limite elle-meme ou du chevauchement verifie plus bas.
+const MAX_PLAGES_POR_DIA = 5
+
+function plagesSeSuperponen(a: { horaInicio: string; horaFin: string }, b: { horaInicio: string; horaFin: string }): boolean {
+  return a.horaInicio < b.horaFin && b.horaInicio < a.horaFin
+}
+
 async function getOrganizationId(supabase: ReturnType<typeof createClient>) {
   const {
     data: { user },
@@ -49,6 +57,28 @@ export async function updateDisponibilidad(
     (h) => h.diaSemana >= 0 && h.diaSemana <= 6 && /^\d{2}:\d{2}$/.test(h.horaInicio) && /^\d{2}:\d{2}$/.test(h.horaFin) && h.horaFin > h.horaInicio
   )
 
+  // Chevauchement entre plages d'un meme jour (ex. pause dejeuner mal saisie, 09:00-14:00 et
+  // 13:00-18:00) -- revalide ici, ne jamais se fier au seul controle client qui peut etre
+  // contourne en appelant cette action directement avec un payload arbitraire.
+  const parDia = new Map<number, typeof horariosValidos>()
+  for (const h of horariosValidos) {
+    const liste = parDia.get(h.diaSemana) ?? []
+    liste.push(h)
+    parDia.set(h.diaSemana, liste)
+  }
+  for (const plages of Array.from(parDia.values())) {
+    if (plages.length > MAX_PLAGES_POR_DIA) {
+      return { ok: false, error: 'Demasiadas franjas en un mismo día' }
+    }
+    for (let i = 0; i < plages.length; i++) {
+      for (let j = i + 1; j < plages.length; j++) {
+        if (plagesSeSuperponen(plages[i], plages[j])) {
+          return { ok: false, error: 'Hay horarios que se superponen en un mismo día' }
+        }
+      }
+    }
+  }
+
   await supabase
     .from('org_settings')
     .update({
@@ -59,7 +89,9 @@ export async function updateDisponibilidad(
     })
     .eq('organization_id', organizationId)
 
-  // Remplacement complet des horaires (simple à raisonner, volume minuscule -- 7 lignes max par organisation)
+  // Remplacement complet des horaires (simple à raisonner, volume minuscule -- jusqu'à
+  // MAX_PLAGES_POR_DIA lignes par jour, plusieurs lignes par dia_semana étant explicitement
+  // supportées, pas une seule ligne par jour)
   await supabase.from('org_availability').delete().eq('organization_id', organizationId)
   if (horariosValidos.length > 0) {
     await supabase.from('org_availability').insert(

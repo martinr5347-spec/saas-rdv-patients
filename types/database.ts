@@ -401,6 +401,9 @@ export interface Database {
           montant_consultation: number | null
           concepto_consultation: string | null
           created_at: string
+          // Colonne generee (stored) par la migration 033 -- jamais inseree/mise a jour directement,
+          // calculee par Postgres a partir de fecha_cita/hora_cita/hora_fin.
+          rango_horario: string | null
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
         }

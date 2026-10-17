@@ -230,6 +230,9 @@
     "emailLabel": "Correo electrónico",
     "telefonoLabel": "Teléfono",
     "confirmarButton": "Confirmar reserva",
-    "comingSoonMessage": "Esta función estará disponible muy pronto"
+    "confirmedTitle": "Tu cita está reservada. Para confirmarla, realiza el pago:",
+    "confirmedNoPayment": "¡Tu cita fue confirmada!",
+    "payNowButton": "Pagar ahora",
+    "genericError": "Algo salió mal"
   }
 }

@@ -89,6 +89,9 @@ export default function ReservaView({
   const [telefonoNumero, setTelefonoNumero] = useState('')
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
+  const [submitting, setSubmitting] = useState(false)
+  const [reservaConfirmada, setReservaConfirmada] = useState<{ linkPago: string | null } | null>(null)
+
   const m = BOOKING_MESSAGES[langue]
 
   useEffect(() => {
@@ -134,9 +137,34 @@ export default function ReservaView({
     return Object.keys(errores).length === 0
   }
 
-  const confirmarReserva = () => {
-    if (!validarFormulario()) return
-    toast(m.comingSoonMessage, { icon: '🚧' })
+  const confirmarReserva = async () => {
+    if (!validarFormulario() || !selectedDate || !selectedSlot) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/public/reservar/${slug}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha: selectedDate, hora: selectedSlot, nombre, email, indicativo, telefonoNumero }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 409) {
+          toast.error(data.error)
+          // Le creneau vient d'etre pris -- on rafraichit la liste pour ce jour plutot que de laisser
+          // l'utilisateur retenter sur un horaire mort.
+          seleccionarDia(selectedDate)
+          setSelectedSlot(null)
+        } else {
+          toast.error(data.error ?? m.genericError)
+        }
+        return
+      }
+      setReservaConfirmada({ linkPago: data.linkPago ?? null })
+    } catch {
+      toast.error(m.genericError)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const mesAnterior = sumarMeses(displayedMonth, -1)
@@ -251,7 +279,7 @@ export default function ReservaView({
             </div>
           )}
 
-          {selectedDate && selectedSlot && (
+          {selectedDate && selectedSlot && !reservaConfirmada && (
             <div>
               <button type="button" onClick={volverAHorarios} className="mb-3 text-xs font-medium text-[#6926D2] hover:underline">
                 ← {m.back}
@@ -310,10 +338,28 @@ export default function ReservaView({
               <button
                 type="button"
                 onClick={confirmarReserva}
-                className="mt-5 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+                disabled={submitting}
+                className="mt-5 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {m.confirmarButton}
+                {submitting ? m.loading : m.confirmarButton}
               </button>
+            </div>
+          )}
+
+          {reservaConfirmada && (
+            <div className="py-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 text-2xl text-[#6926D2]">✓</div>
+              <p className="mb-4 text-sm font-semibold text-gray-800">
+                {reservaConfirmada.linkPago ? m.confirmedTitle : m.confirmedNoPayment}
+              </p>
+              {reservaConfirmada.linkPago && (
+                <a
+                  href={reservaConfirmada.linkPago}
+                  className="inline-block w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+                >
+                  {m.payNowButton}
+                </a>
+              )}
             </div>
           )}
         </div>

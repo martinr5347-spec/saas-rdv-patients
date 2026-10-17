@@ -230,6 +230,9 @@
     "emailLabel": "E-mail",
     "telefonoLabel": "Telefone",
     "confirmarButton": "Confirmar agendamento",
-    "comingSoonMessage": "Esta função estará disponível muito em breve"
+    "confirmedTitle": "Sua consulta está reservada. Para confirmá-la, realize o pagamento:",
+    "confirmedNoPayment": "Sua consulta foi confirmada!",
+    "payNowButton": "Pagar agora",
+    "genericError": "Algo deu errado"
   }
 }

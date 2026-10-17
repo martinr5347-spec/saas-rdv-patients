@@ -28,7 +28,6 @@ export interface OrgSettings {
   monnaie: string | null
   calendly_url: string | null
   unipile_account_id: string | null
-  mp_access_token: string | null
   mp_notification_url: string | null
   canal_email: boolean | null
   canal_whatsapp: boolean | null
@@ -133,6 +132,90 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
         </button>
       </div>
     </Card>
+  )
+}
+
+function MercadoPagoTokenField({
+  mpTokenConfigured,
+  mpTokenLast4,
+  updateMpAccessTokenAction,
+}: {
+  mpTokenConfigured: boolean
+  mpTokenLast4: string | null
+  updateMpAccessTokenAction: (token: string) => Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }>
+}) {
+  const t = useTranslations('dashboard.settings')
+  const [configured, setConfigured] = useState(mpTokenConfigured)
+  const [last4, setLast4] = useState(mpTokenLast4)
+  // Pas d'etat "editing" distinct de !configured : tant qu'aucun token valide n'a ete enregistre
+  // (ou n'a ete reenregistre avec succes), le champ reste visible -- jamais de prefill avec la
+  // vraie valeur, le champ part toujours vide.
+  const [editing, setEditing] = useState(!mpTokenConfigured)
+  const [tokenDraft, setTokenDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    if (!tokenDraft.trim()) return
+    setSaving(true)
+    const res = await updateMpAccessTokenAction(tokenDraft.trim())
+    if (res.ok) {
+      setConfigured(true)
+      setLast4(res.last4 ?? null)
+      setEditing(false)
+      setTokenDraft('')
+      const conectadoComo = res.nickname || res.email
+      toast.success(conectadoComo ? `Conectado como: ${conectadoComo}` : 'Token guardado')
+    } else {
+      toast.error(res.error ?? 'Error al guardar el token')
+    }
+    setSaving(false)
+  }
+
+  if (configured && !editing) {
+    return (
+      <div>
+        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+          {t('mpToken')}
+          <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
+        </label>
+        <div className="mt-1 flex items-center gap-3">
+          <span className="text-sm text-gray-600">Conectado · termina en ••••{last4}</span>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-sm font-medium text-[#6926D2] hover:underline"
+          >
+            Cambiar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+        {t('mpToken')}
+        <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
+      </label>
+      <div className="mt-1 flex gap-2">
+        <input
+          type="password"
+          value={tokenDraft}
+          onChange={(e) => setTokenDraft(e.target.value)}
+          placeholder="Pegar nuevo token"
+          className="mt-0 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || !tokenDraft.trim()}
+          className="shrink-0 rounded-lg bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] disabled:opacity-50"
+        >
+          {saving ? '...' : 'Guardar'}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -279,10 +362,13 @@ export default function SettingsView({
   especialidadTexto,
   fotoUrl,
   codigoSeguridadUpdatedAt,
+  mpTokenConfigured,
+  mpTokenLast4,
   updateSettingsAction,
   openBillingPortalAction,
   updateCategoriasNotasAction,
   updateCategoriasConFotoAction,
+  updateMpAccessTokenAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -293,10 +379,13 @@ export default function SettingsView({
   especialidadTexto: string | null
   fotoUrl: string | null
   codigoSeguridadUpdatedAt: string | null
+  mpTokenConfigured: boolean
+  mpTokenLast4: string | null
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
+  updateMpAccessTokenAction: (token: string) => Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
@@ -485,11 +574,11 @@ export default function SettingsView({
               <input name="unipile_account_id" defaultValue={settings?.unipile_account_id ?? ''} className={inputClass} />
             </div>
             <div>
-              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                {t('mpToken')}
-                <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
-              </label>
-              <input name="mp_access_token" defaultValue={settings?.mp_access_token ?? ''} className={inputClass} />
+              <MercadoPagoTokenField
+                mpTokenConfigured={mpTokenConfigured}
+                mpTokenLast4={mpTokenLast4}
+                updateMpAccessTokenAction={updateMpAccessTokenAction}
+              />
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">

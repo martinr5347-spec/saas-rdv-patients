@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { createPaymentLink } from '@/lib/payments/mercadopago'
 import { dispatch, alertAdminEmail } from '@/lib/dispatcher'
 import { toTenantDate, toTenantTime } from '@/lib/utils/timezone'
+import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 
 // Calendly signe au format "t=<timestamp>,v1=<hmac>" sur le contenu "<timestamp>.<body>",
 // exactement comme Stripe. Le header s'appelle Calendly-Webhook-Signature (pas de préfixe "x-").
@@ -241,7 +242,12 @@ export async function POST(req: Request) {
 
   if (montoAcompte > 0) {
     try {
-      const accessToken = orgWithSettings.mp_access_token || process.env.MP_ACCESS_TOKEN_TEST
+      // org_settings.mp_access_token est chiffre en base (voir lib/crypto/settingsEncryption.ts).
+      // Ajoute ici en plus de app/api/public/reservar/[slug]/route.ts : ce webhook lit et utilise
+      // reellement ce champ pour les RDV Calendly avec acompte, exactement comme la reservation
+      // native -- sans ce dechiffrement, le chiffrement du token aurait casse silencieusement les
+      // liens de paiement pour tout RDV issu de Calendly.
+      const accessToken = orgWithSettings.mp_access_token ? decryptSecret(orgWithSettings.mp_access_token) : process.env.MP_ACCESS_TOKEN_TEST
       if (!accessToken) {
         console.warn('Calendly webhook: aucun token MercadoPago disponible')
       } else {

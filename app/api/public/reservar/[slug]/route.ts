@@ -4,6 +4,7 @@ import { calcularSlotsDelDia } from '@/lib/booking/calcularSlots'
 import { createPaymentLink } from '@/lib/payments/mercadopago'
 import { dispatch } from '@/lib/dispatcher'
 import { ahoraEnFuseau } from '@/lib/utils/timezone'
+import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 
 // Ajoute des jours a une date 'YYYY-MM-DD' en arithmetique UTC explicite -- new Date(`${fecha}T00:00:00`)
 // dependrait du fuseau local du processus Node qui execute cette route, pas de celui de l'organisation ;
@@ -300,7 +301,12 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   let linkPago: string | null = null
   if (montoAcompte > 0) {
     try {
-      const accessToken = settings.mp_access_token || process.env.MP_ACCESS_TOKEN_TEST
+      // settings.mp_access_token est chiffre en base (voir lib/crypto/settingsEncryption.ts) --
+      // le repli process.env.MP_ACCESS_TOKEN_TEST, lui, est deja en clair et ne doit jamais
+      // passer par decryptSecret(). Deja a l'interieur du try/catch englobant : un echec de
+      // dechiffrement (ex. valeur legacy encore en clair, non migree) degrade proprement vers
+      // "pas de lien de paiement" plutot que de faire planter toute la reservation.
+      const accessToken = settings.mp_access_token ? decryptSecret(settings.mp_access_token) : process.env.MP_ACCESS_TOKEN_TEST
       if (accessToken) {
         const notificationUrl = settings.mp_notification_url || `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`
         const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reservar/${params.slug}`

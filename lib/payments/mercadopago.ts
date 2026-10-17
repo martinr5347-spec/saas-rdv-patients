@@ -41,6 +41,26 @@ export async function createPaymentLink(params: {
   }
 }
 
+// Appel de test reel avant de stocker un nouveau token (Configuracion) -- un texte quelconque
+// ne doit jamais etre accepte comme token valide. Partage entre actions.ts et
+// app/api/settings/route.ts, les deux chemins de sauvegarde existants, pour ne pas dupliquer
+// l'appel brut deux fois.
+export async function validateMercadoPagoToken(
+  accessToken: string
+): Promise<{ valid: true; nickname: string | null; email: string | null } | { valid: false }> {
+  try {
+    const res = await fetch('https://api.mercadopago.com/users/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return { valid: false }
+    const data = await res.json().catch(() => null)
+    if (!data) return { valid: false }
+    return { valid: true, nickname: typeof data.nickname === 'string' ? data.nickname : null, email: typeof data.email === 'string' ? data.email : null }
+  } catch {
+    return { valid: false }
+  }
+}
+
 export function verifyMercadoPagoWebhook(
   xSignature: string | null,
   xRequestId: string | null,

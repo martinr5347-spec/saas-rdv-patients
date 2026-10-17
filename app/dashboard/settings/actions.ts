@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 import { getStripe } from '@/lib/payments/stripe'
+import { validateMercadoPagoToken } from '@/lib/payments/mercadopago'
+import { encryptSecret } from '@/lib/crypto/settingsEncryption'
 import {
   NotificationType,
   VariantId,
@@ -23,11 +25,12 @@ export async function updateSettings(formData: FormData) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('organization_id')
+    .select('organization_id, role')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
   if (!profile?.organization_id) return
+  const canManagePayments = profile.role === 'praticien' || profile.role === 'admin'
 
   if (user?.id) {
     const nombreCompleto = String(formData.get('nombre_completo') ?? '').trim() || null
@@ -62,7 +65,7 @@ export async function updateSettings(formData: FormData) {
 
   const { data: current } = await supabase
     .from('org_settings')
-    .select('unipile_account_id, unipile_connected_at')
+    .select('unipile_account_id, unipile_connected_at, mp_notification_url')
     .eq('organization_id', profile.organization_id)
     .maybeSingle()
 
@@ -72,6 +75,14 @@ export async function updateSettings(formData: FormData) {
     unipileAccountId,
     current?.unipile_connected_at ?? null
   )
+
+  // mp_notification_url touche a l'integration de paiement -- seuls praticien/admin peuvent la
+  // modifier (pas seulement l'appartenance a l'organisation). mp_access_token lui-meme n'est plus
+  // gere ici du tout : voir updateMpAccessToken ci-dessous (validation live + chiffrement +
+  // confirmation visuelle, impossibles a faire proprement dans ce formulaire generique).
+  const mpNotificationUrl = canManagePayments
+    ? String(formData.get('mp_notification_url') ?? '')
+    : current?.mp_notification_url ?? ''
 
   const variantes: Record<NotificationType, VariantId> = {} as Record<NotificationType, VariantId>
   for (const type of NOTIFICATION_TYPES) {
@@ -91,8 +102,7 @@ export async function updateSettings(formData: FormData) {
       calendly_url: String(formData.get('calendly_url') ?? ''),
       unipile_account_id: unipileAccountId,
       unipile_connected_at: unipileConnectedAt,
-      mp_access_token: String(formData.get('mp_access_token') ?? ''),
-      mp_notification_url: String(formData.get('mp_notification_url') ?? ''),
+      mp_notification_url: mpNotificationUrl,
       canal_email: formData.get('canal_email') === 'on',
       canal_whatsapp: formData.get('canal_whatsapp') === 'on',
       monnaie: String(formData.get('monnaie') ?? 'PEN'),
@@ -149,6 +159,51 @@ export async function updateSettings(formData: FormData) {
 
   revalidatePath('/dashboard', 'layout')
   redirect(`/dashboard/settings?saved=${Date.now()}`)
+}
+
+// Chemin de sauvegarde dedie au token MercadoPago -- separe du formulaire generique ci-dessus
+// car il a besoin de 3 choses qu'un simple champ de formData ne permet pas : validation live
+// contre l'API MercadoPago avant stockage, chiffrement, et une confirmation visuelle
+// ("Conectado como X") renvoyee au client apres sauvegarde.
+export async function updateMpAccessToken(token: string): Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }> {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id, role')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return { ok: false, error: 'No autorizado' }
+  if (profile.role !== 'praticien' && profile.role !== 'admin') {
+    return { ok: false, error: 'No tienes permiso para modificar la integración de pagos' }
+  }
+
+  const trimmed = token.trim()
+  if (!trimmed) return { ok: false, error: 'Ingresa un token' }
+
+  const validation = await validateMercadoPagoToken(trimmed)
+  if (!validation.valid) {
+    return { ok: false, error: 'Token MercadoPago inválido o expirado' }
+  }
+
+  const { error } = await supabase
+    .from('org_settings')
+    .update({ mp_access_token: encryptSecret(trimmed) })
+    .eq('organization_id', profile.organization_id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/dashboard/settings')
+  return {
+    ok: true,
+    nickname: validation.nickname ?? undefined,
+    email: validation.email ?? undefined,
+    last4: trimmed.slice(-4),
+  }
 }
 
 export async function updateCategoriasNotas(categorias: string[]) {

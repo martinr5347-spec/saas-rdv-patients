@@ -3,6 +3,16 @@ import ReservaView from './ReservaView'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 
+// Sans ceci, Next.js met en cache le rendu de cette page (le fetch interne du client Supabase
+// passe par le fetch patche par Next et se fait mettre en cache par le Data Cache) -- un
+// changement de slug (app/dashboard/disponibilidad/actions.ts) ne revalide pas ce chemin, une
+// page deja visitee avant le changement resterait alors figee sur l'ancienne organisation au lieu
+// de refleter le nouveau mapping slug -> organisation. `dynamic` seul ne suffit pas a desactiver
+// le Data Cache dans cette configuration -- verifie empiriquement, d'ou l'ajout explicite de
+// fetchCache.
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 export default async function ReservaPage({ params }: { params: { slug: string } }) {
   const supabase = createServiceRoleClient()
 

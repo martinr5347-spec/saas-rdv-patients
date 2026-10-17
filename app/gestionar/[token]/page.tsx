@@ -3,6 +3,10 @@ import GestionarView from './GestionarView'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 
+// Meme raison que app/reservar/[slug]/page.tsx -- ne jamais mettre en cache ce rendu.
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 export default async function GestionarPage({ params }: { params: { token: string } }) {
   const supabase = createServiceRoleClient()
 

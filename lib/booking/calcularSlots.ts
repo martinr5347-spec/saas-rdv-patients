@@ -41,6 +41,14 @@ function diaSemanaDeFecha(fecha: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 
+// Nombre de jours (entier, peut etre negatif) entre deux dates 'YYYY-MM-DD', en UTC explicite --
+// meme raison que diaSemanaDeFecha ci-dessus.
+function diferenciaDiasUtc(fecha: string, fechaRef: string): number {
+  const [y1, m1, d1] = fecha.split('-').map(Number)
+  const [y2, m2, d2] = fechaRef.split('-').map(Number)
+  return Math.round((Date.UTC(y1, m1 - 1, d1) - Date.UTC(y2, m2 - 1, d2)) / 86400000)
+}
+
 /**
  * Calcule les creneaux disponibles pour UNE date donnee.
  * `ahoraLocal` = { fecha: 'YYYY-MM-DD', minutosDesdeMedianoche: number } dans le fuseau de l'organisation,
@@ -64,9 +72,12 @@ export function calcularSlotsDelDia(
   const franjasDelDia = franjas.filter((f) => f.diaSemana === diaSemana)
   if (franjasDelDia.length === 0) return []
 
-  // Fenetre d'anticipation minimale : ne s'applique qu'au jour meme (un jour futur n'est jamais
-  // concerne, un jour passe est deja exclu ci-dessus).
-  const limiteMinHoy = ahoraLocal.minutosDesdeMedianoche + parametros.anticipacionMinHoras * 60
+  // Fenetre d'anticipation minimale, exprimee en minutes depuis "maintenant" quel que soit le
+  // nombre de jours d'ecart -- ne pas se limiter au jour meme : avec un anticipacion_min_horas
+  // superieur aux heures restantes aujourd'hui (ex. 72h), des jours entiers a venir doivent aussi
+  // etre exclus, pas seulement les creneaux du jour courant.
+  const diasDepuisAujourdhui = diferenciaDiasUtc(fecha, ahoraLocal.fecha)
+  const limiteMinutosDepuisMaintenant = parametros.anticipacionMinHoras * 60
 
   const ocupados = citasExistentes
     .filter((c) => c.fecha === fecha)
@@ -85,7 +96,8 @@ export function calcularSlotsDelDia(
     while (t + parametros.duracionCitaMin <= finFranja) {
       const finSlot = t + parametros.duracionCitaMin
       const chevaucheOcupado = ocupados.some((o) => t < o.fin && finSlot > o.inicio)
-      const dentroAnticipacionMin = fecha !== ahoraLocal.fecha || t >= limiteMinHoy
+      const minutosDepuisMaintenant = diasDepuisAujourdhui * 1440 + t - ahoraLocal.minutosDesdeMedianoche
+      const dentroAnticipacionMin = minutosDepuisMaintenant >= limiteMinutosDepuisMaintenant
 
       if (!chevaucheOcupado && dentroAnticipacionMin) {
         slots.push(aHHMM(t))

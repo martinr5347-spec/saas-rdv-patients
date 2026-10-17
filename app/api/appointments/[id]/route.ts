@@ -90,6 +90,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     .single()
 
   if (error) {
+    // Contrainte d'exclusion de la migration 033 (appointments_no_solapamiento) -- un
+    // redimensionnement de hora_fin peut faire chevaucher ce RDV avec un autre existant. Ne
+    // jamais laisser fuiter le message Postgres brut (nom de contrainte, etc.) au client.
+    if (error.code === '23P01') {
+      return NextResponse.json({ error: 'Este horario se superpone con otra cita existente' }, { status: 409 })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

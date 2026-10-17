@@ -30,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const updateData: Pick<
     AppointmentUpdate,
-    'statut' | 'presente' | 'montant_consultation' | 'concepto_consultation'
+    'statut' | 'presente' | 'montant_consultation' | 'concepto_consultation' | 'hora_fin'
   > = {}
 
   if (body.statut !== undefined) {
@@ -61,6 +61,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (body.concepto_consultation !== undefined) {
     const concepto = body.concepto_consultation === null ? null : String(body.concepto_consultation).trim().slice(0, 120)
     updateData.concepto_consultation = concepto || null
+  }
+
+  if (body.hora_fin !== undefined) {
+    if (!/^\d{2}:\d{2}$/.test(body.hora_fin)) {
+      return NextResponse.json({ error: 'Hora inválida' }, { status: 400 })
+    }
+    // Ne jamais faire confiance a une hora_cita envoyee par le client -- relire la vraie valeur en base.
+    const { data: existing } = await supabase.from('appointments').select('hora_cita').eq('id', params.id).maybeSingle()
+    if (!existing) {
+      return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
+    }
+    if (`${body.hora_fin}:00` <= existing.hora_cita) {
+      return NextResponse.json({ error: 'La hora de fin debe ser posterior a la hora de inicio' }, { status: 400 })
+    }
+    updateData.hora_fin = body.hora_fin
   }
 
   if (Object.keys(updateData).length === 0) {

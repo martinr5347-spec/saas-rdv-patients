@@ -218,5 +218,18 @@
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
       ]
     }
+  },
+  "booking": {
+    "notFound": "Esta página de reserva no existe o ya no está disponible.",
+    "loading": "Cargando disponibilidad...",
+    "selectDate": "Selecciona una fecha",
+    "selectTime": "Selecciona un horario",
+    "noSlotsThisDay": "No hay horarios disponibles este día.",
+    "back": "Volver",
+    "nombreLabel": "Nombre completo",
+    "emailLabel": "Correo electrónico",
+    "telefonoLabel": "Teléfono",
+    "confirmarButton": "Confirmar reserva",
+    "comingSoonMessage": "Esta función estará disponible muy pronto"
   }
 }

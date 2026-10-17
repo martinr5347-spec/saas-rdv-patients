@@ -218,5 +218,18 @@
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
       ]
     }
+  },
+  "booking": {
+    "notFound": "Esta página de agendamento não existe ou não está mais disponível.",
+    "loading": "Carregando disponibilidade...",
+    "selectDate": "Selecione uma data",
+    "selectTime": "Selecione um horário",
+    "noSlotsThisDay": "Não há horários disponíveis neste dia.",
+    "back": "Voltar",
+    "nombreLabel": "Nome completo",
+    "emailLabel": "E-mail",
+    "telefonoLabel": "Telefone",
+    "confirmarButton": "Confirmar agendamento",
+    "comingSoonMessage": "Esta função estará disponível muito em breve"
   }
 }

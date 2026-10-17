@@ -5,6 +5,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 import { formatDisplayDate } from '@/lib/utils/timezone'
+import Avatar from '@/components/ui/Avatar'
 
 const BOOKING_MESSAGES: Record<'es' | 'pt', typeof esMessages.booking> = {
   es: esMessages.booking,
@@ -63,12 +64,14 @@ export default function ReservaView({
   organizationNombre,
   organizationPais,
   organizationAdresse,
+  fotoUrl,
   slug,
   langue,
 }: {
   organizationNombre: string
   organizationPais: string
   organizationAdresse: string | null
+  fotoUrl: string | null
   slug: string
   langue: 'es' | 'pt'
 }) {
@@ -185,6 +188,9 @@ export default function ReservaView({
     <div className="min-h-screen bg-[#F5F0E8] px-4 py-10">
       <Toaster position="bottom-right" />
       <div className="mx-auto max-w-md">
+        <div className="mb-3 flex justify-center">
+          <Avatar name={organizationNombre} photoUrl={fotoUrl} size={64} />
+        </div>
         <h1 className="mb-1 text-center text-xl font-semibold text-gray-800">{organizationNombre}</h1>
         <p className="mb-6 text-center text-sm text-gray-500">{langue === 'pt' ? 'Agende sua consulta' : 'Reserva tu cita'}</p>
 

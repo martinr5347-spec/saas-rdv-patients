@@ -34,11 +34,22 @@ export default async function ReservaPage({ params }: { params: { slug: string }
     )
   }
 
+  // Un seul praticien par organisation (cible produit actuelle : cabinet individuel) -- pas
+  // besoin de gerer plusieurs photos. maybeSingle() renvoie null proprement si aucun praticien
+  // n'est trouve, la page ne doit pas planter dans ce cas.
+  const { data: praticien } = await supabase
+    .from('users')
+    .select('foto_url')
+    .eq('organization_id', org.id)
+    .eq('role', 'praticien')
+    .maybeSingle()
+
   return (
     <ReservaView
       organizationNombre={org.nom}
       organizationPais={org.pays}
       organizationAdresse={org.adresse}
+      fotoUrl={praticien?.foto_url ?? null}
       slug={params.slug}
       langue={org.langue as 'es' | 'pt'}
     />

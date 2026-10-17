@@ -51,24 +51,32 @@ function plagesSeSuperponen(a: Plage, b: Plage): boolean {
   return a.horaInicio < b.horaFin && b.horaInicio < a.horaFin
 }
 
-// Validation client avant sauvegarde, pour un retour immediat -- revalidee cote serveur dans
-// actions.ts (ne jamais faire confiance au seul controle client).
+// Validation d'un jeu de plages (format + chevauchement) -- reutilisee pour le modele recurrent
+// (un jour a la fois, via validarHorarios ci-dessous) et pour une surcharge datee (une seule date
+// a la fois). Retour immediat cote client, revalidee cote serveur dans actions.ts dans tous les
+// cas (ne jamais faire confiance au seul controle client).
+function validarPlages(plages: Plage[], label: string): string | null {
+  for (const p of plages) {
+    if (!(p.horaFin > p.horaInicio)) {
+      return `${label}: la hora de fin debe ser posterior a la de inicio`
+    }
+  }
+  for (let i = 0; i < plages.length; i++) {
+    for (let j = i + 1; j < plages.length; j++) {
+      if (plagesSeSuperponen(plages[i], plages[j])) {
+        return `${label}: hay horarios que se superponen`
+      }
+    }
+  }
+  return null
+}
+
 function validarHorarios(horarios: DiaHorario[]): string | null {
   for (const dia of horarios) {
     if (!dia.abierto) continue
     const label = DIAS_SEMANA.find((d) => d.valor === dia.diaSemana)?.label ?? ''
-    for (const p of dia.plages) {
-      if (!(p.horaFin > p.horaInicio)) {
-        return `${label}: la hora de fin debe ser posterior a la de inicio`
-      }
-    }
-    for (let i = 0; i < dia.plages.length; i++) {
-      for (let j = i + 1; j < dia.plages.length; j++) {
-        if (plagesSeSuperponen(dia.plages[i], dia.plages[j])) {
-          return `${label}: hay horarios que se superponen`
-        }
-      }
-    }
+    const error = validarPlages(dia.plages, label)
+    if (error) return error
   }
   return null
 }
@@ -79,10 +87,39 @@ interface BlockedDateRow {
   motivo: string | null
 }
 
+interface OverrideRow {
+  id: string
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+}
+
+interface OverrideGroup {
+  fecha: string
+  plages: Plage[]
+}
+
+function agruparOverrides(rows: OverrideRow[]): OverrideGroup[] {
+  const porFecha = new Map<string, Plage[]>()
+  for (const r of rows) {
+    const lista = porFecha.get(r.fecha) ?? []
+    lista.push({ horaInicio: r.hora_inicio.slice(0, 5), horaFin: r.hora_fin.slice(0, 5) })
+    porFecha.set(r.fecha, lista)
+  }
+  return Array.from(porFecha.entries())
+    .map(([fecha, plages]) => ({ fecha, plages: plages.sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)) }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+function formatFecha(fecha: string): string {
+  return new Date(`${fecha}T00:00:00`).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export default function DisponibilidadView({
   organizationSlug,
   availability,
   blockedDates,
+  availabilityOverrides,
   duracionCitaMin,
   bufferMin,
   anticipacionMinHoras,
@@ -91,10 +128,13 @@ export default function DisponibilidadView({
   updateSlugAction,
   addBlockedDateAction,
   removeBlockedDateAction,
+  updateAvailabilityOverrideAction,
+  removeAvailabilityOverrideAction,
 }: {
   organizationSlug: string | null
   availability: AvailabilityRow[]
   blockedDates: BlockedDateRow[]
+  availabilityOverrides: OverrideRow[]
   duracionCitaMin: number
   bufferMin: number
   anticipacionMinHoras: number
@@ -103,6 +143,8 @@ export default function DisponibilidadView({
   updateSlugAction: typeof import('./actions').updateSlug
   addBlockedDateAction: typeof import('./actions').addBlockedDate
   removeBlockedDateAction: typeof import('./actions').removeBlockedDate
+  updateAvailabilityOverrideAction: typeof import('./actions').updateAvailabilityOverride
+  removeAvailabilityOverrideAction: typeof import('./actions').removeAvailabilityOverride
 }) {
   // État local : un toggle "abierto" + une ou plusieurs plages (horaInicio/horaFin) par jour,
   // pré-rempli depuis availability -- toutes les lignes du jour, pas juste la première (une
@@ -136,6 +178,14 @@ export default function DisponibilidadView({
   const [nuevaFecha, setNuevaFecha] = useState('')
   const [nuevoMotivo, setNuevoMotivo] = useState('')
   const [blocked, setBlocked] = useState(blockedDates)
+
+  // Mode personnalise : surcharges par date precise, independantes du modele recurrent -- memes
+  // helpers plages (updateOverridePlage/agregarOverridePlage/quitarOverridePlage) que pour
+  // horarios ci-dessus, mais sur un seul jour a la fois (pas un tableau de 7).
+  const [overrides, setOverrides] = useState<OverrideGroup[]>(() => agruparOverrides(availabilityOverrides))
+  const [overrideFecha, setOverrideFecha] = useState('')
+  const [overridePlages, setOverridePlages] = useState<Plage[]>([{ horaInicio: '09:00', horaFin: '18:00' }])
+  const [overrideSaving, setOverrideSaving] = useState(false)
 
   const toggleDia = (i: number, abierto: boolean) => {
     setHorarios((prev) => prev.map((h, j) => (j === i ? { ...h, abierto } : h)))
@@ -217,6 +267,55 @@ export default function DisponibilidadView({
     const result = await removeBlockedDateAction(id)
     if (result.ok) {
       setBlocked((prev) => prev.filter((b) => b.id !== id))
+    } else {
+      toast.error(result.error ?? 'Error al eliminar')
+    }
+  }
+
+  const updateOverridePlage = (plageIdx: number, campo: keyof Plage, valor: string) => {
+    setOverridePlages((prev) => prev.map((p, k) => (k === plageIdx ? { ...p, [campo]: valor } : p)))
+  }
+
+  const agregarOverridePlage = () => {
+    setOverridePlages((prev) => (prev.length < MAX_PLAGES_POR_DIA ? [...prev, { horaInicio: '09:00', horaFin: '18:00' }] : prev))
+  }
+
+  const quitarOverridePlage = (plageIdx: number) => {
+    if (plageIdx === 0) return
+    setOverridePlages((prev) => prev.filter((_, k) => k !== plageIdx))
+  }
+
+  const guardarOverride = async () => {
+    if (!overrideFecha) {
+      toast.error('Selecciona una fecha')
+      return
+    }
+    const errorValidacion = validarPlages(overridePlages, 'Horario personalizado')
+    if (errorValidacion) {
+      toast.error(errorValidacion)
+      return
+    }
+    setOverrideSaving(true)
+    const result = await updateAvailabilityOverrideAction(overrideFecha, overridePlages)
+    if (result.ok) {
+      setOverrides((prev) => {
+        const sinEstaFecha = prev.filter((o) => o.fecha !== overrideFecha)
+        return [...sinEstaFecha, { fecha: overrideFecha, plages: overridePlages }].sort((a, b) => a.fecha.localeCompare(b.fecha))
+      })
+      setOverrideFecha('')
+      setOverridePlages([{ horaInicio: '09:00', horaFin: '18:00' }])
+      toast.success('Horario personalizado guardado')
+    } else {
+      toast.error(result.error ?? 'Error al guardar')
+    }
+    setOverrideSaving(false)
+  }
+
+  const quitarOverride = async (fecha: string) => {
+    const result = await removeAvailabilityOverrideAction(fecha)
+    if (result.ok) {
+      setOverrides((prev) => prev.filter((o) => o.fecha !== fecha))
+      toast.success('Horario personalizado eliminado')
     } else {
       toast.error(result.error ?? 'Error al eliminar')
     }
@@ -375,6 +474,83 @@ export default function DisponibilidadView({
           />
           <button type="button" onClick={agregarFechaBloqueada} disabled={!nuevaFecha} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50">
             Bloquear
+          </button>
+        </div>
+      </div>
+
+      {/* Horarios personalizados -- surcharges par date precise, "mode personnalise" pour un
+          emploi du temps irregulier. Reutilise le meme pattern multi-plages que le modele
+          recurrent ci-dessus, et le meme input type="date" que les fechas bloqueadas. */}
+      <div className="mt-6 border-t border-gray-100 pt-5">
+        <div className="mb-1 flex items-center gap-1.5">
+          <h3 className="text-xs font-semibold text-gray-700">Horarios personalizados</h3>
+          <InfoTooltip text="Define un horario distinto para una fecha específica -- reemplaza por completo el horario recurrente ese día. Útil si tu disponibilidad cambia semana a semana." />
+        </div>
+        <div className="mb-3 space-y-1">
+          {overrides.map((o) => (
+            <div key={o.fecha} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
+              <span>
+                {formatFecha(o.fecha)}
+                <span className="ml-2 text-gray-400">
+                  · {o.plages.map((p) => `${p.horaInicio}-${p.horaFin}`).join(', ')}
+                </span>
+              </span>
+              <button type="button" onClick={() => quitarOverride(o.fecha)} className="text-xs text-gray-400 hover:text-red-500">
+                Quitar
+              </button>
+            </div>
+          ))}
+          {overrides.length === 0 && <p className="text-xs text-gray-400">Ningún horario personalizado configurado.</p>}
+        </div>
+
+        <div className="rounded-xl border border-gray-200 p-3">
+          <input
+            type="date"
+            value={overrideFecha}
+            onChange={(e) => setOverrideFecha(e.target.value)}
+            className="mb-2 rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+          />
+          <div className="flex flex-col gap-1.5">
+            {overridePlages.map((p, k) => (
+              <div key={k} className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={p.horaInicio}
+                  onChange={(e) => updateOverridePlage(k, 'horaInicio', e.target.value)}
+                  className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="time"
+                  value={p.horaFin}
+                  onChange={(e) => updateOverridePlage(k, 'horaFin', e.target.value)}
+                  className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
+                />
+                {k > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => quitarOverridePlage(k)}
+                    aria-label="Quitar franja"
+                    className="text-xs text-gray-400 hover:text-red-500"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {overridePlages.length < MAX_PLAGES_POR_DIA && (
+              <button type="button" onClick={agregarOverridePlage} className="self-start text-xs font-medium text-[#6926D2] hover:underline">
+                + Agregar franja
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={guardarOverride}
+            disabled={overrideSaving || !overrideFecha}
+            className="mt-3 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50"
+          >
+            {overrideSaving ? '...' : 'Guardar fecha personalizada'}
           </button>
         </div>
       </div>

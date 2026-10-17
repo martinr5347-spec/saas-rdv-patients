@@ -149,6 +149,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     .eq('fecha_cita', fecha)
     .neq('statut', 'anulado')
     .neq('id', appt.id) // le RDV courant ne doit pas se bloquer lui-meme dans le calcul des creneaux
+  const { data: overrides } = await supabase
+    .from('org_availability_overrides')
+    .select('fecha, hora_inicio, hora_fin')
+    .eq('organization_id', appt.organization_id)
+    .eq('fecha', fecha)
 
   const ahoraLocal = ahoraEnFuseau(org.fuseau)
 
@@ -163,7 +168,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
       anticipacionMinHoras: settingsRow.anticipacion_min_horas,
       anticipacionMaxDias: settingsRow.anticipacion_max_dias,
     },
-    ahoraLocal
+    ahoraLocal,
+    (overrides ?? []).map((o) => ({ fecha: o.fecha, horaInicio: o.hora_inicio.slice(0, 5), horaFin: o.hora_fin.slice(0, 5) }))
   )
 
   if (!slotsDisponibles.includes(hora)) {

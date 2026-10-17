@@ -8,6 +8,12 @@ export interface FechaBloqueada {
   fecha: string // 'YYYY-MM-DD'
 }
 
+export interface FranjaOverride {
+  fecha: string // 'YYYY-MM-DD'
+  horaInicio: string // 'HH:mm'
+  horaFin: string
+}
+
 export interface CitaExistente {
   fecha: string
   horaInicio: string
@@ -60,16 +66,26 @@ export function calcularSlotsDelDia(
   fechasBloqueadas: FechaBloqueada[],
   citasExistentes: CitaExistente[],
   parametros: ParametrosReserva,
-  ahoraLocal: { fecha: string; minutosDesdeMedianoche: number }
+  ahoraLocal: { fecha: string; minutosDesdeMedianoche: number },
+  overrides: FranjaOverride[] = []
 ): string[] {
+  // Priorite de resolution pour une date donnee : bloquee > surcharge > modele recurrent.
+  // Le blocage prime toujours, meme si une surcharge existe pour ce jour-la (decision actee :
+  // pas d'ambiguite entre les deux).
   if (fechasBloqueadas.some((b) => b.fecha === fecha)) return []
 
   // Fonction pure et autosuffisante : une date passee ne doit jamais renvoyer de creneau,
   // meme si l'appelant (route API) filtre deja ce cas en amont -- ne pas dependre de ca.
   if (fecha < ahoraLocal.fecha) return []
 
-  const diaSemana = diaSemanaDeFecha(fecha)
-  const franjasDelDia = franjas.filter((f) => f.diaSemana === diaSemana)
+  // Une surcharge remplace entierement le modele recurrent pour cette date -- jamais une fusion
+  // des deux (sinon risque de creneaux incoherents si le praticien ne precise qu'une partie de
+  // sa journee dans la surcharge).
+  const overridesDelDia = overrides.filter((o) => o.fecha === fecha)
+  const franjasDelDia =
+    overridesDelDia.length > 0
+      ? overridesDelDia.map((o) => ({ horaInicio: o.horaInicio, horaFin: o.horaFin }))
+      : franjas.filter((f) => f.diaSemana === diaSemanaDeFecha(fecha))
   if (franjasDelDia.length === 0) return []
 
   // Fenetre d'anticipation minimale, exprimee en minutes depuis "maintenant" quel que soit le

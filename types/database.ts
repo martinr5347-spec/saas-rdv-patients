@@ -240,6 +240,35 @@ export interface Database {
           { foreignKeyName: 'org_availability_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
         ]
       }
+      org_availability_overrides: {
+        Row: {
+          id: string
+          organization_id: string
+          fecha: string
+          hora_inicio: string
+          hora_fin: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          fecha: string
+          hora_inicio: string
+          hora_fin: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          fecha?: string
+          hora_inicio?: string
+          hora_fin?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'org_availability_overrides_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
       org_blocked_dates: {
         Row: {
           id: string

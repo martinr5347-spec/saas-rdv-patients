@@ -108,6 +108,75 @@ export async function updateDisponibilidad(
   return { ok: true }
 }
 
+// Surcharge pour une date precise ("mode personnalise") -- remplace entierement le modele
+// recurrent pour cette date (jamais une fusion), pour un praticien a emploi du temps irregulier.
+// Remplacement complet des plages de cette date (idempotent si on resauvegarde la meme date),
+// meme pattern que updateDisponibilidad ci-dessus.
+export async function updateAvailabilityOverride(
+  fecha: string,
+  plages: { horaInicio: string; horaFin: string }[]
+) {
+  const supabase = createClient()
+  const organizationId = await getOrganizationId(supabase)
+  if (!organizationId) return { ok: false, error: 'No autorizado' }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return { ok: false, error: 'Fecha inválida' }
+  }
+
+  const plagesValidas = plages.filter(
+    (p) => /^\d{2}:\d{2}$/.test(p.horaInicio) && /^\d{2}:\d{2}$/.test(p.horaFin) && p.horaFin > p.horaInicio
+  )
+  if (plagesValidas.length === 0) {
+    return { ok: false, error: 'Agrega al menos una franja válida' }
+  }
+  if (plagesValidas.length > MAX_PLAGES_POR_DIA) {
+    return { ok: false, error: 'Demasiadas franjas en un mismo día' }
+  }
+  for (let i = 0; i < plagesValidas.length; i++) {
+    for (let j = i + 1; j < plagesValidas.length; j++) {
+      if (plagesSeSuperponen(plagesValidas[i], plagesValidas[j])) {
+        return { ok: false, error: 'Hay horarios que se superponen en un mismo día' }
+      }
+    }
+  }
+
+  await supabase.from('org_availability_overrides').delete().eq('organization_id', organizationId).eq('fecha', fecha)
+  const { error } = await supabase.from('org_availability_overrides').insert(
+    plagesValidas.map((p) => ({
+      organization_id: organizationId,
+      fecha,
+      hora_inicio: p.horaInicio,
+      hora_fin: p.horaFin,
+    }))
+  )
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/dashboard/disponibilidad')
+  return { ok: true }
+}
+
+// Supprime toute la surcharge d'une date (toutes ses plages) -- la date retombe automatiquement
+// sur le modele recurrent, rien d'autre a faire (calcularSlotsDelDia ne trouve plus de surcharge
+// pour cette fecha et retombe sur org_availability).
+export async function removeAvailabilityOverride(fecha: string) {
+  const supabase = createClient()
+  const organizationId = await getOrganizationId(supabase)
+  if (!organizationId) return { ok: false, error: 'No autorizado' }
+
+  const { error } = await supabase
+    .from('org_availability_overrides')
+    .delete()
+    .eq('organization_id', organizationId)
+    .eq('fecha', fecha)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/dashboard/disponibilidad')
+  return { ok: true }
+}
+
 export async function updateSlug(slugPropuesto: string) {
   const supabase = createClient()
   const organizationId = await getOrganizationId(supabase)

@@ -89,13 +89,20 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
       .eq('fecha_cita', fechaParam)
       .neq('statut', 'anulado')
 
+    const { data: overrides } = await supabase
+      .from('org_availability_overrides')
+      .select('fecha, hora_inicio, hora_fin')
+      .eq('organization_id', org.id)
+      .eq('fecha', fechaParam)
+
     const slots = calcularSlotsDelDia(
       fechaParam,
       franjasMapeadas,
       bloqueadas ?? [],
       (citas ?? []).map((c) => ({ fecha: c.fecha_cita, horaInicio: c.hora_cita.slice(0, 5), horaFin: c.hora_fin?.slice(0, 5) ?? null })),
       parametros,
-      ahoraLocal
+      ahoraLocal,
+      (overrides ?? []).map((o) => ({ fecha: o.fecha, horaInicio: o.hora_inicio.slice(0, 5), horaFin: o.hora_fin.slice(0, 5) }))
     )
 
     return NextResponse.json({ slots })
@@ -119,17 +126,30 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
     .lte('fecha_cita', ultimoDia)
     .neq('statut', 'anulado')
 
+  const { data: overridesMes } = await supabase
+    .from('org_availability_overrides')
+    .select('fecha, hora_inicio, hora_fin')
+    .eq('organization_id', org.id)
+    .gte('fecha', primerDia)
+    .lte('fecha', ultimoDia)
+
   const citasMapeadas = (citasMes ?? []).map((c) => ({
     fecha: c.fecha_cita,
     horaInicio: c.hora_cita.slice(0, 5),
     horaFin: c.hora_fin?.slice(0, 5) ?? null,
   }))
 
+  const overridesMapeados = (overridesMes ?? []).map((o) => ({
+    fecha: o.fecha,
+    horaInicio: o.hora_inicio.slice(0, 5),
+    horaFin: o.hora_fin.slice(0, 5),
+  }))
+
   const diasConDisponibilidad: string[] = []
   let fechaCursor = primerDia
   while (fechaCursor <= ultimoDia) {
     if (fechaCursor >= hoy && fechaCursor <= maxFechaStr) {
-      const slots = calcularSlotsDelDia(fechaCursor, franjasMapeadas, bloqueadas ?? [], citasMapeadas, parametros, ahoraLocal)
+      const slots = calcularSlotsDelDia(fechaCursor, franjasMapeadas, bloqueadas ?? [], citasMapeadas, parametros, ahoraLocal, overridesMapeados)
       if (slots.length > 0) diasConDisponibilidad.push(fechaCursor)
     }
     fechaCursor = addDiasUtc(fechaCursor, 1)
@@ -216,6 +236,11 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     .eq('organization_id', org.id)
     .eq('fecha_cita', fecha)
     .neq('statut', 'anulado')
+  const { data: overrides } = await supabase
+    .from('org_availability_overrides')
+    .select('fecha, hora_inicio, hora_fin')
+    .eq('organization_id', org.id)
+    .eq('fecha', fecha)
 
   const ahoraLocal = ahoraEnFuseau(org.fuseau)
 
@@ -230,7 +255,8 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       anticipacionMinHoras: settings.anticipacion_min_horas,
       anticipacionMaxDias: settings.anticipacion_max_dias,
     },
-    ahoraLocal
+    ahoraLocal,
+    (overrides ?? []).map((o) => ({ fecha: o.fecha, horaInicio: o.hora_inicio.slice(0, 5), horaFin: o.hora_fin.slice(0, 5) }))
   )
 
   if (!slotsDisponibles.includes(hora)) {

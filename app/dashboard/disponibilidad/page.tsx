@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import DisponibilidadView from './DisponibilidadView'
-import { updateDisponibilidad, updateSlug, addBlockedDate, removeBlockedDate } from './actions'
+import {
+  updateDisponibilidad,
+  updateSlug,
+  addBlockedDate,
+  removeBlockedDate,
+  updateAvailabilityOverride,
+  removeAvailabilityOverride,
+} from './actions'
 
 export default async function DisponibilidadPage() {
   const supabase = createClient()
@@ -38,11 +45,18 @@ export default async function DisponibilidadPage() {
     .eq('organization_id', profile?.organization_id ?? '')
     .order('fecha')
 
+  const { data: availabilityOverrides } = await supabase
+    .from('org_availability_overrides')
+    .select('id, fecha, hora_inicio, hora_fin')
+    .eq('organization_id', profile?.organization_id ?? '')
+    .order('fecha')
+
   return (
     <DisponibilidadView
       organizationSlug={organization?.slug ?? null}
       availability={availability ?? []}
       blockedDates={blockedDates ?? []}
+      availabilityOverrides={availabilityOverrides ?? []}
       duracionCitaMin={settings?.duracion_cita_min ?? 30}
       bufferMin={settings?.buffer_min ?? 0}
       anticipacionMinHoras={settings?.anticipacion_min_horas ?? 2}
@@ -51,6 +65,8 @@ export default async function DisponibilidadPage() {
       updateSlugAction={updateSlug}
       addBlockedDateAction={addBlockedDate}
       removeBlockedDateAction={removeBlockedDate}
+      updateAvailabilityOverrideAction={updateAvailabilityOverride}
+      removeAvailabilityOverrideAction={removeAvailabilityOverride}
     />
   )
 }

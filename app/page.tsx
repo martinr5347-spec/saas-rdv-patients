@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
@@ -9,6 +10,24 @@ import PilarWhatsapp from '@/components/landing/PilarWhatsapp'
 import PilarReserva from '@/components/landing/PilarReserva'
 import PilarIngresos from '@/components/landing/PilarIngresos'
 import PilarFichaPaciente from '@/components/landing/PilarFichaPaciente'
+
+// Icones inline (pas de nouvelle dependance), meme esprit que components/layout/icons.tsx
+// sans en dependre -- la landing publique ne doit pas coupler au bundle du dashboard.
+function MenuIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
+function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  )
+}
 
 export default function HomePage() {
   const { locale, setLocale } = useLocale()
@@ -28,44 +47,90 @@ function HomeContent({
   setLocale: (l: 'es' | 'pt') => void
 }) {
   const t = useTranslations('home')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const localeButtons = (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setLocale('es')
+          setMobileMenuOpen(false)
+        }}
+        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+          locale === 'es'
+            ? 'border-[#6926D2] bg-[#6926D2]/20 text-white'
+            : 'border-white/20 text-gray-400 hover:border-white/40'
+        }`}
+      >
+        <span>🇪🇸</span> Español
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setLocale('pt')
+          setMobileMenuOpen(false)
+        }}
+        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+          locale === 'pt'
+            ? 'border-[#6926D2] bg-[#6926D2]/20 text-white'
+            : 'border-white/20 text-gray-400 hover:border-white/40'
+        }`}
+      >
+        <span>🇧🇷</span> Português
+      </button>
+    </>
+  )
 
   return (
     <div className="min-h-screen bg-[#0A1422]">
-      <header className="border-b border-white/10">
+      <header className="relative border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image src="/images/nucleo-icon-inverse.png" alt="Núcleo" width={28} height={28} />
             <span className="font-semibold text-lg text-white">Núcleo</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setLocale('es')}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  locale === 'es'
-                    ? 'border-[#6926D2] bg-[#6926D2]/20 text-white'
-                    : 'border-white/20 text-gray-400 hover:border-white/40'
-                }`}
-              >
-                <span>🇪🇸</span> Español
-              </button>
-              <button
-                type="button"
-                onClick={() => setLocale('pt')}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  locale === 'pt'
-                    ? 'border-[#6926D2] bg-[#6926D2]/20 text-white'
-                    : 'border-white/20 text-gray-400 hover:border-white/40'
-                }`}
-              >
-                <span>🇧🇷</span> Português
-              </button>
-            </div>
+
+          {/* Desktop (>= md) : comportement inchange */}
+          <div className="hidden items-center gap-4 md:flex">
+            <div className="flex gap-2">{localeButtons}</div>
             <Link href="/login" className="text-sm text-gray-300 hover:text-white">{t('navLogin')}</Link>
             <Link href="/register" className="text-sm rounded-md bg-[#6926D2] px-3 py-1.5 text-white hover:bg-[#5a20b3]">{t('navRegister')}</Link>
           </div>
+
+          {/* Mobile (< md) : bouton menu compact, evite le debordement horizontal a 390px */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={mobileMenuOpen}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 text-white md:hidden"
+          >
+            {mobileMenuOpen ? <CloseIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-white/10 bg-[#0A1422] px-4 py-4 md:hidden">
+            <div className="flex gap-2">{localeButtons}</div>
+            <div className="mt-4 flex flex-col gap-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md border border-white/20 px-3 py-2 text-center text-sm text-gray-200 hover:text-white"
+              >
+                {t('navLogin')}
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md bg-[#6926D2] px-3 py-2 text-center text-sm text-white hover:bg-[#5a20b3]"
+              >
+                {t('navRegister')}
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-16 sm:py-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">

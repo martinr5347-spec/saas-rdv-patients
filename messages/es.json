@@ -78,7 +78,11 @@
     "loginLink": "Inicia sesión",
     "showPassword": "Mostrar contraseña",
     "hidePassword": "Ocultar contraseña",
-    "dataProtected": "Datos protegidos"
+    "dataProtected": "Datos protegidos",
+    "passwordRuleError": "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número",
+    "passwordStrengthFaible": "Contraseña débil",
+    "passwordStrengthMoyenne": "Contraseña media",
+    "passwordStrengthForte": "Contraseña fuerte"
   },
   "dashboard": {
     "nav": {

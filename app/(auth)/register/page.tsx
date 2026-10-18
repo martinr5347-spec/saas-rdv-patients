@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { useLocale, MESSAGES } from '@/lib/hooks/useLocale'
 import { MailIcon, LockIcon } from '@/components/auth/icons'
+import { meetsMinimumPasswordRule, evaluatePasswordStrength, type PasswordStrength } from '@/lib/utils/passwordStrength'
 
 function BuildingIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -31,6 +32,30 @@ function EyeOffIcon(props: React.SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.6 10.7a2.75 2.75 0 0 0 3.9 3.9M7 7.2C4.6 8.8 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.8 0 3.3-.5 4.6-1.3M12 5.5c6 0 9.5 6.5 9.5 6.5a14 14 0 0 1-2.4 3.1" />
     </svg>
+  )
+}
+
+const STRENGTH_STYLES: Record<PasswordStrength, { width: string; bar: string; text: string }> = {
+  faible: { width: 'w-1/3', bar: 'bg-red-500', text: 'text-red-600' },
+  moyenne: { width: 'w-2/3', bar: 'bg-orange-500', text: 'text-orange-600' },
+  forte: { width: 'w-full', bar: 'bg-emerald-500', text: 'text-emerald-600' },
+}
+
+function PasswordStrengthGauge({ password }: { password: string }) {
+  const t = useTranslations('register')
+  if (!password) return null
+
+  const strength = evaluatePasswordStrength(password)
+  const styles = STRENGTH_STYLES[strength]
+  const label = strength === 'faible' ? t('passwordStrengthFaible') : strength === 'moyenne' ? t('passwordStrengthMoyenne') : t('passwordStrengthForte')
+
+  return (
+    <div className="mt-2">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+        <div className={`h-full rounded-full transition-all ${styles.width} ${styles.bar}`} />
+      </div>
+      <p className={`mt-1 text-xs font-medium ${styles.text}`}>{label}</p>
+    </div>
   )
 }
 
@@ -74,8 +99,16 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
+
+    // Revalide cote client avant l'appel API -- la vraie garantie reste cote serveur
+    // (route /api/auth/register), ce controle n'est qu'un retour immediat a l'utilisateur.
+    if (!meetsMinimumPasswordRule(password)) {
+      setError(MESSAGES[locale].register.passwordRuleError)
+      return
+    }
+
+    setLoading(true)
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -298,7 +331,7 @@ function RegisterFormFields({
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`${inputClass} pr-10`}
@@ -312,6 +345,7 @@ function RegisterFormFields({
                   {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </button>
               </div>
+              <PasswordStrengthGauge password={password} />
             </div>
           </div>
         </div>

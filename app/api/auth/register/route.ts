@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { meetsMinimumPasswordRule } from '@/lib/utils/passwordStrength'
+import esMessages from '@/messages/es.json'
+import ptMessages from '@/messages/pt.json'
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +15,13 @@ export async function POST(req: Request) {
     }
 
     const userIdioma = idioma === 'pt' ? 'pt' : 'es'
+
+    // Meme regle que le formulaire (lib/utils/passwordStrength.ts) -- revalidee ici pour ne pas
+    // etre contournable en appelant cette route directement sans passer par l'UI.
+    if (!meetsMinimumPasswordRule(password)) {
+      const messages = userIdioma === 'pt' ? ptMessages : esMessages
+      return NextResponse.json({ error: messages.register.passwordRuleError }, { status: 400 })
+    }
     const orgEspecialidad =
       especialidad === 'estetica_dermato' || especialidad === 'clinica_medica' ? especialidad : null
     // Valeurs de depart pour le cabinet (langue des messages patients, devise) —

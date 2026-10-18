@@ -4,6 +4,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { useLocale, MESSAGES } from '@/lib/hooks/useLocale'
+import WhatsappSequence from '@/components/landing/WhatsappSequence'
+import PilarWhatsapp from '@/components/landing/PilarWhatsapp'
+import PilarReserva from '@/components/landing/PilarReserva'
+import PilarIngresos from '@/components/landing/PilarIngresos'
+import PilarFichaPaciente from '@/components/landing/PilarFichaPaciente'
 
 export default function HomePage() {
   const { locale, setLocale } = useLocale()
@@ -123,36 +128,26 @@ function HomeContent({
             />
           </div>
 
-          <div className="w-56 rotate-2 rounded-xl bg-white p-4 text-left shadow-xl shadow-black/40 sm:w-64">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#25D366]">
-              <span>💬</span>
-              <span>{t('whatsappSent')}</span>
-              <span>✓</span>
-            </div>
-            <p className="mt-1 text-xs text-[#666666]">{t('whatsappConfirmed')}</p>
-            <p className="mt-2 rounded-lg bg-[#F5F0E8] px-3 py-2 text-xs italic text-[#1a1a1a]">
-              &ldquo;{t('whatsappQuote')}&rdquo;
-            </p>
+          <div className="rotate-2">
+            <WhatsappSequence compact />
           </div>
         </div>
       </main>
 
       <section className="bg-[#F5F0E8]">
-        <div className="max-w-4xl mx-auto px-4 py-16 grid gap-8 sm:grid-cols-3 text-center">
-          <div>
-            <div className="mx-auto mb-3 h-2 w-2 rounded-full bg-[#6926D2]" />
-            <h3 className="font-semibold text-[#1a1a1a]">{t('feature1Title')}</h3>
-            <p className="mt-1 text-sm text-[#666666]">{t('feature1Desc')}</p>
-          </div>
-          <div>
-            <div className="mx-auto mb-3 h-2 w-2 rounded-full bg-[#6926D2]" />
-            <h3 className="font-semibold text-[#1a1a1a]">{t('feature2Title')}</h3>
-            <p className="mt-1 text-sm text-[#666666]">{t('feature2Desc')}</p>
-          </div>
-          <div>
-            <div className="mx-auto mb-3 h-2 w-2 rounded-full bg-[#6926D2]" />
-            <h3 className="font-semibold text-[#1a1a1a]">{t('feature3Title')}</h3>
-            <p className="mt-1 text-sm text-[#666666]">{t('feature3Desc')}</p>
+        <div className="max-w-5xl mx-auto px-4 py-16">
+          <h2 className="text-center text-2xl font-bold text-[#1a1a1a] sm:text-3xl">{t('pilaresTitle')}</h2>
+          <div className="mt-12 space-y-16 divide-y divide-black/5">
+            <PilarWhatsapp />
+            <div className="pt-16">
+              <PilarReserva locale={locale} />
+            </div>
+            <div className="pt-16">
+              <PilarIngresos />
+            </div>
+            <div className="pt-16">
+              <PilarFichaPaciente locale={locale} />
+            </div>
           </div>
         </div>
       </section>

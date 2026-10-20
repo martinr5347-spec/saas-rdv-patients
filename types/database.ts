@@ -52,6 +52,8 @@ export interface Database {
           foto_url: string | null
           codigo_seguridad_hash: string | null
           codigo_seguridad_updated_at: string | null
+          codigo_intentos_fallidos: number
+          codigo_bloqueado_hasta: string | null
           created_at: string
         }
         Insert: {
@@ -66,6 +68,8 @@ export interface Database {
           foto_url?: string | null
           codigo_seguridad_hash?: string | null
           codigo_seguridad_updated_at?: string | null
+          codigo_intentos_fallidos?: number
+          codigo_bloqueado_hasta?: string | null
           created_at?: string
         }
         Update: {
@@ -80,6 +84,8 @@ export interface Database {
           foto_url?: string | null
           codigo_seguridad_hash?: string | null
           codigo_seguridad_updated_at?: string | null
+          codigo_intentos_fallidos?: number
+          codigo_bloqueado_hasta?: string | null
           created_at?: string
         }
         Relationships: [

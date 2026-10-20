@@ -1,19 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import bcrypt from 'bcryptjs'
-
-async function verifyCodigo(supabase: ReturnType<typeof createClient>, userId: string, codigo: string) {
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('codigo_seguridad_hash')
-    .eq('id', userId)
-    .single()
-  if (!userRow?.codigo_seguridad_hash) {
-    return { ok: false, reason: 'Código de seguridad no configurado. Configúralo en Configuración.' }
-  }
-  const match = await bcrypt.compare(codigo, userRow.codigo_seguridad_hash)
-  return { ok: match, reason: match ? null : 'Código incorrecto' }
-}
+import { verifyCodigo } from '@/lib/security/verifyCodigo'
 
 // PATCH = modifie le contenu et/ou la catégorie d'une note existante
 export async function PATCH(req: Request, { params }: { params: { id: string; noteId: string } }) {
@@ -36,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; no
   }
   const check = await verifyCodigo(supabase, authUser.id, codigo)
   if (!check.ok) {
-    return NextResponse.json({ error: check.reason }, { status: 403 })
+    return NextResponse.json({ error: check.reason }, { status: check.status })
   }
 
   const { data: updated, error } = await supabase
@@ -68,7 +55,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string; n
   }
   const check = await verifyCodigo(supabase, authUser.id, codigo)
   if (!check.ok) {
-    return NextResponse.json({ error: check.reason }, { status: 403 })
+    return NextResponse.json({ error: check.reason }, { status: check.status })
   }
 
   const { error } = await supabase

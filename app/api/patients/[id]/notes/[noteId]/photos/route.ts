@@ -1,19 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import bcrypt from 'bcryptjs'
-
-async function verifyCodigo(supabase: ReturnType<typeof createClient>, userId: string, codigo: string) {
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('codigo_seguridad_hash')
-    .eq('id', userId)
-    .single()
-  if (!userRow?.codigo_seguridad_hash) {
-    return { ok: false, reason: 'Código de seguridad no configurado. Configúralo en Configuración.' }
-  }
-  const match = await bcrypt.compare(codigo, userRow.codigo_seguridad_hash)
-  return { ok: match, reason: match ? null : 'Código incorrecto' }
-}
+import { verifyCodigo } from '@/lib/security/verifyCodigo'
 
 const MAX_PHOTOS_PER_NOTE = 2
 const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5 Mo
@@ -47,7 +34,7 @@ export async function POST(req: Request, { params }: { params: { id: string; not
 
   const check = await verifyCodigo(supabase, authUser.id, codigo)
   if (!check.ok) {
-    return NextResponse.json({ error: check.reason }, { status: 403 })
+    return NextResponse.json({ error: check.reason }, { status: check.status })
   }
 
   const { data: noteRow } = await supabase

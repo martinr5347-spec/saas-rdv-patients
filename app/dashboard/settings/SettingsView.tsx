@@ -53,26 +53,38 @@ function InfoTooltip({ text }: { text: string }) {
 }
 
 function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
+  // lastUpdated n'est renseigne qu'au moment ou codigo_seguridad_hash est ecrit la premiere
+  // fois (meme requete UPDATE) -- un signal fiable pour savoir si un PIN existe deja, sans
+  // avoir a exposer le hash lui-meme au client.
+  const pinYaExiste = lastUpdated !== null
+  const [currentDigits, setCurrentDigits] = useState(['', '', '', ''])
   const [digits, setDigits] = useState(['', '', '', ''])
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
-    const codigo = digits.join('')
-    if (codigo.length !== 4) {
+    const codigoNuevo = digits.join('')
+    if (codigoNuevo.length !== 4) {
       toast.error('Ingresa un código de 4 dígitos')
+      return
+    }
+    const codigoActual = currentDigits.join('')
+    if (pinYaExiste && codigoActual.length !== 4) {
+      toast.error('Ingresa tu código actual')
       return
     }
     setSaving(true)
     const res = await fetch('/api/users/me/security-code', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo }),
+      body: JSON.stringify(pinYaExiste ? { codigoNuevo, codigoActual } : { codigoNuevo }),
     })
     if (res.ok) {
       toast.success('Código actualizado')
       setDigits(['', '', '', ''])
+      setCurrentDigits(['', '', '', ''])
     } else {
-      toast.error('Error al guardar el código')
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Error al guardar el código')
     }
     setSaving(false)
   }
@@ -94,33 +106,70 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
       {lastUpdated && (
         <p className="mb-3 text-xs text-gray-400">Último cambio: {new Date(lastUpdated).toLocaleDateString('es')}</p>
       )}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1.5">
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              id={`settings-pin-${i}`}
-              type="password"
-              inputMode="numeric"
-              maxLength={1}
-              value={d}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                const next = [...digits]
-                next[i] = val
-                setDigits(next)
-                if (val && i < 3) {
-                  document.getElementById(`settings-pin-${i + 1}`)?.focus()
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Backspace' && !digits[i] && i > 0) {
-                  document.getElementById(`settings-pin-${i - 1}`)?.focus()
-                }
-              }}
-              className="h-11 w-10 rounded-lg border border-gray-200 text-center font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-            />
-          ))}
+      <div className="flex flex-wrap items-end gap-4">
+        {pinYaExiste && (
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">Código actual</label>
+            <div className="flex gap-1.5">
+              {currentDigits.map((d, i) => (
+                <input
+                  key={i}
+                  id={`settings-pin-current-${i}`}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={d}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    const next = [...currentDigits]
+                    next[i] = val
+                    setCurrentDigits(next)
+                    if (val && i < 3) {
+                      document.getElementById(`settings-pin-current-${i + 1}`)?.focus()
+                    } else if (val && i === 3) {
+                      document.getElementById('settings-pin-0')?.focus()
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Backspace' && !currentDigits[i] && i > 0) {
+                      document.getElementById(`settings-pin-current-${i - 1}`)?.focus()
+                    }
+                  }}
+                  className="h-11 w-10 rounded-lg border border-gray-200 text-center font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        <div>
+          {pinYaExiste && <label className="mb-1.5 block text-xs font-medium text-gray-600">Código nuevo</label>}
+          <div className="flex gap-1.5">
+            {digits.map((d, i) => (
+              <input
+                key={i}
+                id={`settings-pin-${i}`}
+                type="password"
+                inputMode="numeric"
+                maxLength={1}
+                value={d}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '')
+                  const next = [...digits]
+                  next[i] = val
+                  setDigits(next)
+                  if (val && i < 3) {
+                    document.getElementById(`settings-pin-${i + 1}`)?.focus()
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Backspace' && !digits[i] && i > 0) {
+                    document.getElementById(`settings-pin-${i - 1}`)?.focus()
+                  }
+                }}
+                className="h-11 w-10 rounded-lg border border-gray-200 text-center font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+              />
+            ))}
+          </div>
         </div>
         <button
           type="button"

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import bcrypt from 'bcryptjs'
+import { verifyCodigo } from '@/lib/security/verifyCodigo'
 
 export async function PATCH(req: Request) {
   const supabase = createClient()
@@ -26,16 +27,17 @@ export async function PATCH(req: Request) {
     .single()
 
   // Reconfirmation exigee uniquement si un PIN existe deja -- la toute premiere definition
-  // n'a rien a reconfirmer. Verification isolee ici (pas via lib/security/verifyCodigo) : ce
-  // PATCH ne doit pas consommer le compteur anti-brute-force des notas clinicas, l'UI force
-  // deja un seul essai pour ce formulaire.
+  // n'a rien a reconfirmer. Passe par le meme verifyCodigo() que les 5 autres routes (notes,
+  // notes/[noteId], photos, photos/[photoId], alert) : un appel direct a l'API sans passer par
+  // l'UI pourrait sinon deviner le PIN par brute-force sans jamais declencher le verrou --
+  // l'UI a elle seule ne protege rien cote serveur.
   if (existing?.codigo_seguridad_hash) {
     if (!codigoActual || !/^\d{4}$/.test(codigoActual)) {
       return NextResponse.json({ error: 'Ingresa tu código actual' }, { status: 400 })
     }
-    const match = await bcrypt.compare(codigoActual, existing.codigo_seguridad_hash)
-    if (!match) {
-      return NextResponse.json({ error: 'Código actual incorrecto' }, { status: 403 })
+    const check = await verifyCodigo(supabase, authUser.id, codigoActual)
+    if (!check.ok) {
+      return NextResponse.json({ error: check.reason }, { status: check.status })
     }
   }
 

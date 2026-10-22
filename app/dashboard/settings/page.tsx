@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import SettingsView from './SettingsView'
-import { updateSettings, openBillingPortal, updateCategoriasNotas, updateCategoriasConFoto, updateMpAccessToken } from './actions'
+import {
+  updateSettings,
+  openBillingPortal,
+  updateCategoriasNotas,
+  updateCategoriasConFoto,
+  updateMpAccessToken,
+  updateTwilioSettings,
+} from './actions'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 
 export default async function SettingsPage() {
@@ -15,13 +22,14 @@ export default async function SettingsPage() {
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
-  // IMPORTANT : jamais select('*') ici -- mp_access_token ne doit jamais atteindre le payload
-  // envoyé au client. Sélectionné explicitement ci-dessous uniquement pour calculer
-  // mpTokenConfigured/mpTokenLast4 côté serveur, puis exclu de l'objet `settings` transmis à la vue.
+  // IMPORTANT : jamais select('*') ici -- mp_access_token/twilio_auth_token_encrypted ne doivent
+  // jamais atteindre le payload envoyé au client. Sélectionnés explicitement ci-dessous uniquement
+  // pour calculer les indicateurs "configuré/termine en" côté serveur, puis exclus de l'objet
+  // `settings` transmis à la vue.
   const { data: settingsRaw } = await supabase
     .from('org_settings')
     .select(
-      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias'
+      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias'
     )
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
@@ -38,6 +46,16 @@ export default async function SettingsPage() {
     }
   }
 
+  const twilioAuthTokenConfigured = !!settingsRaw?.twilio_auth_token_encrypted
+  let twilioAuthTokenLast4: string | null = null
+  if (settingsRaw?.twilio_auth_token_encrypted) {
+    try {
+      twilioAuthTokenLast4 = decryptSecret(settingsRaw.twilio_auth_token_encrypted).slice(-4)
+    } catch (e) {
+      console.error('Erreur déchiffrement twilio_auth_token_encrypted:', e)
+    }
+  }
+
   const settings = settingsRaw
     ? {
         delai_paiement_h: settingsRaw.delai_paiement_h,
@@ -51,6 +69,9 @@ export default async function SettingsPage() {
         mp_notification_url: settingsRaw.mp_notification_url,
         canal_email: settingsRaw.canal_email,
         canal_whatsapp: settingsRaw.canal_whatsapp,
+        canal_whatsapp_provider: settingsRaw.canal_whatsapp_provider,
+        twilio_subaccount_sid: settingsRaw.twilio_subaccount_sid,
+        twilio_whatsapp_number: settingsRaw.twilio_whatsapp_number,
         variantes_mensaje: settingsRaw.variantes_mensaje,
         categorias_notas: settingsRaw.categorias_notas,
         categorias_con_foto: settingsRaw.categorias_con_foto,
@@ -85,11 +106,14 @@ export default async function SettingsPage() {
       codigoSeguridadUpdatedAt={profile?.codigo_seguridad_updated_at ?? null}
       mpTokenConfigured={mpTokenConfigured}
       mpTokenLast4={mpTokenLast4}
+      twilioAuthTokenConfigured={twilioAuthTokenConfigured}
+      twilioAuthTokenLast4={twilioAuthTokenLast4}
       updateSettingsAction={updateSettings}
       openBillingPortalAction={openBillingPortal}
       updateCategoriasNotasAction={updateCategoriasNotas}
       updateCategoriasConFotoAction={updateCategoriasConFoto}
       updateMpAccessTokenAction={updateMpAccessToken}
+      updateTwilioSettingsAction={updateTwilioSettings}
     />
   )
 }

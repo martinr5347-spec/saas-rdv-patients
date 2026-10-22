@@ -646,3 +646,28 @@ const CONTROL_RECALL_PREVIEWS: Record<VariantId, Record<Langue, string>> = {
 export function getControlRecallPreview(variant: VariantId, langue: Langue): string {
   return CONTROL_RECALL_PREVIEWS[variant][langue]
 }
+
+// SID des templates WhatsApp Meta pre-approuves (Content API Twilio), par type/variante/langue --
+// toutes a null par defaut. Ce n'est pas a Devin de decider du texte des templates ni d'inventer
+// un SID : Martin les renseigne manuellement ici une fois chaque template soumis et approuve par
+// Meta via la Console Twilio. Catalogue separe de MESSAGE_VARIANTS (pas de dimension Canal : ces
+// SID ne concernent que whatsapp) pour ne pas toucher la structure existante utilisee par email et
+// par Unipile.
+type TwilioContentSidCatalog = Record<NotificationType, Record<VariantId, Record<Langue, string | null>>>
+
+function nullPerLangue(): Record<Langue, string | null> {
+  return { es: null, pt: null }
+}
+
+export const TWILIO_CONTENT_SIDS: TwilioContentSidCatalog = {
+  confirmation: { standard: nullPerLangue(), calido: nullPerLangue() },
+  aviso: { standard: nullPerLangue(), calido: nullPerLangue() },
+  pago: { standard: nullPerLangue(), calido: nullPerLangue() },
+  anulacion: { standard: nullPerLangue(), calido: nullPerLangue() },
+  recordatorio: { standard: nullPerLangue(), calido: nullPerLangue() },
+  reprogramacion: { standard: nullPerLangue(), calido: nullPerLangue() },
+}
+
+export function getTwilioContentSid(type: NotificationType, variant: VariantId, langue: Langue): string | null {
+  return TWILIO_CONTENT_SIDS[type][variant][langue]
+}

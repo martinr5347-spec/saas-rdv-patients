@@ -159,6 +159,10 @@ export interface Database {
           buffer_min: number
           anticipacion_min_horas: number
           anticipacion_max_dias: number
+          canal_whatsapp_provider: 'unipile' | 'twilio'
+          twilio_subaccount_sid: string | null
+          twilio_whatsapp_number: string | null
+          twilio_auth_token_encrypted: string | null
           updated_at: string
         }
         Insert: {
@@ -185,6 +189,10 @@ export interface Database {
           buffer_min?: number
           anticipacion_min_horas?: number
           anticipacion_max_dias?: number
+          canal_whatsapp_provider?: 'unipile' | 'twilio'
+          twilio_subaccount_sid?: string | null
+          twilio_whatsapp_number?: string | null
+          twilio_auth_token_encrypted?: string | null
           updated_at?: string
         }
         Update: {
@@ -211,6 +219,10 @@ export interface Database {
           buffer_min?: number
           anticipacion_min_horas?: number
           anticipacion_max_dias?: number
+          canal_whatsapp_provider?: 'unipile' | 'twilio'
+          twilio_subaccount_sid?: string | null
+          twilio_whatsapp_number?: string | null
+          twilio_auth_token_encrypted?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -533,6 +545,8 @@ export interface Database {
           statut: 'pending' | 'sent' | 'failed'
           error_message: string | null
           sent_at: string | null
+          twilio_message_sid: string | null
+          delivered_at: string | null
           created_at: string
         }
         Insert: {
@@ -543,6 +557,8 @@ export interface Database {
           statut?: 'pending' | 'sent' | 'failed'
           error_message?: string | null
           sent_at?: string | null
+          twilio_message_sid?: string | null
+          delivered_at?: string | null
           created_at?: string
         }
         Update: {
@@ -553,6 +569,8 @@ export interface Database {
           statut?: 'pending' | 'sent' | 'failed'
           error_message?: string | null
           sent_at?: string | null
+          twilio_message_sid?: string | null
+          delivered_at?: string | null
           created_at?: string
         }
         Relationships: [

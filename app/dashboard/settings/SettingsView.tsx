@@ -32,6 +32,9 @@ export interface OrgSettings {
   mp_notification_url: string | null
   canal_email: boolean | null
   canal_whatsapp: boolean | null
+  canal_whatsapp_provider: string | null
+  twilio_subaccount_sid: string | null
+  twilio_whatsapp_number: string | null
   variantes_mensaje: unknown
   categorias_notas: string[] | null
   categorias_con_foto: string[] | null
@@ -283,6 +286,111 @@ function MercadoPagoTokenField({
   )
 }
 
+// Visible uniquement si canal_whatsapp_provider = 'twilio' (bascule geree manuellement par Martin
+// en base, pas de toggle self-service ici -- cf. lib/dispatcher/index.ts). Meme UX de token masque
+// que MercadoPagoTokenField : jamais de prefill avec la vraie valeur, le champ auth token part
+// toujours vide ("Cambiar" pour le reecrire). subaccountSid/whatsappNumber ne sont pas des secrets,
+// affiches en clair.
+function TwilioSettingsFields({
+  subaccountSid,
+  whatsappNumber,
+  authTokenConfigured,
+  authTokenLast4,
+  updateTwilioSettingsAction,
+}: {
+  subaccountSid: string | null
+  whatsappNumber: string | null
+  authTokenConfigured: boolean
+  authTokenLast4: string | null
+  updateTwilioSettingsAction: (
+    subaccountSid: string,
+    whatsappNumber: string,
+    authToken: string
+  ) => Promise<{ ok: boolean; error?: string; last4?: string }>
+}) {
+  const [sidDraft, setSidDraft] = useState(subaccountSid ?? '')
+  const [numberDraft, setNumberDraft] = useState(whatsappNumber ?? '')
+  const [configured, setConfigured] = useState(authTokenConfigured)
+  const [last4, setLast4] = useState(authTokenLast4)
+  const [editingToken, setEditingToken] = useState(!authTokenConfigured)
+  const [tokenDraft, setTokenDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    setSaving(true)
+    const res = await updateTwilioSettingsAction(sidDraft, numberDraft, tokenDraft.trim())
+    if (res.ok) {
+      if (res.last4) {
+        setConfigured(true)
+        setLast4(res.last4)
+        setEditingToken(false)
+      }
+      setTokenDraft('')
+      toast.success('Configuración de Twilio guardada')
+    } else {
+      toast.error(res.error ?? 'Error al guardar la configuración de Twilio')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-gray-300 p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">WhatsApp vía Twilio (API oficial)</p>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Subaccount SID</label>
+          <input
+            value={sidDraft}
+            onChange={(e) => setSidDraft(e.target.value)}
+            placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Número de WhatsApp</label>
+          <input
+            value={numberDraft}
+            onChange={(e) => setNumberDraft(e.target.value)}
+            placeholder="+51987654321"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Auth token</label>
+          {configured && !editingToken ? (
+            <div className="mt-1 flex items-center gap-3">
+              <span className="text-sm text-gray-600">Conectado · termina en ••••{last4}</span>
+              <button
+                type="button"
+                onClick={() => setEditingToken(true)}
+                className="text-sm font-medium text-[#6926D2] hover:underline"
+              >
+                Cambiar
+              </button>
+            </div>
+          ) : (
+            <input
+              type="password"
+              value={tokenDraft}
+              onChange={(e) => setTokenDraft(e.target.value)}
+              placeholder="Pegar auth token"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            />
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-lg bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] disabled:opacity-50"
+        >
+          {saving ? '...' : 'Guardar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CategoriasNotasCard({
   initial,
   initialConFoto,
@@ -429,11 +537,14 @@ export default function SettingsView({
   codigoSeguridadUpdatedAt,
   mpTokenConfigured,
   mpTokenLast4,
+  twilioAuthTokenConfigured,
+  twilioAuthTokenLast4,
   updateSettingsAction,
   openBillingPortalAction,
   updateCategoriasNotasAction,
   updateCategoriasConFotoAction,
   updateMpAccessTokenAction,
+  updateTwilioSettingsAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -447,11 +558,18 @@ export default function SettingsView({
   codigoSeguridadUpdatedAt: string | null
   mpTokenConfigured: boolean
   mpTokenLast4: string | null
+  twilioAuthTokenConfigured: boolean
+  twilioAuthTokenLast4: string | null
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateMpAccessTokenAction: (token: string) => Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }>
+  updateTwilioSettingsAction: (
+    subaccountSid: string,
+    whatsappNumber: string,
+    authToken: string
+  ) => Promise<{ ok: boolean; error?: string; last4?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
@@ -639,6 +757,15 @@ export default function SettingsView({
               <label className="block text-sm font-medium text-gray-700">{t('unipileAccountId')}</label>
               <input name="unipile_account_id" defaultValue={settings?.unipile_account_id ?? ''} className={inputClass} />
             </div>
+            {settings?.canal_whatsapp_provider === 'twilio' && (
+              <TwilioSettingsFields
+                subaccountSid={settings.twilio_subaccount_sid}
+                whatsappNumber={settings.twilio_whatsapp_number}
+                authTokenConfigured={twilioAuthTokenConfigured}
+                authTokenLast4={twilioAuthTokenLast4}
+                updateTwilioSettingsAction={updateTwilioSettingsAction}
+              />
+            )}
             <div>
               <MercadoPagoTokenField
                 mpTokenConfigured={mpTokenConfigured}

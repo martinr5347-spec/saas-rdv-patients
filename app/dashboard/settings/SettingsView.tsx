@@ -15,6 +15,7 @@ import {
   CONTROL_RECALL_LABEL,
   getControlRecallPreview,
 } from '@/lib/dispatcher/templateVariants'
+import { getMercadoPagoDevPanelUrl } from '@/lib/payments/mercadopagoDomains'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CURRENCIES = ['PEN', 'BRL', 'MXN', 'COP', 'CLP', 'ARS', 'UYU', 'USD'] as const
@@ -187,15 +188,21 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
 function MercadoPagoTokenField({
   mpTokenConfigured,
   mpTokenLast4,
+  pays,
   updateMpAccessTokenAction,
 }: {
   mpTokenConfigured: boolean
   mpTokenLast4: string | null
+  pays: string | null
   updateMpAccessTokenAction: (token: string) => Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
   const [configured, setConfigured] = useState(mpTokenConfigured)
   const [last4, setLast4] = useState(mpTokenLast4)
+  // Fallback PE gere en interne par getMercadoPagoDevPanelUrl -- jamais de pays reconnu
+  // manquant ne doit cacher le lien ni planter la page.
+  const devPanelUrl = getMercadoPagoDevPanelUrl(pays ?? 'PE')
+  const devPanelDomain = devPanelUrl.replace('https://www.', '').replace(/^https?:\/\//, '')
   // Pas d'etat "editing" distinct de !configured : tant qu'aucun token valide n'a ete enregistre
   // (ou n'a ete reenregistre avec succes), le champ reste visible -- jamais de prefill avec la
   // vraie valeur, le champ part toujours vide.
@@ -247,6 +254,14 @@ function MercadoPagoTokenField({
         {t('mpToken')}
         <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
       </label>
+      <a
+        href={devPanelUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-block text-xs font-medium text-[#6926D2] hover:underline"
+      >
+        {t('mpDevPanelLink', { domain: devPanelDomain })}
+      </a>
       <div className="mt-1 flex gap-2">
         <input
           type="password"
@@ -407,6 +422,7 @@ export default function SettingsView({
   hasStripeCustomer,
   organizationLangue,
   organizationAdresse,
+  organizationPays,
   nombreCompleto,
   especialidadTexto,
   fotoUrl,
@@ -424,6 +440,7 @@ export default function SettingsView({
   hasStripeCustomer: boolean
   organizationLangue: string | null
   organizationAdresse: string | null
+  organizationPays: string | null
   nombreCompleto: string | null
   especialidadTexto: string | null
   fotoUrl: string | null
@@ -626,6 +643,7 @@ export default function SettingsView({
               <MercadoPagoTokenField
                 mpTokenConfigured={mpTokenConfigured}
                 mpTokenLast4={mpTokenLast4}
+                pays={organizationPays}
                 updateMpAccessTokenAction={updateMpAccessTokenAction}
               />
             </div>

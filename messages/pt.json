@@ -198,6 +198,7 @@
       "calendlyUrl": "URL do Calendly",
       "unipileAccountId": "ID da conta Unipile",
       "mpToken": "Token do MercadoPago",
+      "mpDevPanelLink": "Recuperar meu token em {domain}",
       "mpWebhookUrl": "URL do webhook do MercadoPago",
       "emailActive": "E-mail ativo",
       "whatsappActive": "WhatsApp ativo",

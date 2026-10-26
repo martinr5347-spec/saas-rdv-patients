@@ -531,6 +531,7 @@ export default function SettingsView({
   organizationLangue,
   organizationAdresse,
   organizationPays,
+  organizationEspecialidad,
   nombreCompleto,
   especialidadTexto,
   fotoUrl,
@@ -552,6 +553,7 @@ export default function SettingsView({
   organizationLangue: string | null
   organizationAdresse: string | null
   organizationPays: string | null
+  organizationEspecialidad: string | null
   nombreCompleto: string | null
   especialidadTexto: string | null
   fotoUrl: string | null
@@ -665,6 +667,21 @@ export default function SettingsView({
                 placeholder={t('especialidadTextoPlaceholder')}
                 className={inputClass}
               />
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('organizacionEspecialidad')}
+                <InfoTooltip text={t('organizacionEspecialidadInfo')} />
+              </label>
+              <select
+                name="organizacion_especialidad"
+                defaultValue={organizationEspecialidad ?? ''}
+                className={inputClass}
+              >
+                <option value="">{t('organizacionEspecialidadVacio')}</option>
+                <option value="estetica_dermato">{t('organizacionEspecialidadEstetica')}</option>
+                <option value="clinica_medica">{t('organizacionEspecialidadClinica')}</option>
+              </select>
             </div>
           </div>
         </Card>

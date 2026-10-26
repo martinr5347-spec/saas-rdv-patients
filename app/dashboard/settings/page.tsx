@@ -88,7 +88,7 @@ export default async function SettingsPage() {
 
   const { data: organization } = await supabase
     .from('organizations')
-    .select('langue, adresse, pays')
+    .select('langue, adresse, pays, especialidad')
     .eq('id', profile?.organization_id ?? '')
     .maybeSingle()
 
@@ -100,6 +100,7 @@ export default async function SettingsPage() {
       organizationLangue={organization?.langue ?? null}
       organizationAdresse={organization?.adresse ?? null}
       organizationPays={organization?.pays ?? null}
+      organizationEspecialidad={organization?.especialidad ?? null}
       nombreCompleto={profile?.nombre_completo ?? null}
       especialidadTexto={profile?.especialidad ?? null}
       fotoUrl={profile?.foto_url ?? null}

@@ -186,6 +186,11 @@
       "fullNamePlaceholder": "Ex: Dra. Camila Soares",
       "especialidadTexto": "Especialidade",
       "especialidadTextoPlaceholder": "Ex: Dermatologia & Estética",
+      "organizacionEspecialidad": "Área de atuação do consultório",
+      "organizacionEspecialidadInfo": "Define a lista de procedimentos sugerida no início. 100% editável depois, sem afetar o que você já personalizou.",
+      "organizacionEspecialidadVacio": "Não definido",
+      "organizacionEspecialidadEstetica": "Estética & Dermato",
+      "organizacionEspecialidadClinica": "Clínica Médica",
       "groupBilling": "Faturamento e prazos",
       "groupLanguage": "Idioma",
       "groupIntegrations": "Integrações",
@@ -242,6 +247,19 @@
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
       ]
+    },
+    "analisis": {
+      "paretoTitle": "Insight de receita (Pareto 80/20)",
+      "paretoIntro": "Esse insight cresce com você: quanto mais você registrar seus procedimentos no dia a dia, mais preciso ele será para mostrar o que realmente traz retorno.",
+      "paretoEmptyTitle": "Ainda não há procedimentos registrados",
+      "paretoEmptyDesc": "Adicione um procedimento na ficha de um paciente para ver seu insight aparecer aqui.",
+      "paretoTopActos": "{count, plural, one {# procedimento gera} other {# procedimentos geram}} 80% da sua receita",
+      "paretoCumulative": "% acumulado",
+      "rankingMasRealizados": "Procedimentos mais realizados",
+      "rankingMasFacturan": "Procedimentos que mais faturam",
+      "colActo": "Procedimento",
+      "colCantidad": "Quantidade",
+      "colMontoTotal": "Valor total"
     }
   },
   "booking": {

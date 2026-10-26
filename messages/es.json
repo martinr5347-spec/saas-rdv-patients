@@ -186,6 +186,11 @@
       "fullNamePlaceholder": "Ej: Dra. Camila Soares",
       "especialidadTexto": "Especialidad",
       "especialidadTextoPlaceholder": "Ej: Dermatología & Estética",
+      "organizacionEspecialidad": "Área de especialización del consultorio",
+      "organizacionEspecialidadInfo": "Determina la lista de actos sugerida al empezar. 100% editable después, sin afectar lo que ya hayas personalizado.",
+      "organizacionEspecialidadVacio": "Sin definir",
+      "organizacionEspecialidadEstetica": "Estética & Dermato",
+      "organizacionEspecialidadClinica": "Clínica Médica",
       "groupBilling": "Facturación y plazos",
       "groupLanguage": "Idioma",
       "groupIntegrations": "Integraciones",
@@ -242,6 +247,19 @@
         "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
       ]
+    },
+    "analisis": {
+      "paretoTitle": "Insight de ingresos (Pareto 80/20)",
+      "paretoIntro": "Este insight crece contigo: mientras más registres tus actos al día, más preciso será para mostrarte qué es lo que realmente te hace ganar.",
+      "paretoEmptyTitle": "Aún no hay actos registrados",
+      "paretoEmptyDesc": "Agrega un acto desde la ficha de un paciente para ver aparecer tu insight aquí.",
+      "paretoTopActos": "{count, plural, one {# acto genera} other {# actos generan}} el 80% de tus ingresos",
+      "paretoCumulative": "% acumulado",
+      "rankingMasRealizados": "Actos más realizados",
+      "rankingMasFacturan": "Actos que más facturan",
+      "colActo": "Acto",
+      "colCantidad": "Cantidad",
+      "colMontoTotal": "Monto total"
     }
   },
   "booking": {

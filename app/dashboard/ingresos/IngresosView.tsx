@@ -32,7 +32,15 @@ export interface ConsultaPayment {
   concepto: string | null
 }
 
-type MetodoBadge = 'efectivo' | 'transferencia' | 'otro' | 'mercadopago' | 'consulta'
+export interface ActoRealizadoPayment {
+  id: string
+  monto: number
+  fecha: string
+  paciente_nombre: string | null
+  nombre: string
+}
+
+type MetodoBadge = 'efectivo' | 'transferencia' | 'otro' | 'mercadopago' | 'consulta' | 'acto'
 
 const BADGE_COLOR: Record<MetodoBadge, 'success' | 'gray' | 'brand' | 'warning'> = {
   mercadopago: 'success',
@@ -40,6 +48,7 @@ const BADGE_COLOR: Record<MetodoBadge, 'success' | 'gray' | 'brand' | 'warning'>
   transferencia: 'brand',
   otro: 'warning',
   consulta: 'success',
+  acto: 'brand',
 }
 
 function pad2(n: number) {
@@ -97,6 +106,7 @@ export default function IngresosView({
   manuales,
   pagosMp,
   pagosConsulta,
+  actosRealizados,
   editingEntry,
   createAction,
   updateAction,
@@ -108,6 +118,7 @@ export default function IngresosView({
   manuales: ManualEntry[]
   pagosMp: McPayment[]
   pagosConsulta: ConsultaPayment[]
+  actosRealizados: ActoRealizadoPayment[]
   editingEntry: ManualEntry | null
   createAction: (formData: FormData) => void
   updateAction: (formData: FormData) => void
@@ -121,7 +132,8 @@ export default function IngresosView({
   const totalManual = manuales.reduce((sum, m) => sum + Number(m.monto), 0)
   const totalMp = pagosMp.reduce((sum, p) => sum + Number(p.monto_acompte), 0)
   const totalConsulta = pagosConsulta.reduce((sum, p) => sum + Number(p.monto), 0)
-  const totalMonth = totalManual + totalMp + totalConsulta
+  const totalActos = actosRealizados.reduce((sum, a) => sum + Number(a.monto), 0)
+  const totalMonth = totalManual + totalMp + totalConsulta + totalActos
 
   type Row = {
     key: string
@@ -161,6 +173,15 @@ export default function IngresosView({
       monto: Number(p.monto),
       manual: null,
     })),
+    ...actosRealizados.map((a) => ({
+      key: `acto-${a.id}`,
+      fecha: a.fecha,
+      paciente: a.paciente_nombre ?? '-',
+      concepto: a.nombre,
+      metodo: 'acto' as MetodoBadge,
+      monto: Number(a.monto),
+      manual: null,
+    })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
 
   const metodoLabel: Record<MetodoBadge, string> = {
@@ -169,6 +190,7 @@ export default function IngresosView({
     otro: t('metodoOtro'),
     mercadopago: 'MP',
     consulta: 'Consulta',
+    acto: 'Acto',
   }
 
   function handleDeleteSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -191,10 +213,11 @@ export default function IngresosView({
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-gray-800">{rangeTitle}</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label={`${t('totalMonth')} (${monnaie})`} value={totalMonth.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalMp')} (${monnaie})`} value={totalMp.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`Total consulta (${monnaie})`} value={totalConsulta.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
+        <StatCard label={`Total actos (${monnaie})`} value={totalActos.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalManual')} (${monnaie})`} value={totalManual.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
       </div>
 

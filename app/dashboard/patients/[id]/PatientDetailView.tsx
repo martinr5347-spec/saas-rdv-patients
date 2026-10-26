@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Badge from '@/components/ui/Badge'
+import { CashIcon } from '@/components/layout/icons'
 
 interface PatientNotePhoto {
   id: string
@@ -1129,6 +1131,273 @@ export function PatientNotFound() {
   return <div className="text-error-600">Paciente no encontrado.</div>
 }
 
+interface ActoCatalogo {
+  id: string
+  nombre: string
+}
+
+interface ActoHistorial {
+  id: string
+  monto: number
+  fecha: string
+  appointmentId: string | null
+  nombre: string
+}
+
+// Donnee de facturation (base du Pareto 80/20 dans Analisis), volontairement separee des Notas
+// clinicas ci-dessus : pas de PIN, pas de confidentialite particuliere.
+function ActosRealizadosCard({ patientId }: { patientId: string }) {
+  const searchParams = useSearchParams()
+  const [loading, setLoading] = useState(true)
+  const [catalogo, setCatalogo] = useState<ActoCatalogo[]>([])
+  const [historial, setHistorial] = useState<ActoHistorial[]>([])
+
+  const [showForm, setShowForm] = useState(false)
+  const [mode, setMode] = useState<'catalogo' | 'nuevo' | 'libre'>('catalogo')
+  const [actoId, setActoId] = useState('')
+  const [nombreLibre, setNombreLibre] = useState('')
+  const [monto, setMonto] = useState('')
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  const [saving, setSaving] = useState(false)
+
+  const appointmentIdParam = searchParams.get('appointmentId')
+  const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/actos`)
+    if (res.ok) {
+      const data = await res.json()
+      setCatalogo(data.catalogo ?? [])
+      setHistorial(data.historial ?? [])
+    }
+    setLoading(false)
+  }, [patientId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  // Ouverture automatique prefillee quand on arrive depuis le raccourci "+ Agregar acto" de la
+  // fiche d'un RDV (voir AppointmentDetailView.tsx) -- ?addActo=1&appointmentId=...
+  useEffect(() => {
+    if (searchParams.get('addActo') === '1') {
+      setShowForm(true)
+      setAppointmentIdPrefill(appointmentIdParam)
+    }
+  }, [searchParams, appointmentIdParam])
+
+  const resetForm = () => {
+    setMode('catalogo')
+    setActoId('')
+    setNombreLibre('')
+    setMonto('')
+    setFecha(new Date().toISOString().slice(0, 10))
+  }
+
+  const submit = async () => {
+    const montoNum = parseFloat(monto)
+    if (monto === '' || isNaN(montoNum) || montoNum < 0) {
+      toast.error('Ingresa un monto válido')
+      return
+    }
+    if (!fecha) {
+      toast.error('Ingresa una fecha')
+      return
+    }
+    if (mode === 'catalogo' && !actoId) {
+      toast.error('Selecciona un acto de la lista')
+      return
+    }
+    if ((mode === 'nuevo' || mode === 'libre') && !nombreLibre.trim()) {
+      toast.error('Ingresa el nombre del acto')
+      return
+    }
+
+    setSaving(true)
+    const res = await fetch(`/api/patients/${patientId}/actos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode,
+        actoId: mode === 'catalogo' ? actoId : undefined,
+        nombre: mode !== 'catalogo' ? nombreLibre.trim() : undefined,
+        monto: montoNum,
+        fecha,
+        appointmentId: appointmentIdPrefill ?? undefined,
+      }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setHistorial((prev) => [data.acto, ...prev])
+      if (data.nuevoEnCatalogo) {
+        setCatalogo((prev) => [...prev, data.nuevoEnCatalogo].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+      }
+      toast.success('Acto agregado')
+      resetForm()
+      setShowForm(false)
+      setAppointmentIdPrefill(null)
+    } else {
+      toast.error(data.error ?? 'Error al guardar el acto')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <CashIcon className="h-4 w-4" />
+          </div>
+          <h2 className="font-semibold text-gray-800">Actos realizados</h2>
+        </div>
+        {!showForm && (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
+          >
+            + Agregar acto
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="border-b border-gray-100 bg-gray-50 p-5">
+          {appointmentIdPrefill && (
+            <p className="mb-3 text-xs text-gray-500">Vinculado a la cita del {appointmentIdPrefill ? 'día seleccionado' : ''}.</p>
+          )}
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMode('catalogo')}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'catalogo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Elegir de mi lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('nuevo')}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'nuevo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Agregar nuevo acto a mi lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('libre')}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'libre' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Solo esta vez
+            </button>
+          </div>
+
+          {mode === 'catalogo' ? (
+            <div className="mb-3">
+              <label className="mb-1 block text-xs font-medium text-gray-600">Acto</label>
+              <select
+                value={actoId}
+                onChange={(e) => setActoId(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+              >
+                <option value="">Seleccionar...</option>
+                {catalogo.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}
+                  </option>
+                ))}
+              </select>
+              {catalogo.length === 0 && (
+                <p className="mt-1 text-xs text-gray-400">Tu lista está vacía. Usa &quot;Agregar nuevo acto&quot; para empezar.</p>
+              )}
+            </div>
+          ) : (
+            <div className="mb-3">
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                {mode === 'nuevo' ? 'Nombre del nuevo acto' : 'Nombre del acto (solo esta vez)'}
+              </label>
+              <input
+                value={nombreLibre}
+                onChange={(e) => setNombreLibre(e.target.value)}
+                placeholder="Ej: Consulta dermatológica"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+              />
+            </div>
+          )}
+
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Monto</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+                placeholder="0.00"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Fecha</label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false)
+                setAppointmentIdPrefill(null)
+                resetForm()
+              }}
+              className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={saving}
+              className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+            >
+              {saving ? '...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="max-h-96 divide-y divide-gray-50 overflow-y-auto">
+        {loading && <p className="px-5 py-6 text-center text-sm text-gray-400">Cargando...</p>}
+        {!loading && historial.length === 0 && (
+          <p className="px-5 py-6 text-center text-sm text-gray-400">Sin actos registrados todavía.</p>
+        )}
+        {historial.map((h) => (
+          <div key={h.id} className="flex items-center justify-between px-5 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-800">{h.nombre}</p>
+              <p className="text-xs text-gray-400">{h.fecha}</p>
+            </div>
+            <p className="text-sm font-semibold text-gray-800">{h.monto.toFixed(2)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function PatientDetailView({
   patient,
   appointments,
@@ -1236,6 +1505,8 @@ export default function PatientDetailView({
 
         <NotasClinicasCard patientId={patient.id} />
       </div>
+
+      <ActosRealizadosCard patientId={patient.id} />
     </div>
   )
 }

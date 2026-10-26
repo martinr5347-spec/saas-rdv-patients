@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { meetsMinimumPasswordRule } from '@/lib/utils/passwordStrength'
+import { seedActosIfEmpty } from '@/lib/patients/actosCatalog'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 
@@ -81,6 +82,14 @@ export async function POST(req: Request) {
       await supabase.from('organizations').delete().eq('id', org.id)
       await supabase.auth.admin.deleteUser(userId)
       return NextResponse.json({ error: 'Erreur création cabinet' }, { status: 500 })
+    }
+
+    // Liste de depart d'actes facturables selon le profil du cabinet -- jamais bloquant si ca
+    // echoue (organisation deja creee avec succes a ce stade), juste logue.
+    try {
+      await seedActosIfEmpty(supabase, org.id, orgEspecialidad)
+    } catch (e) {
+      console.error('Erreur seed actos a l\'inscription:', e)
     }
 
     const sessionClient = createClient()

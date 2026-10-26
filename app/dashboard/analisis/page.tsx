@@ -35,5 +35,19 @@ export default async function AnalisisPage() {
     .eq('organization_id', organizationId ?? '')
     .gte('fecha', startStr)
 
-  return <AnalisisView appointments={appointments ?? []} manuales={manuales ?? []} />
+  // Base du Pareto 80/20 -- groupby reel fait cote client (AnalisisView), ici on resout juste le
+  // nom affichable (acto.nombre ou acto_texto_libre) pour ne pas exposer la distinction en UI.
+  const { data: actosRealizadosRaw } = await supabase
+    .from('actos_realizados')
+    .select('monto, fecha, acto_texto_libre, actos(nombre)')
+    .eq('organization_id', organizationId ?? '')
+    .gte('fecha', startStr)
+
+  const actosRealizados = (actosRealizadosRaw ?? []).map((a) => ({
+    monto: Number(a.monto),
+    fecha: a.fecha,
+    nombre: (a.actos as unknown as { nombre: string } | null)?.nombre ?? a.acto_texto_libre ?? '',
+  }))
+
+  return <AnalisisView appointments={appointments ?? []} manuales={manuales ?? []} actosRealizados={actosRealizados} />
 }

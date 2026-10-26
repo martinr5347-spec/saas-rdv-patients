@@ -99,90 +99,44 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
   )
 }
 
-function MontantConsultationInput({
+// Saisie directe de montant_consultation retiree pour les nouveaux cas (cf. prompt "actes
+// facturables par fiche patient") -- remplacee par un raccourci vers "+ Agregar acto" de la fiche
+// patient (pre-rempli avec cet appointment_id), qui alimente actos_realizados plutot que ce champ.
+// Les valeurs deja existantes restent affichees en lecture seule : aucune migration de donnees,
+// aucune perte, juste le point d'entree des NOUVELLES saisies qui change.
+function ConsultaMontoBlock({
+  patientId,
   appointmentId,
   initial,
   initialConcepto,
 }: {
+  patientId: string | undefined
   appointmentId: string
   initial: number | null
   initialConcepto: string | null
 }) {
-  const [value, setValue] = useState<string>(initial !== null ? String(initial) : '')
-  const [concepto, setConcepto] = useState(initialConcepto ?? '')
-  const [saved, setSaved] = useState(initial !== null)
-  const [loading, setLoading] = useState(false)
-
-  const save = async () => {
-    const num = parseFloat(value)
-    if (value === '' || isNaN(num) || num < 0) {
-      toast.error('Ingresa un monto válido')
-      return
-    }
-    setLoading(true)
-    const res = await fetch(`/api/appointments/${appointmentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        montant_consultation: num,
-        concepto_consultation: concepto.trim() || null,
-      }),
-    })
-    if (res.ok) {
-      setSaved(true)
-      toast.success('Monto registrado')
-    } else {
-      toast.error('Error al guardar el monto')
-    }
-    setLoading(false)
+  if (initial !== null) {
+    return (
+      <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-gray-400">Monto cobrado en consulta (histórico)</p>
+        <p className="mt-1 text-base font-semibold text-gray-800">{initial.toFixed(2)}</p>
+        {initialConcepto && <p className="mt-0.5 text-sm text-gray-500">{initialConcepto}</p>}
+      </div>
+    )
   }
+
+  if (!patientId) return null
 
   return (
     <div className="mt-4">
       <span className="mb-2 block text-sm text-gray-500">Monto cobrado en consulta</span>
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value)
-            setSaved(false)
-          }}
-          placeholder="0.00"
-          className="w-36 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-        />
-        <button
-          type="button"
-          onClick={save}
-          disabled={loading || saved}
-          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
-            saved
-              ? 'border-green-300 bg-green-50 text-[#059669]'
-              : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'
-          }`}
-        >
-          {saved ? '✓ Guardado' : loading ? '...' : 'Guardar'}
-        </button>
-      </div>
-
-      <span className="mb-2 mt-3 block text-sm text-gray-500">
-        Concepto <span className="text-gray-400">(opcional)</span>
-      </span>
-      <input
-        type="text"
-        maxLength={120}
-        value={concepto}
-        onChange={(e) => {
-          setConcepto(e.target.value)
-          setSaved(false)
-        }}
-        placeholder="Ej: Botox, peeling, relleno..."
-        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-      />
-
-      <p className="mt-1 text-xs text-gray-400">Este monto se registra en Mis Ingresos automáticamente.</p>
+      <Link
+        href={`/dashboard/patients/${patientId}?addActo=1&appointmentId=${appointmentId}`}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98]"
+      >
+        + Agregar acto
+      </Link>
+      <p className="mt-1 text-xs text-gray-400">Registra el acto y su monto desde la ficha del paciente.</p>
     </div>
   )
 }
@@ -418,7 +372,8 @@ export default function AppointmentDetailView({
 
         <PresenceToggle appointmentId={appointment.id} presente={appointment.presente} />
 
-        <MontantConsultationInput
+        <ConsultaMontoBlock
+          patientId={patient?.id}
           appointmentId={appointment.id}
           initial={appointment.montant_consultation}
           initialConcepto={appointment.concepto_consultation}

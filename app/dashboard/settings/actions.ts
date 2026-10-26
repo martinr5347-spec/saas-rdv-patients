@@ -13,6 +13,7 @@ import {
   getVariantContent,
   getControlRecallVariantContent,
 } from '@/lib/dispatcher/templateVariants'
+import { seedActosIfEmpty, type Especialidad } from '@/lib/patients/actosCatalog'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CANALES = ['email', 'whatsapp'] as const
@@ -115,15 +116,30 @@ export async function updateSettings(formData: FormData) {
 
   const { data: organization } = await supabase
     .from('organizations')
-    .select('langue')
+    .select('langue, especialidad')
     .eq('id', profile.organization_id)
     .maybeSingle()
   const finalLangue = organization?.langue === 'pt' ? 'pt' : 'es'
 
+  const especialidadInput = String(formData.get('organizacion_especialidad') ?? '')
+  const nuevaEspecialidad: Especialidad | null =
+    especialidadInput === 'estetica_dermato' || especialidadInput === 'clinica_medica' ? especialidadInput : null
+
   await supabase
     .from('organizations')
-    .update({ adresse: String(formData.get('adresse') ?? '') })
+    .update({ adresse: String(formData.get('adresse') ?? ''), especialidad: nuevaEspecialidad })
     .eq('id', profile.organization_id)
+
+  // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty
+  // ne fait de toute facon rien si la liste de l'organisation n'est plus vide (jamais d'ecrasement
+  // d'une liste deja personnalisee par le praticien), mais on evite l'appel inutile sinon.
+  if (nuevaEspecialidad && nuevaEspecialidad !== organization?.especialidad) {
+    try {
+      await seedActosIfEmpty(supabase, profile.organization_id, nuevaEspecialidad)
+    } catch (e) {
+      console.error('Erreur seed actos apres changement especialidad:', e)
+    }
+  }
 
   for (const type of NOTIFICATION_TYPES) {
     const variantId = variantes[type]

@@ -651,6 +651,79 @@ export interface Database {
           { foreignKeyName: 'ingresos_manuales_created_by_fkey'; columns: ['created_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }
         ]
       }
+      actos: {
+        Row: {
+          id: string
+          organization_id: string
+          nombre: string
+          especialidad_origen: 'estetica_dermato' | 'clinica_medica' | null
+          activo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          nombre: string
+          especialidad_origen?: 'estetica_dermato' | 'clinica_medica' | null
+          activo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          nombre?: string
+          especialidad_origen?: 'estetica_dermato' | 'clinica_medica' | null
+          activo?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'actos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      actos_realizados: {
+        Row: {
+          id: string
+          organization_id: string
+          patient_id: string
+          acto_id: string | null
+          acto_texto_libre: string | null
+          monto: number
+          fecha: string
+          appointment_id: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          patient_id: string
+          acto_id?: string | null
+          acto_texto_libre?: string | null
+          monto: number
+          fecha: string
+          appointment_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          patient_id?: string
+          acto_id?: string | null
+          acto_texto_libre?: string | null
+          monto?: number
+          fecha?: string
+          appointment_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'actos_realizados_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'actos_realizados_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'actos_realizados_acto_id_fkey'; columns: ['acto_id']; isOneToOne: false; referencedRelation: 'actos'; referencedColumns: ['id'] },
+          { foreignKeyName: 'actos_realizados_appointment_id_fkey'; columns: ['appointment_id']; isOneToOne: false; referencedRelation: 'appointments'; referencedColumns: ['id'] }
+        ]
+      }
     }
     Views: {}
     Functions: {

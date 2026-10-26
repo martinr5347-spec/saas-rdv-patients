@@ -105,6 +105,17 @@ export default async function IngresosPage({
     .lt('fecha_cita', endStr)
     .order('fecha_cita', { ascending: false })
 
+  // 4e source de revenu (cf. prompt "actos facturables") -- meme fenetre de dates que les 3
+  // sources existantes ci-dessus, jamais fusionnee avec montant_consultation (double comptage
+  // impossible : ce sont deux points d'entree distincts, l'ancien retire pour les nouveaux cas).
+  const { data: actosRealizados } = await supabase
+    .from('actos_realizados')
+    .select('id, monto, fecha, acto_texto_libre, actos(nombre), patients(nom)')
+    .eq('organization_id', organizationId ?? '')
+    .gte('fecha', startStr)
+    .lt('fecha', endStr)
+    .order('fecha', { ascending: false })
+
   const { data: orgSettings } = await supabase
     .from('org_settings')
     .select('monnaie')
@@ -134,6 +145,13 @@ export default async function IngresosPage({
         fecha: p.fecha_cita,
         paciente_nombre: (p.patients as { nom: string } | null)?.nom ?? null,
         concepto: p.concepto_consultation ?? null,
+      }))}
+      actosRealizados={(actosRealizados ?? []).map((a) => ({
+        id: a.id,
+        monto: Number(a.monto),
+        fecha: a.fecha,
+        paciente_nombre: (a.patients as { nom: string } | null)?.nom ?? null,
+        nombre: (a.actos as unknown as { nombre: string } | null)?.nombre ?? a.acto_texto_libre ?? '',
       }))}
       editingEntry={editingEntry}
       createAction={createIngreso}

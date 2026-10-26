@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 import Card from '@/components/ui/Card'
 
@@ -17,6 +18,116 @@ interface ManualRow {
   monto: number
 }
 
+interface ActoRealizadoRow {
+  monto: number
+  fecha: string
+  nombre: string
+}
+
+interface ParetoGroup {
+  nombre: string
+  monto: number
+  cantidad: number
+}
+
+// Vrai groupby de actos_realizados -- rien de simule. Groupe par nom resolu (acto.nombre ou
+// acto_texto_libre, deja fusionnes cote serveur) plutot que par acto_id, pour que deux entrees
+// "solo esta vez" avec le meme libelle se cumulent naturellement comme un seul acte dans l'insight.
+function groupActos(actos: ActoRealizadoRow[]): ParetoGroup[] {
+  const map = new Map<string, ParetoGroup>()
+  for (const a of actos) {
+    const key = a.nombre || '—'
+    const existing = map.get(key)
+    if (existing) {
+      existing.monto += Number(a.monto)
+      existing.cantidad += 1
+    } else {
+      map.set(key, { nombre: key, monto: Number(a.monto), cantidad: 1 })
+    }
+  }
+  return Array.from(map.values())
+}
+
+function ParetoInsightCard({ actosRealizados }: { actosRealizados: ActoRealizadoRow[] }) {
+  const t = useTranslations('dashboard.analisis')
+
+  const { porMonto, porCantidad, totalMonto, actosPara80 } = useMemo(() => {
+    const groups = groupActos(actosRealizados)
+    const porMonto = [...groups].sort((a, b) => b.monto - a.monto)
+    const porCantidad = [...groups].sort((a, b) => b.cantidad - a.cantidad)
+    const totalMonto = porMonto.reduce((s, g) => s + g.monto, 0)
+
+    let acumulado = 0
+    let actosPara80 = 0
+    for (const g of porMonto) {
+      acumulado += g.monto
+      actosPara80 += 1
+      if (totalMonto > 0 && acumulado / totalMonto >= 0.8) break
+    }
+
+    return { porMonto, porCantidad, totalMonto, actosPara80 }
+  }, [actosRealizados])
+
+  if (actosRealizados.length === 0) {
+    return (
+      <Card>
+        <h2 className="text-sm font-semibold text-gray-800 mb-1">{t('paretoTitle')}</h2>
+        <p className="text-xs text-gray-500 mb-6">{t('paretoIntro')}</p>
+        <div className="py-8 text-center">
+          <p className="font-medium text-gray-600">{t('paretoEmptyTitle')}</p>
+          <p className="mt-1 text-sm text-gray-400">{t('paretoEmptyDesc')}</p>
+        </div>
+      </Card>
+    )
+  }
+
+  let acumulado = 0
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold text-gray-800 mb-1">{t('paretoTitle')}</h2>
+      <p className="text-xs text-gray-500 mb-5">{t('paretoIntro')}</p>
+
+      <div className="mb-5 rounded-xl bg-violet-50 px-4 py-3 text-sm font-medium text-[#6926D2]">
+        {t('paretoTopActos', { count: actosPara80 })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('rankingMasFacturan')}</h3>
+          <div className="space-y-1.5">
+            {porMonto.map((g) => {
+              acumulado += g.monto
+              const pctAcumulado = totalMonto > 0 ? Math.round((acumulado / totalMonto) * 100) : 0
+              return (
+                <div key={g.nombre} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                  <span className="text-gray-700">{g.nombre}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-gray-800">{g.monto.toFixed(2)}</span>
+                    <span className="text-xs text-gray-400">{pctAcumulado}% {t('paretoCumulative')}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('rankingMasRealizados')}</h3>
+          <div className="space-y-1.5">
+            {porCantidad.map((g) => (
+              <div key={g.nombre} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                <span className="text-gray-700">{g.nombre}</span>
+                <span className="font-medium text-gray-800">{g.cantidad}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 function growthLabel(current: number, previous: number): string {
@@ -25,7 +136,15 @@ function growthLabel(current: number, previous: number): string {
   return `${pct >= 0 ? '+' : ''}${pct}%`
 }
 
-export default function AnalisisView({ appointments, manuales }: { appointments: AppointmentRow[]; manuales: ManualRow[] }) {
+export default function AnalisisView({
+  appointments,
+  manuales,
+  actosRealizados,
+}: {
+  appointments: AppointmentRow[]
+  manuales: ManualRow[]
+  actosRealizados: ActoRealizadoRow[]
+}) {
   const now = new Date()
   const currentYear = now.getUTCFullYear()
   const previousYear = currentYear - 1
@@ -124,6 +243,7 @@ export default function AnalisisView({ appointments, manuales }: { appointments:
             <p className="text-sm text-gray-400 mt-1">Vuelve aquí después de registrar tus primeras citas y pagos.</p>
           </div>
         </Card>
+        <ParetoInsightCard actosRealizados={actosRealizados} />
       </div>
     )
   }
@@ -198,6 +318,8 @@ export default function AnalisisView({ appointments, manuales }: { appointments:
         </ResponsiveContainer>
         <p className="text-xs text-gray-400 mt-2">* El mes en curso se muestra una vez finalizado, para no distorsionar la comparación.</p>
       </Card>
+
+      <ParetoInsightCard actosRealizados={actosRealizados} />
     </div>
   )
 }

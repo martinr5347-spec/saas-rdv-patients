@@ -14,6 +14,7 @@ import {
   getControlRecallVariantContent,
 } from '@/lib/dispatcher/templateVariants'
 import { seedActosIfEmpty, type Especialidad } from '@/lib/patients/actosCatalog'
+import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CANALES = ['email', 'whatsapp'] as const
@@ -125,9 +126,16 @@ export async function updateSettings(formData: FormData) {
   const nuevaEspecialidad: Especialidad | null =
     especialidadInput === 'estetica_dermato' || especialidadInput === 'clinica_medica' ? especialidadInput : null
 
+  // Corrige le pays d'une organisation deja creee (ex. par erreur sur le defaut SQL 'PE') --
+  // ne touche jamais monnaie ici, meme si le pays change : le mapping pays->monnaie automatique
+  // ne joue qu'a l'inscription, jamais en ecrasement a posteriori (le praticien a pu la changer
+  // volontairement pour une autre raison).
+  const paisInput = String(formData.get('organizacion_pais') ?? '')
+  const nuevoPais = PAISES_LATAM.some((p) => p.pais === paisInput) ? paisInput : 'PE'
+
   await supabase
     .from('organizations')
-    .update({ adresse: String(formData.get('adresse') ?? ''), especialidad: nuevaEspecialidad })
+    .update({ adresse: String(formData.get('adresse') ?? ''), especialidad: nuevaEspecialidad, pays: nuevoPais })
     .eq('id', profile.organization_id)
 
   // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty

@@ -16,9 +16,10 @@ import {
   getControlRecallPreview,
 } from '@/lib/dispatcher/templateVariants'
 import { getMercadoPagoDevPanelUrl } from '@/lib/payments/mercadopagoDomains'
+import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
-const CURRENCIES = ['PEN', 'BRL', 'MXN', 'COP', 'CLP', 'ARS', 'UYU', 'USD'] as const
+const CURRENCIES = ['PEN', 'BRL', 'MXN', 'COP', 'CLP', 'ARS', 'UYU', 'BOB', 'PYG', 'USD'] as const
 
 export interface OrgSettings {
   delai_paiement_h: number | null
@@ -667,6 +668,19 @@ export default function SettingsView({
                 placeholder={t('especialidadTextoPlaceholder')}
                 className={inputClass}
               />
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                {t('organizacionPais')}
+                <InfoTooltip text={t('organizacionPaisInfo')} />
+              </label>
+              <select name="organizacion_pais" defaultValue={organizationPays ?? 'PE'} className={inputClass}>
+                {PAISES_LATAM.map((p) => (
+                  <option key={p.pais} value={p.pais}>
+                    {p.bandera} {p.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">

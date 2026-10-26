@@ -6,26 +6,12 @@ import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 import { formatDisplayDate } from '@/lib/utils/timezone'
 import Avatar from '@/components/ui/Avatar'
+import { PAISES_LATAM as INDICATIVOS_LATAM } from '@/lib/constants/paisesLatam'
 
 const BOOKING_MESSAGES: Record<'es' | 'pt', typeof esMessages.booking> = {
   es: esMessages.booking,
   pt: ptMessages.booking,
 }
-
-// Liste LATAM codee en dur, pas de nouvelle dependance. Etendre cette liste plus tard si le marche
-// s'elargit hors LATAM -- volontairement limitee aux pays probables du client pour l'instant.
-const INDICATIVOS_LATAM = [
-  { pais: 'PE', nombre: 'Perú', indicativo: '+51', bandera: '🇵🇪' },
-  { pais: 'CL', nombre: 'Chile', indicativo: '+56', bandera: '🇨🇱' },
-  { pais: 'CO', nombre: 'Colombia', indicativo: '+57', bandera: '🇨🇴' },
-  { pais: 'MX', nombre: 'México', indicativo: '+52', bandera: '🇲🇽' },
-  { pais: 'AR', nombre: 'Argentina', indicativo: '+54', bandera: '🇦🇷' },
-  { pais: 'BR', nombre: 'Brasil', indicativo: '+55', bandera: '🇧🇷' },
-  { pais: 'EC', nombre: 'Ecuador', indicativo: '+593', bandera: '🇪🇨' },
-  { pais: 'BO', nombre: 'Bolivia', indicativo: '+591', bandera: '🇧🇴' },
-  { pais: 'UY', nombre: 'Uruguay', indicativo: '+598', bandera: '🇺🇾' },
-  { pais: 'PY', nombre: 'Paraguay', indicativo: '+595', bandera: '🇵🇾' },
-]
 
 const DIAS_CORTOS: Record<'es' | 'pt', string[]> = {
   es: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'],

@@ -8,6 +8,7 @@ import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { useLocale, MESSAGES } from '@/lib/hooks/useLocale'
 import { MailIcon, LockIcon } from '@/components/auth/icons'
 import { meetsMinimumPasswordRule, evaluatePasswordStrength, type PasswordStrength } from '@/lib/utils/passwordStrength'
+import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
 
 function BuildingIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -93,6 +94,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nom, setNom] = useState('')
+  const [pais, setPais] = useState('')
   const [especialidad, setEspecialidad] = useState<'estetica_dermato' | 'clinica_medica'>('estetica_dermato')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -113,7 +115,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, nom, idioma: locale, especialidad }),
+      body: JSON.stringify({ email, password, nom, idioma: locale, especialidad, pais }),
     })
 
     const data = await res.json()
@@ -187,6 +189,8 @@ export default function RegisterPage() {
           <RegisterFormFields
             nom={nom}
             setNom={setNom}
+            pais={pais}
+            setPais={setPais}
             especialidad={especialidad}
             setEspecialidad={setEspecialidad}
             email={email}
@@ -206,6 +210,8 @@ export default function RegisterPage() {
 function RegisterFormFields({
   nom,
   setNom,
+  pais,
+  setPais,
   especialidad,
   setEspecialidad,
   email,
@@ -218,6 +224,8 @@ function RegisterFormFields({
 }: {
   nom: string
   setNom: (v: string) => void
+  pais: string
+  setPais: (v: string) => void
   especialidad: 'estetica_dermato' | 'clinica_medica'
   setEspecialidad: (v: 'estetica_dermato' | 'clinica_medica') => void
   email: string
@@ -269,6 +277,27 @@ function RegisterFormFields({
                   className={inputClass}
                 />
               </div>
+            </div>
+            <div>
+              <label htmlFor="pais" className="mb-1.5 block text-sm font-medium text-[#1a1a1a]">
+                {t('paisLabel')}
+              </label>
+              <select
+                id="pais"
+                required
+                value={pais}
+                onChange={(e) => setPais(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3.5 text-sm text-[#1a1a1a] focus:border-[#7C3AED] focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
+              >
+                <option value="" disabled>
+                  {t('paisPlaceholder')}
+                </option>
+                {PAISES_LATAM.map((p) => (
+                  <option key={p.pais} value={p.pais}>
+                    {p.bandera} {p.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <div className="mb-1.5 block text-sm font-medium text-[#1a1a1a]">{t('specialtyLabel')}</div>

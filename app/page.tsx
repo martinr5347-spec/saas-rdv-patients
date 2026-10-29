@@ -43,8 +43,8 @@ function HomeContent({
   locale,
   setLocale,
 }: {
-  locale: 'es' | 'pt'
-  setLocale: (l: 'es' | 'pt') => void
+  locale: 'es' | 'pt' | 'fr'
+  setLocale: (l: 'es' | 'pt' | 'fr') => void
 }) {
   const t = useTranslations('home')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -79,6 +79,20 @@ function HomeContent({
       >
         <span>🇧🇷</span> Português
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          setLocale('fr')
+          setMobileMenuOpen(false)
+        }}
+        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+          locale === 'fr'
+            ? 'border-[#6926D2] bg-[#6926D2]/20 text-white'
+            : 'border-white/20 text-gray-400 hover:border-white/40'
+        }`}
+      >
+        <span>🇫🇷</span> Français
+      </button>
     </>
   )
 
@@ -102,7 +116,7 @@ function HomeContent({
           <button
             type="button"
             onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-label={mobileMenuOpen ? t('menuCloseLabel') : t('menuOpenLabel')}
             aria-expanded={mobileMenuOpen}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 text-white md:hidden"
           >
@@ -187,7 +201,7 @@ function HomeContent({
           <div className="relative aspect-square w-full max-w-[260px] overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50 sm:max-w-xs">
             <Image
               src="/images/hero-characters.png"
-              alt="Praticiens Núcleo"
+              alt={t('heroImageAlt')}
               fill
               className="object-cover"
             />

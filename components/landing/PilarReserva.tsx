@@ -4,9 +4,10 @@ import { useTranslations } from 'next-intl'
 
 // Jours/mois codes en dur, comme DIAS_CORTOS/MESES dans ReservaView.tsx -- simple vocabulaire de
 // calendrier, pas une phrase a traduire via next-intl.
-const DIAS_CORTOS: Record<'es' | 'pt', string[]> = {
+const DIAS_CORTOS: Record<'es' | 'pt' | 'fr', string[]> = {
   es: ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'],
   pt: ['Se', 'Te', 'Qu', 'Qu', 'Se', 'Sá', 'Do'],
+  fr: ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'],
 }
 
 const DIAS_NUM = [10, 11, 12, 13, 14, 15, 16]
@@ -15,7 +16,7 @@ const DIA_SELECCIONADO = 3
 
 const SLOTS = ['09:00', '10:30', '15:00']
 
-export default function PilarReserva({ locale }: { locale: 'es' | 'pt' }) {
+export default function PilarReserva({ locale }: { locale: 'es' | 'pt' | 'fr' }) {
   const t = useTranslations('home')
 
   return (

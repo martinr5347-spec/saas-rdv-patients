@@ -2,12 +2,13 @@
 
 import { useTranslations } from 'next-intl'
 
-const CITAS_EJEMPLO: Record<'es' | 'pt', { fecha: string }[]> = {
+const CITAS_EJEMPLO: Record<'es' | 'pt' | 'fr', { fecha: string }[]> = {
   es: [{ fecha: '12 feb' }, { fecha: '03 ene' }],
   pt: [{ fecha: '12 fev' }, { fecha: '03 jan' }],
+  fr: [{ fecha: '12 fév' }, { fecha: '03 jan' }],
 }
 
-export default function PilarFichaPaciente({ locale }: { locale: 'es' | 'pt' }) {
+export default function PilarFichaPaciente({ locale }: { locale: 'es' | 'pt' | 'fr' }) {
   const t = useTranslations('home')
   const nombre = t('previewName')
   const iniciales = nombre

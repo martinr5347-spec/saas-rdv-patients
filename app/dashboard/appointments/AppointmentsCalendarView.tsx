@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Calendar, dateFnsLocalizer, Views, type View } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
-import { es, ptBR } from 'date-fns/locale'
+import { es, ptBR, fr } from 'date-fns/locale'
 import { useLocale, useTranslations } from 'next-intl'
 import toast from 'react-hot-toast'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
@@ -24,7 +24,7 @@ interface CalendarEvent {
   end: Date
 }
 
-const LOCALES = { es, pt: ptBR }
+const LOCALES = { es, pt: ptBR, fr }
 
 // Duree minimale imposee cote client lors du redimensionnement, pour eviter un creneau de
 // quelques secondes avant meme la validation serveur (qui exige hora_fin > hora_cita).
@@ -124,7 +124,7 @@ function EventBlock({
 }
 
 export default function AppointmentsCalendarView({ appointments }: { appointments: PaidAppointment[] }) {
-  const locale = (useLocale() as 'es' | 'pt') ?? 'es'
+  const locale = (useLocale() as 'es' | 'pt' | 'fr') ?? 'es'
   const t = useTranslations('dashboard.appointments.calendar')
   const [date, setDate] = useState(new Date())
   const [view, setView] = useState<View>(Views.WEEK)

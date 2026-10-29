@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 import Badge from '@/components/ui/Badge'
 import { CashIcon } from '@/components/layout/icons'
+
+const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
 interface PatientNotePhoto {
   id: string
@@ -65,16 +68,18 @@ function categoryRingColor(categoria: string) {
   return CATEGORY_RING_COLORS[hash % CATEGORY_RING_COLORS.length]
 }
 
-// Date locale (es-PE) sans l'heure, utilisée comme clé de regroupement des notes du même jour.
-function fechaKey(createdAt: string) {
-  return new Date(createdAt).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })
+// Date locale (selon la langue d'interface) sans l'heure, utilisée comme clé de regroupement des
+// notes du même jour -- intlLocale passe en parametre (fonction pure hors composant, ne peut pas
+// appeler useLocale elle-meme).
+function fechaKey(createdAt: string, intlLocale: string) {
+  return new Date(createdAt).toLocaleDateString(intlLocale, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // Regroupe les notes par jour calendaire, en conservant l'ordre déjà trié (desc) du state `notes`.
-function groupNotesByFecha(notes: PatientNote[]) {
+function groupNotesByFecha(notes: PatientNote[], intlLocale: string) {
   const groups: { key: string; notes: PatientNote[] }[] = []
   for (const note of notes) {
-    const key = fechaKey(note.created_at)
+    const key = fechaKey(note.created_at, intlLocale)
     const lastGroup = groups[groups.length - 1]
     if (lastGroup && lastGroup.key === key) {
       lastGroup.notes.push(note)
@@ -170,6 +175,9 @@ function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 function NotasClinicasCard({ patientId }: { patientId: string }) {
+  const t = useTranslations('dashboard.patientDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
   const [state, setState] = useState<'locked' | 'pin' | 'unlocked'>('locked')
   const [pinDigits, setPinDigits] = useState(['', '', '', ''])
   const [codigo, setCodigo] = useState<string | null>(null) // gardé en mémoire uniquement, jamais persisté
@@ -249,7 +257,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const submitPin = async () => {
     const pin = pinDigits.join('')
     if (pin.length !== 4) {
-      setError('Ingresa los 4 dígitos')
+      setError(t('toastIngresaDigitos'))
       return
     }
     setLoading(true)
@@ -270,7 +278,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setProximoControl(data.proximoControl ?? null)
       setState('unlocked')
     } else {
-      setError(data.error ?? 'Código incorrecto')
+      setError(data.error ?? t('toastCodigoIncorrecto'))
       setPinDigits(['', '', '', ''])
     }
     setLoading(false)
@@ -287,7 +295,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     })
     const data = await res.json()
     if (!res.ok) {
-      toast.error(data.error ?? 'Error al guardar la nota')
+      toast.error(data.error ?? t('toastErrorGuardarNota'))
       if (res.status === 403) lock()
       setLoading(false)
       return
@@ -319,12 +327,12 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
           photoThumbUrl: diagnosticoConFoto?.photos?.[0]?.url ?? null,
         })
         setBannerDismissed(false)
-        toast.success('Control programado')
+        toast.success(t('toastControlProgramado'))
       } else {
-        toast.error('Nota guardada, pero no se pudo programar el recordatorio')
+        toast.error(t('toastNotaGuardadaSinRecordatorio'))
       }
     } else {
-      toast.success('Nota guardada')
+      toast.success(t('toastNotaGuardada'))
     }
 
     setNewNote('')
@@ -359,10 +367,10 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     const data = await res.json()
     if (res.ok) {
       setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? { ...data.note, photos: n.photos } : n)))
-      toast.success('Nota actualizada')
+      toast.success(t('toastNotaActualizada'))
       cancelEditNote()
     } else {
-      toast.error(data.error ?? 'Error al actualizar la nota')
+      toast.error(data.error ?? t('toastErrorActualizarNota'))
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -378,11 +386,11 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     })
     if (res.ok) {
       setNotes((prev) => prev.filter((n) => n.id !== noteId))
-      toast.success('Nota eliminada')
+      toast.success(t('toastNotaEliminada'))
       setConfirmingDeleteId(null)
     } else {
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error ?? 'Error al eliminar la nota')
+      toast.error(data.error ?? t('toastErrorEliminarNota'))
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -412,9 +420,9 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setNotes((prev) =>
         prev.map((n) => (n.id === noteId ? { ...n, photos: [...(n.photos ?? []), data.photo] } : n))
       )
-      toast.success('Foto agregada')
+      toast.success(t('toastFotoAgregada'))
     } else {
-      toast.error(data.error ?? 'Error al subir la foto')
+      toast.error(data.error ?? t('toastErrorSubirFoto'))
       if (res.status === 403) lock()
     }
     setUploadingNoteId(null)
@@ -433,11 +441,11 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setNotes((prev) =>
         prev.map((n) => (n.id === noteId ? { ...n, photos: (n.photos ?? []).filter((p) => p.id !== photoId) } : n))
       )
-      toast.success('Foto eliminada')
+      toast.success(t('toastFotoEliminada'))
       setConfirmingDeletePhoto(null)
     } else {
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error ?? 'Error al eliminar la foto')
+      toast.error(data.error ?? t('toastErrorEliminarFoto'))
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -462,9 +470,9 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setAlerta(data.alerta ?? null)
       setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
       setEditingAlerta(false)
-      toast.success('Alerta clínica guardada')
+      toast.success(t('toastAlertaGuardada'))
     } else {
-      toast.error(data.error ?? 'Error al guardar la alerta')
+      toast.error(data.error ?? t('toastErrorGuardarAlerta'))
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -483,9 +491,9 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       setAlerta(null)
       setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
       setConfirmingClearAlerta(false)
-      toast.success('Alerta clínica eliminada')
+      toast.success(t('toastAlertaEliminada'))
     } else {
-      toast.error(data.error ?? 'Error al eliminar la alerta')
+      toast.error(data.error ?? t('toastErrorEliminarAlerta'))
       if (res.status === 403) lock()
     }
     setLoading(false)
@@ -499,9 +507,9 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   }
 
   // Catégories déjà utilisées aujourd'hui -- bornage "une entrée par catégorie par jour" (pas de 10 000 entrées).
-  const todayKey = fechaKey(new Date().toISOString())
+  const todayKey = fechaKey(new Date().toISOString(), intlLocale)
   const categoriasUtiliseesAujourdhui = new Set(
-    notes.filter((n) => fechaKey(n.created_at) === todayKey && n.categoria).map((n) => n.categoria as string)
+    notes.filter((n) => fechaKey(n.created_at, intlLocale) === todayKey && n.categoria).map((n) => n.categoria as string)
   )
 
   const renderPhotosRow = (note: PatientNote) => {
@@ -518,7 +526,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 className="h-full w-full overflow-hidden rounded-lg border border-gray-200"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt="Foto clínica" className="h-full w-full object-cover" />
+                <img src={photo.url} alt={t('fotoClinicaAlt')} className="h-full w-full object-cover" />
               </button>
             ) : (
               <div className="flex h-full w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-400">
@@ -528,7 +536,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             <button
               type="button"
               onClick={() => setConfirmingDeletePhoto({ noteId: note.id, photoId: photo.id })}
-              aria-label="Eliminar foto"
+              aria-label={t('eliminarFotoLabel')}
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white opacity-0 transition-opacity group-hover/photo:opacity-100"
             >
               <CloseIcon className="h-3 w-3" />
@@ -547,20 +555,20 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             ) : (
               <>
                 <PhotoIcon className="h-4 w-4" />
-                <span className="text-[9px]">+ Foto</span>
+                <span className="text-[9px]">{t('masFoto')}</span>
               </>
             )}
           </button>
         )}
         {confirmingDeletePhoto?.noteId === note.id && (
           <div className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs">
-            <span className="text-gray-600">¿Eliminar foto?</span>
+            <span className="text-gray-600">{t('confirmarEliminarFoto')}</span>
             <button
               type="button"
               onClick={() => setConfirmingDeletePhoto(null)}
               className="font-medium text-gray-500 hover:text-gray-700"
             >
-              Cancelar
+              {t('cancelar')}
             </button>
             <button
               type="button"
@@ -568,7 +576,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               disabled={loading}
               className="font-medium text-red-600 hover:text-red-700"
             >
-              Confirmar
+              {t('confirmar')}
             </button>
           </div>
         )}
@@ -582,14 +590,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-[#6926D2]">
           <LockIcon className="h-6 w-6" />
         </div>
-        <h3 className="font-semibold text-gray-800">Notas clínicas confidenciales</h3>
-        <p className="mb-4 mt-1 text-sm text-gray-500">Protegido por código de acceso. Visible solo para ti.</p>
+        <h3 className="font-semibold text-gray-800">{t('notasConfidencialesTitle')}</h3>
+        <p className="mb-4 mt-1 text-sm text-gray-500">{t('notasConfidencialesDesc')}</p>
         <button
           type="button"
           onClick={() => setState('pin')}
           className="w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
         >
-          Desbloquear
+          {t('desbloquear')}
         </button>
       </div>
     )
@@ -598,8 +606,8 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   if (state === 'pin') {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
-        <h3 className="mb-1 font-semibold text-gray-800">Notas clínicas confidenciales</h3>
-        <p className="mb-4 text-sm text-gray-600">Ingresa tu código de seguridad</p>
+        <h3 className="mb-1 font-semibold text-gray-800">{t('notasConfidencialesTitle')}</h3>
+        <p className="mb-4 text-sm text-gray-600">{t('ingresaCodigoSeguridad')}</p>
         <div className="mb-3 flex justify-center gap-2">
           {pinDigits.map((d, i) => (
             <input
@@ -630,7 +638,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             onClick={() => setState('locked')}
             className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:border-gray-300"
           >
-            Cancelar
+            {t('cancelar')}
           </button>
           <button
             type="button"
@@ -638,7 +646,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             disabled={loading}
             className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
           >
-            {loading ? '...' : 'Confirmar'}
+            {loading ? '...' : t('confirmar')}
           </button>
         </div>
       </div>
@@ -663,13 +671,13 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            aria-label="Cerrar"
+            aria-label={t('cerrarLabel')}
             className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightboxUrl} alt="Foto clínica" className="max-h-full max-w-full rounded-lg object-contain" />
+          <img src={lightboxUrl} alt={t('fotoClinicaAlt')} className="max-h-full max-w-full rounded-lg object-contain" />
         </div>
       )}
 
@@ -679,14 +687,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             <NotesIcon className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">Notas clínicas</h3>
-            <p className="text-xs text-gray-400">Acceso autenticado por sesión</p>
+            <h3 className="font-semibold text-gray-800">{t('notasClinicas')}</h3>
+            <p className="text-xs text-gray-400">{t('accesoAutenticado')}</p>
           </div>
         </div>
         <button
           type="button"
           onClick={lock}
-          aria-label="Bloquear notas"
+          aria-label={t('bloquearNotasLabel')}
           className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-100"
         >
           <LockIcon className="h-4 w-4" />
@@ -703,7 +711,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 <p className="text-sm font-semibold text-amber-900">{alerta}</p>
                 {alertaUpdatedAt && (
                   <p className="mt-1 text-xs text-amber-600">
-                    Actualizado el {new Date(alertaUpdatedAt).toLocaleDateString('es')}
+                    {t('actualizadoEl', { date: new Date(alertaUpdatedAt).toLocaleDateString(intlLocale) })}
                   </p>
                 )}
               </div>
@@ -712,7 +720,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               <button
                 type="button"
                 onClick={startEditAlerta}
-                aria-label="Editar alerta"
+                aria-label={t('editarAlertaLabel')}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100"
               >
                 <PencilIcon className="h-3.5 w-3.5" />
@@ -720,7 +728,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               <button
                 type="button"
                 onClick={() => setConfirmingClearAlerta(true)}
-                aria-label="Eliminar alerta"
+                aria-label={t('eliminarAlertaLabel')}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100"
               >
                 <TrashIcon className="h-3.5 w-3.5" />
@@ -729,14 +737,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
           </div>
           {confirmingClearAlerta && (
             <div className="mt-3 flex items-center justify-between rounded-lg bg-white/60 px-3 py-2">
-              <p className="text-xs text-amber-800">¿Eliminar esta alerta clínica?</p>
+              <p className="text-xs text-amber-800">{t('confirmarEliminarAlerta')}</p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setConfirmingClearAlerta(false)}
                   className="text-xs font-medium text-gray-500 hover:text-gray-700"
                 >
-                  Cancelar
+                  {t('cancelar')}
                 </button>
                 <button
                   type="button"
@@ -744,7 +752,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                   disabled={loading}
                   className="text-xs font-medium text-red-600 hover:text-red-700"
                 >
-                  Confirmar
+                  {t('confirmar')}
                 </button>
               </div>
             </div>
@@ -758,7 +766,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
           onClick={startEditAlerta}
           className="mb-4 text-xs font-medium text-gray-400 hover:text-gray-600"
         >
-          + Agregar alerta clínica
+          {t('agregarAlertaClinica')}
         </button>
       )}
 
@@ -766,7 +774,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <div className="mb-1 flex items-center justify-between">
             <label className="text-xs font-medium text-amber-800" htmlFor="alerta-draft">
-              Alerta clínica (ej. alergias)
+              {t('alertaClinicaLabel')}
             </label>
             <span className="text-xs text-amber-600">{alertaDraft.length}/300</span>
           </div>
@@ -775,7 +783,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             value={alertaDraft}
             onChange={(e) => setAlertaDraft(e.target.value.slice(0, 300))}
             rows={2}
-            placeholder="Ej: Alergia a la penicilina"
+            placeholder={t('alertaClinicaPlaceholder')}
             className="w-full resize-none rounded-lg border border-amber-200 bg-white p-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
           <div className="mt-2 flex gap-2">
@@ -784,7 +792,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               onClick={() => setEditingAlerta(false)}
               className="flex-1 rounded-lg border border-amber-200 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
             >
-              Cancelar
+              {t('cancelar')}
             </button>
             <button
               type="button"
@@ -792,7 +800,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               disabled={loading}
               className="flex-1 rounded-lg bg-amber-600 py-2 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
             >
-              Guardar
+              {t('guardar')}
             </button>
           </div>
         </div>
@@ -808,7 +816,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg border border-orange-200"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={proximoControl.photoThumbUrl} alt="Foto de diagnóstico" className="h-full w-full object-cover" />
+              <img src={proximoControl.photoThumbUrl} alt={t('fotoDiagnosticoAsociada')} className="h-full w-full object-cover" />
             </button>
           ) : (
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-400">
@@ -817,17 +825,17 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
           )}
           <div className="flex-1">
             <p className="text-xs font-semibold text-orange-800">
-              {proximoControl.photoThumbUrl ? 'Foto de diagnóstico asociada' : 'Control programado'}
+              {proximoControl.photoThumbUrl ? t('fotoDiagnosticoAsociada') : t('controlProgramado')}
             </p>
             <p className="text-xs text-orange-600">
-              {new Date(proximoControl.fecha).toLocaleDateString('es-PE')}
-              {proximoControl.meses ? ` · dentro de ${proximoControl.meses} ${proximoControl.meses === 1 ? 'mes' : 'meses'}` : ''}
+              {new Date(proximoControl.fecha).toLocaleDateString(intlLocale)}
+              {proximoControl.meses ? ` · ${t('proximoControlDentroDe', { months: proximoControl.meses })}` : ''}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setBannerDismissed(true)}
-            aria-label="Ocultar"
+            aria-label={t('ocultarLabel')}
             className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-orange-400 hover:bg-orange-100"
           >
             <CloseIcon className="h-3.5 w-3.5" />
@@ -845,7 +853,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               filtroCategoria === null ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            Todas
+            {t('todas')}
           </button>
           {categorias.map((cat) => (
             <button
@@ -867,18 +875,18 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 filtroCategoria === CATEGORIA_CONTROL ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
               }`}
             >
-              ⏰ Control
+              {t('controlBadge')}
             </button>
           )}
         </div>
       )}
 
       <div className="mb-4 max-h-96 space-y-4 overflow-y-auto">
-        {filteredNotes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">Sin notas registradas.</p>}
-        {groupNotesByFecha(filteredNotes).map((group) => (
+        {filteredNotes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">{t('sinNotasRegistradas')}</p>}
+        {groupNotesByFecha(filteredNotes, intlLocale).map((group) => (
           <div key={group.key}>
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-              {group.key} · {group.notes.length} {group.notes.length === 1 ? 'entrada' : 'entradas'}
+              {group.key} · {t('entradasCount', { count: group.notes.length })}
             </p>
             <div className="space-y-2">
               {group.notes.map((note) => (
@@ -897,7 +905,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     onChange={(e) => setEditingCategoria(e.target.value || null)}
                     className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
                   >
-                    <option value="">Sin categoría</option>
+                    <option value="">{t('sinCategoria')}</option>
                     {categorias.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -912,7 +920,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     onClick={cancelEditNote}
                     className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
                   >
-                    Cancelar
+                    {t('cancelar')}
                   </button>
                   <button
                     type="button"
@@ -920,7 +928,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     disabled={loading || !editingContenido.trim()}
                     className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
                   >
-                    Guardar
+                    {t('guardar')}
                   </button>
                 </div>
               </div>
@@ -929,7 +937,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 <div className="mb-1 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-gray-400">
-                      {new Date(note.created_at).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {new Date(note.created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
                     </p>
                     {note.categoria && (
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryColor(note.categoria)}`}>
@@ -941,7 +949,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     <button
                       type="button"
                       onClick={() => startEditNote(note)}
-                      aria-label="Editar nota"
+                      aria-label={t('editarNotaLabel')}
                       className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                     >
                       <PencilIcon className="h-3.5 w-3.5" />
@@ -949,7 +957,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                     <button
                       type="button"
                       onClick={() => setConfirmingDeleteId(note.id)}
-                      aria-label="Eliminar nota"
+                      aria-label={t('eliminarNotaLabel')}
                       className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-red-600"
                     >
                       <TrashIcon className="h-3.5 w-3.5" />
@@ -960,14 +968,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 {renderPhotosRow(note)}
                 {confirmingDeleteId === note.id && (
                   <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3 py-2">
-                    <p className="text-xs text-gray-600">¿Eliminar esta nota?</p>
+                    <p className="text-xs text-gray-600">{t('confirmarEliminarNota')}</p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setConfirmingDeleteId(null)}
                         className="text-xs font-medium text-gray-500 hover:text-gray-700"
                       >
-                        Cancelar
+                        {t('cancelar')}
                       </button>
                       <button
                         type="button"
@@ -975,7 +983,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                         disabled={loading}
                         className="text-xs font-medium text-red-600 hover:text-red-700"
                       >
-                        Confirmar
+                        {t('confirmar')}
                       </button>
                     </div>
                   </div>
@@ -1002,7 +1010,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 setComposerMode('categoria')
                 setNewNoteCategoria(cat)
               }}
-              title={dejaUtilisee && !selected ? 'Ya hay una entrada de esta categoría hoy' : undefined}
+              title={dejaUtilisee && !selected ? t('yaHayEntradaCategoria') : undefined}
               className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(cat)} ${
                 selected ? `ring-2 ${categoryRingColor(cat)}` : dejaUtilisee ? 'opacity-30' : 'opacity-60 hover:opacity-100'
               }`}
@@ -1022,7 +1030,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               composerMode === 'control' ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
             }`}
           >
-            ⏰ Control
+            {t('controlBadge')}
           </button>
         )}
         <button
@@ -1035,7 +1043,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
             composerMode === 'categoria' && newNoteCategoria === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 opacity-60 hover:opacity-100'
           }`}
         >
-          Sin categoría
+          {t('sinCategoria')}
         </button>
       </div>
 
@@ -1047,7 +1055,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               checked={programarRecordatorio}
               onChange={(e) => setProgramarRecordatorio(e.target.checked)}
             />
-            Programar recordatorio automático
+            {t('programarRecordatorioAutomatico')}
           </label>
           {programarRecordatorio && (
             <select
@@ -1055,25 +1063,25 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               onChange={(e) => setControlMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
               className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none"
             >
-              <option value="">Elegir...</option>
+              <option value="">{t('elegirEllipsis')}</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>
-                  Dentro de {m} {m === 1 ? 'mes' : 'meses'}
+                  {t('elegirMesesOption', { months: m })}
                 </option>
               ))}
             </select>
           )}
           <p className="mt-1.5 text-[11px] text-orange-500">
             {programarRecordatorio
-              ? 'Se enviará un email automático con link de reserva cuando llegue la fecha.'
-              : 'Déjalo sin marcar si solo quieres registrar el resultado de este control.'}
+              ? t('emailAutomaticoInfo')
+              : t('dejaloSinMarcar')}
           </p>
         </div>
       )}
 
       <div className="mb-1 flex items-center justify-between">
         <label className="text-xs font-medium text-gray-600" htmlFor="new-note">
-          Nueva nota confidencial
+          {t('nuevaNotaConfidencial')}
         </label>
         <span className="text-xs text-gray-400">{newNote.length}/500</span>
       </div>
@@ -1082,14 +1090,14 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         value={newNote}
         onChange={(e) => setNewNote(e.target.value.slice(0, 500))}
         rows={3}
-        placeholder="Escribe una observación clínica privada..."
+        placeholder={t('observacionPlaceholder')}
         className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
       />
       {(composerMode === 'control' || allowsPhoto(newNoteCategoria)) && (
         <button
           type="button"
           disabled
-          title="Guarda la nota antes de agregar una foto"
+          title={t('guardaNotaAntesDeFoto')}
           className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-300"
         >
           <PhotoIcon className="h-4 w-4" />
@@ -1101,7 +1109,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         disabled={loading || !newNote.trim() || (composerMode === 'control' && programarRecordatorio && controlMeses === '')}
         className="mt-2 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
       >
-        Guardar nota
+        {t('guardarNota')}
       </button>
     </div>
   )
@@ -1128,7 +1136,8 @@ const STATUS_BORDER = {
 } as const
 
 export function PatientNotFound() {
-  return <div className="text-error-600">Paciente no encontrado.</div>
+  const t = useTranslations('dashboard.patientDetail')
+  return <div className="text-error-600">{t('notFound')}</div>
 }
 
 interface ActoCatalogo {
@@ -1147,6 +1156,7 @@ interface ActoHistorial {
 // Donnee de facturation (base du Pareto 80/20 dans Analisis), volontairement separee des Notas
 // clinicas ci-dessus : pas de PIN, pas de confidentialite particuliere.
 function ActosRealizadosCard({ patientId }: { patientId: string }) {
+  const t = useTranslations('dashboard.patientDetail')
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [catalogo, setCatalogo] = useState<ActoCatalogo[]>([])
@@ -1198,19 +1208,19 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
   const submit = async () => {
     const montoNum = parseFloat(monto)
     if (monto === '' || isNaN(montoNum) || montoNum < 0) {
-      toast.error('Ingresa un monto válido')
+      toast.error(t('toastMontoInvalido'))
       return
     }
     if (!fecha) {
-      toast.error('Ingresa una fecha')
+      toast.error(t('toastFechaRequerida'))
       return
     }
     if (mode === 'catalogo' && !actoId) {
-      toast.error('Selecciona un acto de la lista')
+      toast.error(t('toastSeleccionaActo'))
       return
     }
     if ((mode === 'nuevo' || mode === 'libre') && !nombreLibre.trim()) {
-      toast.error('Ingresa el nombre del acto')
+      toast.error(t('toastNombreActoRequerido'))
       return
     }
 
@@ -1233,12 +1243,12 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
       if (data.nuevoEnCatalogo) {
         setCatalogo((prev) => [...prev, data.nuevoEnCatalogo].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       }
-      toast.success('Acto agregado')
+      toast.success(t('toastActoAgregado'))
       resetForm()
       setShowForm(false)
       setAppointmentIdPrefill(null)
     } else {
-      toast.error(data.error ?? 'Error al guardar el acto')
+      toast.error(data.error ?? t('toastErrorGuardarActo'))
     }
     setSaving(false)
   }
@@ -1250,7 +1260,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <CashIcon className="h-4 w-4" />
           </div>
-          <h2 className="font-semibold text-gray-800">Actos realizados</h2>
+          <h2 className="font-semibold text-gray-800">{t('actosRealizadosTitle')}</h2>
         </div>
         {!showForm && (
           <button
@@ -1258,7 +1268,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
             onClick={() => setShowForm(true)}
             className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
           >
-            + Agregar acto
+            {t('agregarActo')}
           </button>
         )}
       </div>
@@ -1266,7 +1276,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
       {showForm && (
         <div className="border-b border-gray-100 bg-gray-50 p-5">
           {appointmentIdPrefill && (
-            <p className="mb-3 text-xs text-gray-500">Vinculado a la cita del {appointmentIdPrefill ? 'día seleccionado' : ''}.</p>
+            <p className="mb-3 text-xs text-gray-500">{t('vinculadoCita')}</p>
           )}
           <div className="mb-3 flex flex-wrap gap-1.5">
             <button
@@ -1276,7 +1286,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
                 mode === 'catalogo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Elegir de mi lista
+              {t('elegirDeLista')}
             </button>
             <button
               type="button"
@@ -1285,7 +1295,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
                 mode === 'nuevo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Agregar nuevo acto a mi lista
+              {t('agregarNuevoActoLista')}
             </button>
             <button
               type="button"
@@ -1294,19 +1304,19 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
                 mode === 'libre' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Solo esta vez
+              {t('soloEstaVez')}
             </button>
           </div>
 
           {mode === 'catalogo' ? (
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">Acto</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">{t('actoLabel')}</label>
               <select
                 value={actoId}
                 onChange={(e) => setActoId(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
               >
-                <option value="">Seleccionar...</option>
+                <option value="">{t('seleccionarEllipsis')}</option>
                 {catalogo.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.nombre}
@@ -1314,18 +1324,18 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
                 ))}
               </select>
               {catalogo.length === 0 && (
-                <p className="mt-1 text-xs text-gray-400">Tu lista está vacía. Usa &quot;Agregar nuevo acto&quot; para empezar.</p>
+                <p className="mt-1 text-xs text-gray-400">{t('listaVaciaHint')}</p>
               )}
             </div>
           ) : (
             <div className="mb-3">
               <label className="mb-1 block text-xs font-medium text-gray-600">
-                {mode === 'nuevo' ? 'Nombre del nuevo acto' : 'Nombre del acto (solo esta vez)'}
+                {mode === 'nuevo' ? t('nombreNuevoActo') : t('nombreActoSoloEstaVez')}
               </label>
               <input
                 value={nombreLibre}
                 onChange={(e) => setNombreLibre(e.target.value)}
-                placeholder="Ej: Consulta dermatológica"
+                placeholder={t('nombreActoPlaceholder')}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
               />
             </div>
@@ -1333,7 +1343,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
 
           <div className="mb-3 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Monto</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">{t('montoLabel')}</label>
               <input
                 type="number"
                 min="0"
@@ -1345,7 +1355,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Fecha</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">{t('fechaLabel')}</label>
               <input
                 type="date"
                 value={fecha}
@@ -1365,7 +1375,7 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
               }}
               className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
             >
-              Cancelar
+              {t('cancelar')}
             </button>
             <button
               type="button"
@@ -1373,16 +1383,16 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
               disabled={saving}
               className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
             >
-              {saving ? '...' : 'Guardar'}
+              {saving ? '...' : t('guardar')}
             </button>
           </div>
         </div>
       )}
 
       <div className="max-h-96 divide-y divide-gray-50 overflow-y-auto">
-        {loading && <p className="px-5 py-6 text-center text-sm text-gray-400">Cargando...</p>}
+        {loading && <p className="px-5 py-6 text-center text-sm text-gray-400">{t('cargandoEllipsis')}</p>}
         {!loading && historial.length === 0 && (
-          <p className="px-5 py-6 text-center text-sm text-gray-400">Sin actos registrados todavía.</p>
+          <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinActosRegistrados')}</p>
         )}
         {historial.map((h) => (
           <div key={h.id} className="flex items-center justify-between px-5 py-3">
@@ -1418,6 +1428,7 @@ export default function PatientDetailView({
   totalAppointments: number
   markedAppointments: number
 }) {
+  const t = useTranslations('dashboard.patientDetail')
   return (
     <div className="max-w-6xl space-y-6">
       {/* Header */}
@@ -1429,12 +1440,12 @@ export default function PatientDetailView({
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">{patient.nom}</h1>
             <p className="text-sm text-gray-500">
-              {patient.email ?? 'Sin email'} · {patient.telefono ?? 'Sin teléfono'}
+              {patient.email ?? t('noEmail')} · {patient.telefono ?? t('noTelefono')}
             </p>
           </div>
         </div>
         <Link href="/dashboard/patients" className="text-sm text-[#6926D2] hover:underline">
-          ← Volver
+          ← {t('volver')}
         </Link>
       </div>
 
@@ -1442,20 +1453,20 @@ export default function PatientDetailView({
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
           <p className="text-3xl font-semibold text-gray-900">{totalAppointments}</p>
-          <p className="mt-1 text-xs text-gray-500">Citas totales</p>
+          <p className="mt-1 text-xs text-gray-500">{t('citasTotales')}</p>
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
           <p className="text-3xl font-semibold text-gray-900">
             {presenceRate !== null ? `${presenceRate}%` : '—'}
           </p>
-          <p className="mt-1 text-xs text-gray-500">Tasa de asistencia</p>
-          {presenceRate !== null && <p className="mt-0.5 text-xs text-gray-400">{markedAppointments} marcadas</p>}
+          <p className="mt-1 text-xs text-gray-500">{t('tasaAsistencia')}</p>
+          {presenceRate !== null && <p className="mt-0.5 text-xs text-gray-400">{t('marcadas', { count: markedAppointments })}</p>}
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
           <p className="text-3xl font-semibold text-gray-900">
             {appointments.filter((a) => a.presente === false).length}
           </p>
-          <p className="mt-1 text-xs text-gray-500">No-shows</p>
+          <p className="mt-1 text-xs text-gray-500">{t('noShows')}</p>
         </div>
       </div>
 
@@ -1467,11 +1478,11 @@ export default function PatientDetailView({
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <CalendarIcon className="h-4 w-4" />
             </div>
-            <h2 className="font-semibold text-gray-800">Historial de citas</h2>
+            <h2 className="font-semibold text-gray-800">{t('historialCitas')}</h2>
           </div>
           <div className="divide-y divide-gray-50">
             {appointments.length === 0 && (
-              <p className="px-5 py-6 text-center text-sm text-gray-400">Sin citas registradas.</p>
+              <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinCitas')}</p>
             )}
             {appointments.map((appt) => (
               <Link
@@ -1487,10 +1498,10 @@ export default function PatientDetailView({
                   </span>
                   <div>
                     <p className="text-sm font-medium text-gray-800">
-                      {appt.fecha_cita} a las {appt.hora_cita}
+                      {appt.fecha_cita} {t('aLas')} {appt.hora_cita}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {appt.presente === true ? 'Presente' : appt.presente === false ? 'Ausente' : 'Sin marcar'}
+                      {appt.presente === true ? t('presente') : appt.presente === false ? t('ausente') : t('sinMarcar')}
                     </p>
                   </div>
                 </div>

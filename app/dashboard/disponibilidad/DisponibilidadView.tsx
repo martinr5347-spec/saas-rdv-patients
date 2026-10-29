@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 
 function InfoTooltip({ text }: { text: string }) {
@@ -14,15 +15,20 @@ function InfoTooltip({ text }: { text: string }) {
   )
 }
 
+// Structure (valeurs) stable, independante de la langue -- les labels affiches sont resolus a
+// part via t('dias.*') dans le composant (et passes en parametre aux fonctions de validation pures
+// ci-dessous, qui ne peuvent pas appeler useTranslations() elles-memes).
 const DIAS_SEMANA = [
-  { valor: 1, label: 'Lunes' },
-  { valor: 2, label: 'Martes' },
-  { valor: 3, label: 'Miércoles' },
-  { valor: 4, label: 'Jueves' },
-  { valor: 5, label: 'Viernes' },
-  { valor: 6, label: 'Sábado' },
-  { valor: 0, label: 'Domingo' },
-]
+  { valor: 1, key: 'lunes' },
+  { valor: 2, key: 'martes' },
+  { valor: 3, key: 'miercoles' },
+  { valor: 4, key: 'jueves' },
+  { valor: 5, key: 'viernes' },
+  { valor: 6, key: 'sabado' },
+  { valor: 0, key: 'domingo' },
+] as const
+
+const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
 interface AvailabilityRow {
   id: string
@@ -54,28 +60,33 @@ function plagesSeSuperponen(a: Plage, b: Plage): boolean {
 // Validation d'un jeu de plages (format + chevauchement) -- reutilisee pour le modele recurrent
 // (un jour a la fois, via validarHorarios ci-dessous) et pour une surcharge datee (une seule date
 // a la fois). Retour immediat cote client, revalidee cote serveur dans actions.ts dans tous les
-// cas (ne jamais faire confiance au seul controle client).
-function validarPlages(plages: Plage[], label: string): string | null {
+// cas (ne jamais faire confiance au seul controle client). Messages traduits passes en parametre
+// (fonction pure hors composant, ne peut pas appeler useTranslations elle-meme).
+function validarPlages(plages: Plage[], label: string, msgs: { horaFin: string; overlap: string }): string | null {
   for (const p of plages) {
     if (!(p.horaFin > p.horaInicio)) {
-      return `${label}: la hora de fin debe ser posterior a la de inicio`
+      return `${label}: ${msgs.horaFin}`
     }
   }
   for (let i = 0; i < plages.length; i++) {
     for (let j = i + 1; j < plages.length; j++) {
       if (plagesSeSuperponen(plages[i], plages[j])) {
-        return `${label}: hay horarios que se superponen`
+        return `${label}: ${msgs.overlap}`
       }
     }
   }
   return null
 }
 
-function validarHorarios(horarios: DiaHorario[]): string | null {
+function validarHorarios(
+  horarios: DiaHorario[],
+  diaLabels: Record<number, string>,
+  msgs: { horaFin: string; overlap: string }
+): string | null {
   for (const dia of horarios) {
     if (!dia.abierto) continue
-    const label = DIAS_SEMANA.find((d) => d.valor === dia.diaSemana)?.label ?? ''
-    const error = validarPlages(dia.plages, label)
+    const label = diaLabels[dia.diaSemana] ?? ''
+    const error = validarPlages(dia.plages, label, msgs)
     if (error) return error
   }
   return null
@@ -111,8 +122,8 @@ function agruparOverrides(rows: OverrideRow[]): OverrideGroup[] {
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
 }
 
-function formatFecha(fecha: string): string {
-  return new Date(`${fecha}T00:00:00`).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+function formatFecha(fecha: string, intlLocale: string): string {
+  return new Date(`${fecha}T00:00:00`).toLocaleDateString(intlLocale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function DisponibilidadView({
@@ -146,6 +157,13 @@ export default function DisponibilidadView({
   updateAvailabilityOverrideAction: typeof import('./actions').updateAvailabilityOverride
   removeAvailabilityOverrideAction: typeof import('./actions').removeAvailabilityOverride
 }) {
+  const t = useTranslations('dashboard.disponibilidad')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
+
+  const diaLabels: Record<number, string> = Object.fromEntries(DIAS_SEMANA.map((d) => [d.valor, t(`dias.${d.key}`)]))
+  const plagesMsgs = { horaFin: t('validationHoraFinSuffix'), overlap: t('validationOverlapSuffix') }
+
   // État local : un toggle "abierto" + une ou plusieurs plages (horaInicio/horaFin) par jour,
   // pré-rempli depuis availability -- toutes les lignes du jour, pas juste la première (une
   // pause déjeuner, par ex., se traduit par 2 lignes org_availability pour le même dia_semana).
@@ -215,7 +233,7 @@ export default function DisponibilidadView({
   }
 
   const guardarHorarios = async () => {
-    const errorValidacion = validarHorarios(horarios)
+    const errorValidacion = validarHorarios(horarios, diaLabels, plagesMsgs)
     if (errorValidacion) {
       toast.error(errorValidacion)
       return
@@ -231,9 +249,9 @@ export default function DisponibilidadView({
       anticipacionMaxDias: anticipacionMax,
     })
     if (result.ok) {
-      toast.success('Disponibilidad guardada')
+      toast.success(t('toastSavedHorarios'))
     } else {
-      toast.error(result.error ?? 'Error al guardar')
+      toast.error(result.error ?? t('toastErrorGuardar'))
     }
     setLoading(false)
   }
@@ -243,9 +261,9 @@ export default function DisponibilidadView({
     const result = await updateSlugAction(slugDraft)
     if (result.ok) {
       setSlugDraft(result.slug ?? slugDraft)
-      toast.success('Enlace actualizado')
+      toast.success(t('toastSlugUpdated'))
     } else {
-      toast.error(result.error ?? 'Error al actualizar el enlace')
+      toast.error(result.error ?? t('toastErrorSlug'))
     }
     setSlugLoading(false)
   }
@@ -257,9 +275,9 @@ export default function DisponibilidadView({
       setBlocked((prev) => [...prev, result.blockedDate].sort((a, b) => a.fecha.localeCompare(b.fecha)))
       setNuevaFecha('')
       setNuevoMotivo('')
-      toast.success('Fecha bloqueada')
+      toast.success(t('toastDateBlocked'))
     } else {
-      toast.error(result.error ?? 'Error al bloquear la fecha')
+      toast.error(result.error ?? t('toastErrorBlock'))
     }
   }
 
@@ -268,7 +286,7 @@ export default function DisponibilidadView({
     if (result.ok) {
       setBlocked((prev) => prev.filter((b) => b.id !== id))
     } else {
-      toast.error(result.error ?? 'Error al eliminar')
+      toast.error(result.error ?? t('toastErrorDelete'))
     }
   }
 
@@ -287,10 +305,10 @@ export default function DisponibilidadView({
 
   const guardarOverride = async () => {
     if (!overrideFecha) {
-      toast.error('Selecciona una fecha')
+      toast.error(t('toastSelectDate'))
       return
     }
-    const errorValidacion = validarPlages(overridePlages, 'Horario personalizado')
+    const errorValidacion = validarPlages(overridePlages, t('overrideLabel'), plagesMsgs)
     if (errorValidacion) {
       toast.error(errorValidacion)
       return
@@ -304,9 +322,9 @@ export default function DisponibilidadView({
       })
       setOverrideFecha('')
       setOverridePlages([{ horaInicio: '09:00', horaFin: '18:00' }])
-      toast.success('Horario personalizado guardado')
+      toast.success(t('toastOverrideSaved'))
     } else {
-      toast.error(result.error ?? 'Error al guardar')
+      toast.error(result.error ?? t('toastErrorGuardar'))
     }
     setOverrideSaving(false)
   }
@@ -315,23 +333,21 @@ export default function DisponibilidadView({
     const result = await removeAvailabilityOverrideAction(fecha)
     if (result.ok) {
       setOverrides((prev) => prev.filter((o) => o.fecha !== fecha))
-      toast.success('Horario personalizado eliminado')
+      toast.success(t('toastOverrideDeleted'))
     } else {
-      toast.error(result.error ?? 'Error al eliminar')
+      toast.error(result.error ?? t('toastErrorDelete'))
     }
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-gray-800">Disponibilidad</h1>
+      <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <p className="mb-4 text-xs text-gray-500">
-        Próximamente: reserva nativa en Núcleo. Configura tus horarios desde ahora -- Calendly sigue funcionando normalmente mientras tanto.
-      </p>
+      <p className="mb-4 text-xs text-gray-500">{t('comingSoonNote')}</p>
 
       {/* Enlace público */}
       <div className="mb-5">
-        <label className="mb-1 block text-xs font-medium text-gray-600">Tu enlace de reserva</label>
+        <label className="mb-1 block text-xs font-medium text-gray-600">{t('bookingLinkLabel')}</label>
         <div className="flex gap-2">
           <span className="flex items-center rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 text-sm text-gray-400">
             nucleo.clinic/reservar/
@@ -339,7 +355,7 @@ export default function DisponibilidadView({
           <input
             value={slugDraft}
             onChange={(e) => setSlugDraft(e.target.value)}
-            placeholder="dr-martinez"
+            placeholder={t('slugPlaceholder')}
             className="flex-1 rounded-r-xl border border-gray-200 px-3 py-2 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
           />
           <button
@@ -348,7 +364,7 @@ export default function DisponibilidadView({
             disabled={slugLoading || !slugDraft.trim()}
             className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
           >
-            Guardar
+            {t('save')}
           </button>
         </div>
       </div>
@@ -359,7 +375,7 @@ export default function DisponibilidadView({
           <div key={d.valor} className="flex items-start gap-3">
             <label className="flex w-28 shrink-0 items-center gap-2 pt-1.5 text-sm text-gray-700">
               <input type="checkbox" checked={horarios[i].abierto} onChange={(e) => toggleDia(i, e.target.checked)} />
-              {d.label}
+              {diaLabels[d.valor]}
             </label>
             {horarios[i].abierto && (
               <div className="flex flex-1 flex-col gap-1.5">
@@ -382,7 +398,7 @@ export default function DisponibilidadView({
                       <button
                         type="button"
                         onClick={() => quitarPlage(i, k)}
-                        aria-label="Quitar franja"
+                        aria-label={t('removeFranjaLabel')}
                         className="text-xs text-gray-400 hover:text-red-500"
                       >
                         ✕
@@ -396,7 +412,7 @@ export default function DisponibilidadView({
                     onClick={() => agregarPlage(i)}
                     className="self-start text-xs font-medium text-[#6926D2] hover:underline"
                   >
-                    + Agregar franja
+                    {t('addFranja')}
                   </button>
                 )}
               </div>
@@ -409,29 +425,29 @@ export default function DisponibilidadView({
       <div className="mb-5 grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-            Duración de la cita (min)
-            <InfoTooltip text="Cuánto dura cada consulta -- define el tamaño de cada franja reservable." />
+            {t('duracionLabel')}
+            <InfoTooltip text={t('duracionInfo')} />
           </label>
           <input type="number" min={5} max={480} value={duracion} onChange={(e) => setDuracion(Number(e.target.value))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-            Margen entre citas (min)
-            <InfoTooltip text="Tiempo libre añadido automáticamente después de cada cita, antes de la siguiente." />
+            {t('bufferLabel')}
+            <InfoTooltip text={t('bufferInfo')} />
           </label>
           <input type="number" min={0} max={120} value={buffer} onChange={(e) => setBuffer(Number(e.target.value))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-            Anticipación mínima (horas)
-            <InfoTooltip text="El paciente no podrá reservar con menos de este tiempo de antelación." />
+            {t('anticipacionMinLabel')}
+            <InfoTooltip text={t('anticipacionMinInfo')} />
           </label>
           <input type="number" min={0} max={720} value={anticipacionMin} onChange={(e) => setAnticipacionMin(Number(e.target.value))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-            Anticipación máxima (días)
-            <InfoTooltip text="Hasta cuántos días en el futuro se pueden ver y reservar horarios." />
+            {t('anticipacionMaxLabel')}
+            <InfoTooltip text={t('anticipacionMaxInfo')} />
           </label>
           <input type="number" min={1} max={365} value={anticipacionMax} onChange={(e) => setAnticipacionMax(Number(e.target.value))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
         </div>
@@ -443,37 +459,37 @@ export default function DisponibilidadView({
         disabled={loading}
         className="mb-6 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
       >
-        Guardar horarios
+        {t('saveHorarios')}
       </button>
 
       {/* Fechas bloqueadas */}
       <div>
-        <h3 className="mb-2 text-xs font-semibold text-gray-700">Fechas bloqueadas (vacaciones, feriados)</h3>
+        <h3 className="mb-2 text-xs font-semibold text-gray-700">{t('blockedDatesTitle')}</h3>
         <div className="mb-2 space-y-1">
           {blocked.map((b) => (
             <div key={b.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
               <span>
-                {new Date(`${b.fecha}T00:00:00`).toLocaleDateString('es-PE')}
+                {new Date(`${b.fecha}T00:00:00`).toLocaleDateString(intlLocale)}
                 {b.motivo && <span className="ml-2 text-gray-400">· {b.motivo}</span>}
               </span>
               <button type="button" onClick={() => quitarFechaBloqueada(b.id)} className="text-xs text-gray-400 hover:text-red-500">
-                Quitar
+                {t('remove')}
               </button>
             </div>
           ))}
-          {blocked.length === 0 && <p className="text-xs text-gray-400">Ninguna fecha bloqueada.</p>}
+          {blocked.length === 0 && <p className="text-xs text-gray-400">{t('noBlockedDates')}</p>}
         </div>
         <div className="flex gap-2">
           <input type="date" value={nuevaFecha} onChange={(e) => setNuevaFecha(e.target.value)} className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm" />
           <input
             type="text"
-            placeholder="Motivo (opcional)"
+            placeholder={t('motivoPlaceholder')}
             value={nuevoMotivo}
             onChange={(e) => setNuevoMotivo(e.target.value)}
             className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
           />
           <button type="button" onClick={agregarFechaBloqueada} disabled={!nuevaFecha} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50">
-            Bloquear
+            {t('blockDate')}
           </button>
         </div>
       </div>
@@ -483,24 +499,24 @@ export default function DisponibilidadView({
           recurrent ci-dessus, et le meme input type="date" que les fechas bloqueadas. */}
       <div className="mt-6 border-t border-gray-100 pt-5">
         <div className="mb-1 flex items-center gap-1.5">
-          <h3 className="text-xs font-semibold text-gray-700">Horarios personalizados</h3>
-          <InfoTooltip text="Define un horario distinto para una fecha específica -- reemplaza por completo el horario recurrente ese día. Útil si tu disponibilidad cambia semana a semana." />
+          <h3 className="text-xs font-semibold text-gray-700">{t('overridesTitle')}</h3>
+          <InfoTooltip text={t('overridesInfo')} />
         </div>
         <div className="mb-3 space-y-1">
           {overrides.map((o) => (
             <div key={o.fecha} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
               <span>
-                {formatFecha(o.fecha)}
+                {formatFecha(o.fecha, intlLocale)}
                 <span className="ml-2 text-gray-400">
                   · {o.plages.map((p) => `${p.horaInicio}-${p.horaFin}`).join(', ')}
                 </span>
               </span>
               <button type="button" onClick={() => quitarOverride(o.fecha)} className="text-xs text-gray-400 hover:text-red-500">
-                Quitar
+                {t('remove')}
               </button>
             </div>
           ))}
-          {overrides.length === 0 && <p className="text-xs text-gray-400">Ningún horario personalizado configurado.</p>}
+          {overrides.length === 0 && <p className="text-xs text-gray-400">{t('noOverrides')}</p>}
         </div>
 
         <div className="rounded-xl border border-gray-200 p-3">
@@ -530,7 +546,7 @@ export default function DisponibilidadView({
                   <button
                     type="button"
                     onClick={() => quitarOverridePlage(k)}
-                    aria-label="Quitar franja"
+                    aria-label={t('removeFranjaLabel')}
                     className="text-xs text-gray-400 hover:text-red-500"
                   >
                     ✕
@@ -540,7 +556,7 @@ export default function DisponibilidadView({
             ))}
             {overridePlages.length < MAX_PLAGES_POR_DIA && (
               <button type="button" onClick={agregarOverridePlage} className="self-start text-xs font-medium text-[#6926D2] hover:underline">
-                + Agregar franja
+                {t('addFranja')}
               </button>
             )}
           </div>
@@ -550,7 +566,7 @@ export default function DisponibilidadView({
             disabled={overrideSaving || !overrideFecha}
             className="mt-3 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50"
           >
-            {overrideSaving ? '...' : 'Guardar fecha personalizada'}
+            {overrideSaving ? '...' : t('saveOverride')}
           </button>
         </div>
       </div>

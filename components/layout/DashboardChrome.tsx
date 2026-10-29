@@ -2,15 +2,17 @@
 
 import Link from 'next/link'
 import { Toaster } from 'react-hot-toast'
-import { NextIntlClientProvider, useTranslations } from 'next-intl'
-import { MESSAGES, Locale } from '@/lib/hooks/useLocale'
+import { useTranslations } from 'next-intl'
 import { SidebarProvider } from '@/context/SidebarContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import { HomeIcon, CalendarIcon, UsersIcon, CashIcon, SettingsIcon, ShieldIcon, TrendingUpIcon, ClockIcon } from '@/components/layout/icons'
 
+// Ne pose plus son propre NextIntlClientProvider local (ancien comportement : locale deduite
+// uniquement de users.idioma, es/pt). Le provider global de app/layout.tsx (i18n/request.ts) est
+// desormais la seule source de verite -- un provider local ici re-ecraserait silencieusement un
+// choix explicite 'fr' du praticien (cookie NEXT_LOCALE) puisque users.idioma ne supporte que es/pt.
 export default function DashboardChrome({
-  locale,
   userName,
   photoUrl,
   isAdmin,
@@ -18,7 +20,6 @@ export default function DashboardChrome({
   signOutAction,
   children,
 }: {
-  locale: Locale
   userName: string
   photoUrl: string | null
   isAdmin: boolean
@@ -27,11 +28,9 @@ export default function DashboardChrome({
   children: React.ReactNode
 }) {
   return (
-    <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
-      <DashboardChromeContent userName={userName} photoUrl={photoUrl} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
-        {children}
-      </DashboardChromeContent>
-    </NextIntlClientProvider>
+    <DashboardChromeContent userName={userName} photoUrl={photoUrl} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
+      {children}
+    </DashboardChromeContent>
   )
 }
 

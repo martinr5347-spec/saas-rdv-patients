@@ -145,7 +145,7 @@ export default function RegisterPage() {
           <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
             <Image
               src="/images/hero-characters.png"
-              alt="Praticiens Núcleo"
+              alt={MESSAGES[locale].login.heroImageAlt}
               fill
               className="object-cover"
             />
@@ -182,6 +182,17 @@ export default function RegisterPage() {
             }`}
           >
             <span>🇧🇷</span> Português
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocale('fr')}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              locale === 'fr'
+                ? 'border-[#7C3AED] bg-[#7C3AED]/10 text-[#5b21b6]'
+                : 'border-gray-300 text-gray-500 hover:border-gray-400'
+            }`}
+          >
+            <span>🇫🇷</span> Français
           </button>
         </div>
 

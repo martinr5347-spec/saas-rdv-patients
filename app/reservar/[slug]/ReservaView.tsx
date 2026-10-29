@@ -121,10 +121,10 @@ export default function ReservaView({
 
   const validarFormulario = () => {
     const errores: Record<string, string> = {}
-    if (!nombre.trim()) errores.nombre = langue === 'pt' ? 'Informe seu nome completo' : 'Ingresa tu nombre completo'
-    if (!EMAIL_RE.test(email.trim())) errores.email = langue === 'pt' ? 'Informe um e-mail válido' : 'Ingresa un email válido'
+    if (!nombre.trim()) errores.nombre = m.nombreError
+    if (!EMAIL_RE.test(email.trim())) errores.email = m.emailError
     if (!telefonoNumero.trim() || telefonoNumero.replace(/\D/g, '').length < 6)
-      errores.telefono = langue === 'pt' ? 'Informe um telefone válido' : 'Ingresa un número de teléfono válido'
+      errores.telefono = m.telefonoError
     setFormErrors(errores)
     return Object.keys(errores).length === 0
   }
@@ -178,7 +178,7 @@ export default function ReservaView({
           <Avatar name={organizationNombre} photoUrl={fotoUrl} size={64} />
         </div>
         <h1 className="mb-1 text-center text-xl font-semibold text-gray-800">{organizationNombre}</h1>
-        <p className="mb-6 text-center text-sm text-gray-500">{langue === 'pt' ? 'Agende sua consulta' : 'Reserva tu cita'}</p>
+        <p className="mb-6 text-center text-sm text-gray-500">{m.subtitle}</p>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           {!selectedDate && (
@@ -241,7 +241,7 @@ export default function ReservaView({
               )}
               {!loadingMes && diasDisponibles.length === 0 && (
                 <p className="mt-4 text-center text-xs text-gray-400">
-                  {langue === 'pt' ? 'Não há horários disponíveis neste mês.' : 'No hay horarios disponibles este mes.'}
+                  {m.noSlotsThisMonth}
                 </p>
               )}
             </>

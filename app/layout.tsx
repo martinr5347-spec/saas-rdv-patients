@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Outfit } from "next/font/google";
 import Script from "next/script";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -24,17 +26,29 @@ export const metadata: Metadata = {
   description: "Gestión de citas para profesionales médicos y estéticos",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Provider global unique -- remplace le bricolage ou chaque page publique (landing, register,
+  // reserva) posait son propre NextIntlClientProvider local via lib/hooks/useLocale.ts, et le
+  // provider local de DashboardChrome (supprime, il re-ecrasait silencieusement 'fr' en es/pt
+  // puisque base sur users.idioma). La locale est resolue par requete dans i18n/request.ts (cookie
+  // NEXT_LOCALE, sinon users.idioma pour un praticien deja connecte, sinon 'es'). Les providers
+  // locaux restants sur les pages publiques (page.tsx, register, reserva) restent inoffensifs tels
+  // quels : memes valeurs que le provider global, simple redondance le temps de leur migration.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="es">
+    <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
       >
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
         {/* NaveoFlow : desactive par defaut, active ponctuellement via env var le temps
             d'enregistrer un guide -- jamais charge en continu sur des pages de donnees patients. */}
         {process.env.NEXT_PUBLIC_NAVEOFLOW_ENABLED === 'true' && (

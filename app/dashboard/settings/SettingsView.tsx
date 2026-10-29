@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 import Card from '@/components/ui/Card'
 import Avatar from '@/components/ui/Avatar'
@@ -58,6 +58,8 @@ function InfoTooltip({ text }: { text: string }) {
 }
 
 function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
+  const t = useTranslations('dashboard.settings')
+  const locale = useLocale()
   // lastUpdated n'est renseigne qu'au moment ou codigo_seguridad_hash est ecrit la premiere
   // fois (meme requete UPDATE) -- un signal fiable pour savoir si un PIN existe deja, sans
   // avoir a exposer le hash lui-meme au client.
@@ -69,12 +71,12 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
   const save = async () => {
     const codigoNuevo = digits.join('')
     if (codigoNuevo.length !== 4) {
-      toast.error('Ingresa un código de 4 dígitos')
+      toast.error(t('toastPinLength'))
       return
     }
     const codigoActual = currentDigits.join('')
     if (pinYaExiste && codigoActual.length !== 4) {
-      toast.error('Ingresa tu código actual')
+      toast.error(t('toastPinCurrentRequired'))
       return
     }
     setSaving(true)
@@ -84,12 +86,12 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
       body: JSON.stringify(pinYaExiste ? { codigoNuevo, codigoActual } : { codigoNuevo }),
     })
     if (res.ok) {
-      toast.success('Código actualizado')
+      toast.success(t('toastPinUpdated'))
       setDigits(['', '', '', ''])
       setCurrentDigits(['', '', '', ''])
     } else {
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error ?? 'Error al guardar el código')
+      toast.error(data.error ?? t('toastPinError'))
     }
     setSaving(false)
   }
@@ -97,24 +99,26 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
   return (
     <Card>
       <div className="mb-1 flex items-center gap-1.5">
-        <h2 className="text-sm font-semibold text-gray-800">Código de seguridad para notas clínicas</h2>
+        <h2 className="text-sm font-semibold text-gray-800">{t('seguridadTitle')}</h2>
         <div className="group relative inline-flex">
           <svg className="h-4 w-4 cursor-help text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <circle cx="12" cy="12" r="10" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01" />
           </svg>
           <div className="absolute bottom-full left-1/2 z-10 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-gray-800 p-2.5 text-xs leading-snug text-white group-hover:block">
-            Este código de 4 dígitos protege el acceso a las notas clínicas confidenciales en la ficha de cada paciente.
+            {t('seguridadInfo')}
           </div>
         </div>
       </div>
       {lastUpdated && (
-        <p className="mb-3 text-xs text-gray-400">Último cambio: {new Date(lastUpdated).toLocaleDateString('es')}</p>
+        <p className="mb-3 text-xs text-gray-400">
+          {t('seguridadLastUpdated', { date: new Date(lastUpdated).toLocaleDateString(locale) })}
+        </p>
       )}
       <div className="flex flex-wrap items-end gap-4">
         {pinYaExiste && (
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">Código actual</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t('seguridadCodigoActual')}</label>
             <div className="flex gap-1.5">
               {currentDigits.map((d, i) => (
                 <input
@@ -147,7 +151,7 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
           </div>
         )}
         <div>
-          {pinYaExiste && <label className="mb-1.5 block text-xs font-medium text-gray-600">Código nuevo</label>}
+          {pinYaExiste && <label className="mb-1.5 block text-xs font-medium text-gray-600">{t('seguridadCodigoNuevo')}</label>}
           <div className="flex gap-1.5">
             {digits.map((d, i) => (
               <input
@@ -182,7 +186,7 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
           disabled={saving}
           className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
         >
-          {saving ? '...' : 'Guardar'}
+          {saving ? '...' : t('save')}
         </button>
       </div>
     </Card>
@@ -224,9 +228,9 @@ function MercadoPagoTokenField({
       setEditing(false)
       setTokenDraft('')
       const conectadoComo = res.nickname || res.email
-      toast.success(conectadoComo ? `Conectado como: ${conectadoComo}` : 'Token guardado')
+      toast.success(conectadoComo ? t('mpConnectedAs', { name: conectadoComo }) : t('mpTokenSaved'))
     } else {
-      toast.error(res.error ?? 'Error al guardar el token')
+      toast.error(res.error ?? t('toastMpTokenError'))
     }
     setSaving(false)
   }
@@ -236,16 +240,16 @@ function MercadoPagoTokenField({
       <div>
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           {t('mpToken')}
-          <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
+          <InfoTooltip text={t('mpTokenInfo')} />
         </label>
         <div className="mt-1 flex items-center gap-3">
-          <span className="text-sm text-gray-600">Conectado · termina en ••••{last4}</span>
+          <span className="text-sm text-gray-600">{t('mpTokenConnected', { last4: last4 ?? '' })}</span>
           <button
             type="button"
             onClick={() => setEditing(true)}
             className="text-sm font-medium text-[#6926D2] hover:underline"
           >
-            Cambiar
+            {t('mpTokenChange')}
           </button>
         </div>
       </div>
@@ -256,7 +260,7 @@ function MercadoPagoTokenField({
     <div>
       <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
         {t('mpToken')}
-        <InfoTooltip text="Clave de acceso de tu cuenta de MercadoPago, necesaria para recibir pagos en línea." />
+        <InfoTooltip text={t('mpTokenInfo')} />
       </label>
       <a
         href={devPanelUrl}
@@ -271,7 +275,7 @@ function MercadoPagoTokenField({
           type="password"
           value={tokenDraft}
           onChange={(e) => setTokenDraft(e.target.value)}
-          placeholder="Pegar nuevo token"
+          placeholder={t('mpTokenPlaceholder')}
           className="mt-0 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
         />
         <button
@@ -280,7 +284,7 @@ function MercadoPagoTokenField({
           disabled={saving || !tokenDraft.trim()}
           className="shrink-0 rounded-lg bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] disabled:opacity-50"
         >
-          {saving ? '...' : 'Guardar'}
+          {saving ? '...' : t('save')}
         </button>
       </div>
     </div>
@@ -309,6 +313,7 @@ function TwilioSettingsFields({
     authToken: string
   ) => Promise<{ ok: boolean; error?: string; last4?: string }>
 }) {
+  const t = useTranslations('dashboard.settings')
   const [sidDraft, setSidDraft] = useState(subaccountSid ?? '')
   const [numberDraft, setNumberDraft] = useState(whatsappNumber ?? '')
   const [configured, setConfigured] = useState(authTokenConfigured)
@@ -327,19 +332,19 @@ function TwilioSettingsFields({
         setEditingToken(false)
       }
       setTokenDraft('')
-      toast.success('Configuración de Twilio guardada')
+      toast.success(t('toastTwilioSaved'))
     } else {
-      toast.error(res.error ?? 'Error al guardar la configuración de Twilio')
+      toast.error(res.error ?? t('toastTwilioError'))
     }
     setSaving(false)
   }
 
   return (
     <div className="rounded-xl border border-dashed border-gray-300 p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">WhatsApp vía Twilio (API oficial)</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('twilioSectionTitle')}</p>
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Subaccount SID</label>
+          <label className="block text-sm font-medium text-gray-700">{t('twilioSubaccountLabel')}</label>
           <input
             value={sidDraft}
             onChange={(e) => setSidDraft(e.target.value)}
@@ -348,7 +353,7 @@ function TwilioSettingsFields({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Número de WhatsApp</label>
+          <label className="block text-sm font-medium text-gray-700">{t('twilioNumberLabel')}</label>
           <input
             value={numberDraft}
             onChange={(e) => setNumberDraft(e.target.value)}
@@ -357,16 +362,16 @@ function TwilioSettingsFields({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Auth token</label>
+          <label className="block text-sm font-medium text-gray-700">{t('twilioAuthTokenLabel')}</label>
           {configured && !editingToken ? (
             <div className="mt-1 flex items-center gap-3">
-              <span className="text-sm text-gray-600">Conectado · termina en ••••{last4}</span>
+              <span className="text-sm text-gray-600">{t('mpTokenConnected', { last4: last4 ?? '' })}</span>
               <button
                 type="button"
                 onClick={() => setEditingToken(true)}
                 className="text-sm font-medium text-[#6926D2] hover:underline"
               >
-                Cambiar
+                {t('mpTokenChange')}
               </button>
             </div>
           ) : (
@@ -374,7 +379,7 @@ function TwilioSettingsFields({
               type="password"
               value={tokenDraft}
               onChange={(e) => setTokenDraft(e.target.value)}
-              placeholder="Pegar auth token"
+              placeholder={t('twilioAuthTokenPlaceholder')}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
             />
           )}
@@ -385,7 +390,7 @@ function TwilioSettingsFields({
           disabled={saving}
           className="rounded-lg bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] disabled:opacity-50"
         >
-          {saving ? '...' : 'Guardar'}
+          {saving ? '...' : t('save')}
         </button>
       </div>
     </div>
@@ -403,6 +408,7 @@ function CategoriasNotasCard({
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
 }) {
+  const t = useTranslations('dashboard.settings')
   const [categorias, setCategorias] = useState<string[]>(initial)
   const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>(initialConFoto)
   const [draft, setDraft] = useState('')
@@ -413,11 +419,11 @@ function CategoriasNotasCard({
     const val = draft.trim().slice(0, 24)
     if (!val) return
     if (categorias.some((c) => c.toLowerCase() === val.toLowerCase())) {
-      toast.error('Esa categoría ya existe')
+      toast.error(t('toastCategoriaExists'))
       return
     }
     if (categorias.length >= 10) {
-      toast.error('Máximo 10 categorías')
+      toast.error(t('toastCategoriaMax'))
       return
     }
     setCategorias((prev) => [...prev, val])
@@ -433,9 +439,9 @@ function CategoriasNotasCard({
     const res = await updateCategoriasNotasAction(categorias)
     if (res.ok) {
       if (res.categorias) setCategorias(res.categorias)
-      toast.success('Categorías guardadas')
+      toast.success(t('toastCategoriasSaved'))
     } else {
-      toast.error(res.error ?? 'Error al guardar las categorías')
+      toast.error(res.error ?? t('toastCategoriasError'))
     }
     setSaving(false)
   }
@@ -448,7 +454,7 @@ function CategoriasNotasCard({
     if (res.ok) {
       if (res.categorias) setCategoriasConFoto(res.categorias)
     } else {
-      toast.error(res.error ?? 'Error al guardar')
+      toast.error(res.error ?? t('toastGenericError'))
       setCategoriasConFoto(categoriasConFoto) // revert
     }
     setSavingFoto(false)
@@ -456,11 +462,8 @@ function CategoriasNotasCard({
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-gray-800">Categorías de notas clínicas</h2>
-      <p className="mb-3 mt-1 text-xs text-gray-500">
-        Estas categorías aparecerán como filtros y etiquetas en las notas clínicas de tus pacientes. &ldquo;Permite foto&rdquo;
-        controla si se puede adjuntar una foto a las notas de esa categoría.
-      </p>
+      <h2 className="text-sm font-semibold text-gray-800">{t('categoriasTitle')}</h2>
+      <p className="mb-3 mt-1 text-xs text-gray-500">{t('categoriasDesc')}</p>
       <div className="mb-3 space-y-1.5">
         {categorias.map((c) => (
           <div key={c} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5">
@@ -469,7 +472,7 @@ function CategoriasNotasCard({
               <button
                 type="button"
                 onClick={() => removeCategoria(c)}
-                aria-label={`Quitar ${c}`}
+                aria-label={t('removeCategoriaLabel', { cat: c })}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ×
@@ -482,11 +485,11 @@ function CategoriasNotasCard({
                 disabled={savingFoto}
                 onChange={(e) => toggleFoto(c, e.target.checked)}
               />
-              Permite foto
+              {t('permiteFoto')}
             </label>
           </div>
         ))}
-        {categorias.length === 0 && <p className="text-xs text-gray-400">Sin categorías configuradas.</p>}
+        {categorias.length === 0 && <p className="text-xs text-gray-400">{t('sinCategorias')}</p>}
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -500,7 +503,7 @@ function CategoriasNotasCard({
             }
           }}
           maxLength={24}
-          placeholder="Nueva categoría"
+          placeholder={t('nuevaCategoriaPlaceholder')}
           disabled={categorias.length >= 10}
           className="w-48 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2] disabled:opacity-50"
         />
@@ -510,7 +513,7 @@ function CategoriasNotasCard({
           disabled={categorias.length >= 10 || !draft.trim()}
           className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
         >
-          Agregar
+          {t('agregar')}
         </button>
         <button
           type="button"
@@ -518,7 +521,7 @@ function CategoriasNotasCard({
           disabled={saving}
           className="ml-auto rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
         >
-          {saving ? '...' : 'Guardar'}
+          {saving ? '...' : t('save')}
         </button>
       </div>
     </Card>
@@ -635,9 +638,9 @@ export default function SettingsView({
               }`}
             >
               <label htmlFor="foto" className="cursor-pointer text-sm font-medium text-gray-700">
-                {isDragging ? 'Suelta la imagen aquí' : t('profilePhoto')}
+                {isDragging ? t('dropImageHere') : t('profilePhoto')}
               </label>
-              <p className="mt-0.5 text-xs text-gray-400">o arrastra una imagen aquí</p>
+              <p className="mt-0.5 text-xs text-gray-400">{t('dragImageHint')}</p>
               <input
                 ref={fileInputRef}
                 id="foto"

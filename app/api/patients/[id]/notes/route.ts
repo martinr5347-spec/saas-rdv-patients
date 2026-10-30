@@ -25,7 +25,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { data: notes, error } = await supabase
     .from('patient_notes')
-    .select('id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at)')
+    .select(
+      'id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at), patient_note_sesiones(comentario_final)'
+    )
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
 
@@ -50,6 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         categoria: note.categoria,
         created_at: note.created_at,
         sesionId: note.sesion_id,
+        comentarioFinal: note.patient_note_sesiones?.comentario_final ?? null,
         photos,
       }
     })
@@ -97,10 +100,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
 }
 
-// PUT = enregistre un lot de notes (une "session" de saisie multi-catégories) en une seule requête --
-// toutes les notes créées ici partagent un même sesion_id généré côté serveur, qui sert ensuite au
-// regroupement visuel réel côté client (voir PatientDetailView.tsx, groupNotesBySesion). Une session
-// peut contenir une seule entrée (pas de minimum imposé).
+// PUT = enregistre un lot de notes (une "session" de saisie multi-catégories) -- crée d'abord la ligne
+// patient_note_sesiones (avec son commentaire final optionnel), puis les notes du lot qui pointent
+// toutes vers elle via sesion_id, pour le regroupement visuel réel côté client (voir
+// PatientDetailView.tsx, groupNotesBySesion). Une session peut contenir une seule entrée (pas de
+// minimum imposé).
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const {
@@ -113,12 +117,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const body = await req.json().catch(() => ({}))
   const codigo = body.codigo as string | undefined
   const entradasRaw = body.entradas
+  const comentarioFinal =
+    typeof body.comentarioFinal === 'string' && body.comentarioFinal.trim() ? body.comentarioFinal.trim() : null
 
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
   }
   if (!Array.isArray(entradasRaw) || entradasRaw.length === 0) {
     return NextResponse.json({ error: 'Ninguna entrada para guardar' }, { status: 400 })
+  }
+  if (comentarioFinal && comentarioFinal.length > 500) {
+    return NextResponse.json({ error: 'Comentario inválido (máx. 500 caracteres)' }, { status: 400 })
   }
 
   const entradas = entradasRaw.map((e: unknown) => {
@@ -151,7 +160,21 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
   }
 
-  const sesionId = crypto.randomUUID()
+  // La session (table patient_note_sesiones, migration 040) est créée d'abord -- son id sert ensuite
+  // de sesion_id, vraie FK, partagé par toutes les notes du lot.
+  const { data: newSesion, error: sesionError } = await supabase
+    .from('patient_note_sesiones')
+    .insert({
+      patient_id: params.id,
+      organization_id: patientRow.organization_id,
+      comentario_final: comentarioFinal,
+    })
+    .select('id, comentario_final')
+    .single()
+
+  if (sesionError || !newSesion) {
+    return NextResponse.json({ error: sesionError?.message ?? 'Error al crear la sesión' }, { status: 500 })
+  }
 
   const { data: newNotes, error } = await supabase
     .from('patient_notes')
@@ -161,14 +184,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         organization_id: patientRow.organization_id,
         contenido: entrada.contenido,
         categoria: entrada.categoria,
-        sesion_id: sesionId,
+        sesion_id: newSesion.id,
       }))
     )
     .select('id, contenido, categoria, created_at')
 
   if (error) {
+    // Nettoyage : si l'insertion des notes échoue, ne pas laisser une session orpheline sans notes.
+    await supabase.from('patient_note_sesiones').delete().eq('id', newSesion.id)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ notes: newNotes, sesionId })
+  return NextResponse.json({ notes: newNotes, sesionId: newSesion.id, comentarioFinal: newSesion.comentario_final })
 }

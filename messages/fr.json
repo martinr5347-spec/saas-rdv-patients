@@ -218,6 +218,8 @@
       "agregarEntrada": "Ajouter",
       "quitarEntrada": "Retirer",
       "guardarSesion": "Enregistrer la session",
+      "comentarioFinalLabel": "Commentaire final de la session",
+      "comentarioFinalPlaceholder": "Rédigez un commentaire optionnel sur cette session...",
       "nuevaNotaConfidencial": "Nouvelle note confidentielle",
       "observacionPlaceholder": "Rédigez une observation clinique privée...",
       "guardaNotaAntesDeFoto": "Enregistrez la note avant d'ajouter une photo",

@@ -22,6 +22,7 @@ interface PatientNote {
   categoria: string | null
   created_at: string
   sesionId: string | null
+  comentarioFinal?: string | null
   photos?: PatientNotePhoto[]
 }
 
@@ -46,6 +47,9 @@ interface ProximoControl {
 
 const MAX_PHOTOS_PER_NOTE = 2
 const CATEGORIA_CONTROL = 'Control' // catégorie réservée, jamais dans categorias_notas
+// Verrouillage par inactivité réelle (absence de mouvement souris/clavier/clic) des notas clínicas --
+// pas de valeur par organisation pour l'instant, constante nommée pour pouvoir l'ajuster facilement.
+const INACTIVITY_LOCK_MS = 10 * 60 * 1000
 
 const CATEGORY_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -239,6 +243,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [openPhotoPreview, setOpenPhotoPreview] = useState<string | null>(null)
   const [openProgramarRecordatorio, setOpenProgramarRecordatorio] = useState(false)
   const [openControlMeses, setOpenControlMeses] = useState<number | ''>('')
+  const [comentarioFinal, setComentarioFinal] = useState('') // libre, optionnel, couvre toute la session
   const [savingSession, setSavingSession] = useState(false)
   const draftFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -273,16 +278,35 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setOpenPhotoPreview(null)
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
+    setComentarioFinal('')
   }, [])
 
-  // Re-verrouillage automatique si l'onglet passe en arrière-plan
+  // Verrouillage par inactivité réelle (pas sur un simple changement d'onglet) : réinitialise un
+  // minuteur à chaque mouvement souris/clavier/clic, verrouille après INACTIVITY_LOCK_MS sans
+  // aucune activité. Le verrouillage sur réponse 403 (code PIN invalide détecté en cours de
+  // session) reste géré séparément à chaque appel API, inchangé.
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) lock()
+    if (state !== 'unlocked') return
+    let timer: ReturnType<typeof setTimeout>
+    let lastReset = 0
+    const resetTimer = () => {
+      clearTimeout(timer)
+      timer = setTimeout(lock, INACTIVITY_LOCK_MS)
     }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [lock])
+    const handleActivity = () => {
+      const now = Date.now()
+      if (now - lastReset < 1000) return // throttle -- évite de réinitialiser le minuteur à chaque pixel de mousemove
+      lastReset = now
+      resetTimer()
+    }
+    const events = ['mousemove', 'keydown', 'click'] as const
+    events.forEach((evt) => document.addEventListener(evt, handleActivity))
+    resetTimer()
+    return () => {
+      clearTimeout(timer)
+      events.forEach((evt) => document.removeEventListener(evt, handleActivity))
+    }
+  }, [state, lock])
 
   const submitPin = async () => {
     const pin = pinDigits.join('')
@@ -397,6 +421,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       body: JSON.stringify({
         codigo,
         entradas: draftEntries.map((e) => ({ contenido: e.contenido, categoria: e.categoria })),
+        comentarioFinal: comentarioFinal.trim() || null,
       }),
     })
     const data = await res.json()
@@ -409,11 +434,15 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     }
 
     const sesionId: string | null = data.sesionId ?? null
-    const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'photos'>>).map((n) => ({
-      ...n,
-      sesionId,
-      photos: [],
-    }))
+    const sesionComentarioFinal: string | null = data.comentarioFinal ?? null
+    const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'comentarioFinal' | 'photos'>>).map(
+      (n) => ({
+        ...n,
+        sesionId,
+        comentarioFinal: sesionComentarioFinal,
+        photos: [],
+      })
+    )
 
     const photoErrorCategorias: string[] = []
     for (let i = 0; i < draftEntries.length; i++) {
@@ -481,6 +510,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     }
 
     setDraftEntries([])
+    setComentarioFinal('')
     closeChip()
     setSavingSession(false)
     setLoading(false)
@@ -1151,6 +1181,11 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
                 {t('entradasCount', { count: group.notes.length })}
               </p>
               <div className="space-y-2">{group.notes.map((note) => renderNoteItem(note, { hideDate: true }))}</div>
+              {group.notes[0].comentarioFinal && (
+                <p className="mt-3 rounded-lg bg-white/60 p-2.5 text-sm italic text-gray-600">
+                  {group.notes[0].comentarioFinal}
+                </p>
+              )}
             </div>
           ) : (
             // Note historique sans sesion_id : pas de regroupement approximatif par date, cadre individuel.
@@ -1323,6 +1358,25 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
               {t('agregarEntrada')}
             </button>
           </div>
+        </div>
+      )}
+
+      {draftEntries.length > 0 && (
+        <div className="mb-2">
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-xs font-medium text-gray-600" htmlFor="comentario-final">
+              {t('comentarioFinalLabel')}
+            </label>
+            <span className="text-xs text-gray-400">{comentarioFinal.length}/500</span>
+          </div>
+          <textarea
+            id="comentario-final"
+            value={comentarioFinal}
+            onChange={(e) => setComentarioFinal(e.target.value.slice(0, 500))}
+            rows={2}
+            placeholder={t('comentarioFinalPlaceholder')}
+            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2.5 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          />
         </div>
       )}
 

@@ -377,10 +377,12 @@ export interface Database {
           contenido: string
           categoria: string | null
           created_at: string
-          // Lien reel (migration 039) entre les notes d'une meme session de saisie multi-categories --
-          // nullable, les notes creees avant cette migration n'en ont pas.
+          // Lien reel (migration 039/040) entre les notes d'une meme session de saisie multi-categories --
+          // nullable, les notes creees avant la migration 039 n'en ont pas. FK vers patient_note_sesiones
+          // depuis la migration 040 (avant : simple uuid partage, sans ligne associee).
           sesion_id: string | null
           patient_note_photos?: patient_note_photosRow[] | null
+          patient_note_sesiones?: patient_note_sesionesRow | null
         }
         Insert: {
           id?: string
@@ -402,7 +404,35 @@ export interface Database {
         }
         Relationships: [
           { foreignKeyName: 'patient_notes_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
-          { foreignKeyName: 'patient_notes_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+          { foreignKeyName: 'patient_notes_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'patient_notes_sesion_id_fkey'; columns: ['sesion_id']; isOneToOne: false; referencedRelation: 'patient_note_sesiones'; referencedColumns: ['id'] }
+        ]
+      }
+      patient_note_sesiones: {
+        Row: {
+          id: string
+          patient_id: string
+          organization_id: string
+          comentario_final: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          organization_id: string
+          comentario_final?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          organization_id?: string
+          comentario_final?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'patient_note_sesiones_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'patient_note_sesiones_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
         ]
       }
       patient_note_photos: {
@@ -744,3 +774,4 @@ type patientsRow = Database['public']['Tables']['patients']['Row']
 type organizationsRow = Database['public']['Tables']['organizations']['Row']
 type org_settingsRow = Database['public']['Tables']['org_settings']['Row']
 type patient_note_photosRow = Database['public']['Tables']['patient_note_photos']['Row']
+type patient_note_sesionesRow = Database['public']['Tables']['patient_note_sesiones']['Row']

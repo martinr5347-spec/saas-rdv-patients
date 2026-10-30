@@ -443,7 +443,12 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     // d'autres catégories envoyées dans le même lot.
     const controlEntry = draftEntries.find((e) => e.categoria === CATEGORIA_CONTROL)
     if (controlEntry && controlEntry.programarRecordatorio && controlEntry.controlMeses !== '') {
-      const diagnosticoConFoto = notes.find((n) => n.categoria === 'Diagnóstico' && (n.photos?.length ?? 0) > 0)
+      // Cherche d'abord dans le lot qui vient d'être créé (ses photos sont déjà uploadées à ce stade,
+      // cf. boucle ci-dessus) -- sinon dans l'historique déjà chargé, pour couvrir le cas où la photo
+      // pertinente provient d'une session précédente et non du lot courant.
+      const diagnosticoConFoto =
+        createdNotes.find((n) => n.categoria === 'Diagnóstico' && (n.photos?.length ?? 0) > 0) ??
+        notes.find((n) => n.categoria === 'Diagnóstico' && (n.photos?.length ?? 0) > 0)
       const patchRes = await fetch(`/api/patients/${patientId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

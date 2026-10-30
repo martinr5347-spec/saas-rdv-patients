@@ -21,7 +21,18 @@ interface PatientNote {
   contenido: string
   categoria: string | null
   created_at: string
+  sesionId: string | null
   photos?: PatientNotePhoto[]
+}
+
+// Un brouillon local tant que la session n'est pas enregistrée -- rien n'est écrit en base ici.
+interface DraftSessionEntry {
+  categoria: string | null // null = "sin categoría"
+  contenido: string
+  photoFile: File | null
+  photoPreviewUrl: string | null
+  programarRecordatorio?: boolean // uniquement pertinent pour categoria === CATEGORIA_CONTROL
+  controlMeses?: number | ''
 }
 
 interface ProximoControl {
@@ -75,16 +86,25 @@ function fechaKey(createdAt: string, intlLocale: string) {
   return new Date(createdAt).toLocaleDateString(intlLocale, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// Regroupe les notes par jour calendaire, en conservant l'ordre déjà trié (desc) du state `notes`.
-function groupNotesByFecha(notes: PatientNote[], intlLocale: string) {
-  const groups: { key: string; notes: PatientNote[] }[] = []
+// Regroupe les notes par sesion_id (lien réel en base, pas une approximation par date) : toutes les
+// notes d'une même session de saisie sont rattachées au même groupe, peu importe leur position dans
+// la liste. Les notes historiques sans sesion_id (créées avant ce champ) restent chacune seules dans
+// leur propre groupe -- aucun moyen fiable de savoir lesquelles appartenaient au même rendez-vous,
+// donc pas de faux regroupement par date comme avant.
+function groupNotesBySesion(notes: PatientNote[]) {
+  const groups: { key: string; sesionId: string | null; notes: PatientNote[] }[] = []
+  const sesionIndex = new Map<string, number>()
   for (const note of notes) {
-    const key = fechaKey(note.created_at, intlLocale)
-    const lastGroup = groups[groups.length - 1]
-    if (lastGroup && lastGroup.key === key) {
-      lastGroup.notes.push(note)
+    if (note.sesionId) {
+      const idx = sesionIndex.get(note.sesionId)
+      if (idx !== undefined) {
+        groups[idx].notes.push(note)
+        continue
+      }
+      sesionIndex.set(note.sesionId, groups.length)
+      groups.push({ key: note.sesionId, sesionId: note.sesionId, notes: [note] })
     } else {
-      groups.push({ key, notes: [note] })
+      groups.push({ key: note.id, sesionId: null, notes: [note] })
     }
   }
   return groups
@@ -182,8 +202,6 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [pinDigits, setPinDigits] = useState(['', '', '', ''])
   const [codigo, setCodigo] = useState<string | null>(null) // gardé en mémoire uniquement, jamais persisté
   const [notes, setNotes] = useState<PatientNote[]>([])
-  const [newNote, setNewNote] = useState('')
-  const [newNoteCategoria, setNewNoteCategoria] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -210,17 +228,25 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>([])
   const [proximoControl, setProximoControl] = useState<ProximoControl | null>(null)
   const [bannerDismissed, setBannerDismissed] = useState(false) // dismiss purement local, pas persisté
-  const [composerMode, setComposerMode] = useState<'categoria' | 'control'>('categoria')
-  const [controlMeses, setControlMeses] = useState<number | ''>('')
-  const [programarRecordatorio, setProgramarRecordatorio] = useState(false)
+
+  // Brouillon de session (composer multi-catégories) -- rien n'est écrit en base tant que
+  // "Guardar sesión" n'est pas cliqué. Une seule entrée par catégorie à la fois dans le brouillon ;
+  // ouvrir une chip déjà remplie recharge son contenu pour édition.
+  const [draftEntries, setDraftEntries] = useState<DraftSessionEntry[]>([])
+  const [openCategoria, setOpenCategoria] = useState<string | null | 'none'>('none') // 'none' = aucune chip ouverte
+  const [openContenido, setOpenContenido] = useState('')
+  const [openPhotoFile, setOpenPhotoFile] = useState<File | null>(null)
+  const [openPhotoPreview, setOpenPhotoPreview] = useState<string | null>(null)
+  const [openProgramarRecordatorio, setOpenProgramarRecordatorio] = useState(false)
+  const [openControlMeses, setOpenControlMeses] = useState<number | ''>('')
+  const [savingSession, setSavingSession] = useState(false)
+  const draftFileInputRef = useRef<HTMLInputElement>(null)
 
   const lock = useCallback(() => {
     setState('locked')
     setCodigo(null)
     setPinDigits(['', '', '', ''])
     setNotes([])
-    setNewNote('')
-    setNewNoteCategoria(null)
     setError(null)
     setCategorias([])
     setFiltroCategoria(null)
@@ -240,9 +266,13 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setCategoriasConFoto([])
     setProximoControl(null)
     setBannerDismissed(false)
-    setComposerMode('categoria')
-    setControlMeses('')
-    setProgramarRecordatorio(false)
+    setDraftEntries([])
+    setOpenCategoria('none')
+    setOpenContenido('')
+    setOpenPhotoFile(null)
+    setOpenPhotoPreview(null)
+    setOpenProgramarRecordatorio(false)
+    setOpenControlMeses('')
   }, [])
 
   // Re-verrouillage automatique si l'onglet passe en arrière-plan
@@ -284,35 +314,141 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setLoading(false)
   }
 
-  const saveNote = async () => {
-    if (!newNote.trim() || !codigo) return
+  // Ouvre l'éditeur inline d'une chip (catégorie réelle, Control, ou null = "Sin categoría").
+  // Recharge le contenu déjà présent dans le brouillon si cette catégorie y est déjà (édition).
+  const openChip = (categoria: string | null) => {
+    if (openCategoria === categoria) {
+      closeChip()
+      return
+    }
+    const existing = draftEntries.find((e) => e.categoria === categoria)
+    setOpenCategoria(categoria)
+    setOpenContenido(existing?.contenido ?? '')
+    setOpenPhotoFile(existing?.photoFile ?? null)
+    setOpenPhotoPreview(existing?.photoPreviewUrl ?? null)
+    setOpenProgramarRecordatorio(existing?.programarRecordatorio ?? false)
+    setOpenControlMeses(existing?.controlMeses ?? '')
+  }
+
+  const closeChip = () => {
+    setOpenCategoria('none')
+    setOpenContenido('')
+    setOpenPhotoFile(null)
+    setOpenPhotoPreview(null)
+    setOpenProgramarRecordatorio(false)
+    setOpenControlMeses('')
+  }
+
+  // Valide l'entrée en cours d'édition et l'ajoute (ou la remplace) dans le brouillon de session --
+  // ne ferme pas l'interface, le praticien peut enchaîner immédiatement avec une autre chip.
+  const confirmEntry = () => {
+    if (openCategoria === 'none' || !openContenido.trim()) return
+    const categoria = openCategoria
+    setDraftEntries((prev) => [
+      ...prev.filter((e) => e.categoria !== categoria),
+      {
+        categoria,
+        contenido: openContenido.trim(),
+        photoFile: openPhotoFile,
+        photoPreviewUrl: openPhotoPreview,
+        programarRecordatorio: categoria === CATEGORIA_CONTROL ? openProgramarRecordatorio : undefined,
+        controlMeses: categoria === CATEGORIA_CONTROL ? openControlMeses : undefined,
+      },
+    ])
+    closeChip()
+  }
+
+  const removeEntry = (categoria: string | null) => {
+    setDraftEntries((prev) => {
+      const entry = prev.find((e) => e.categoria === categoria)
+      if (entry?.photoPreviewUrl) URL.revokeObjectURL(entry.photoPreviewUrl)
+      return prev.filter((e) => e.categoria !== categoria)
+    })
+    if (openCategoria === categoria) closeChip()
+  }
+
+  const handleDraftFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (openPhotoPreview) URL.revokeObjectURL(openPhotoPreview)
+    setOpenPhotoFile(file)
+    setOpenPhotoPreview(URL.createObjectURL(file))
+  }
+
+  const removeOpenPhoto = () => {
+    if (openPhotoPreview) URL.revokeObjectURL(openPhotoPreview)
+    setOpenPhotoFile(null)
+    setOpenPhotoPreview(null)
+  }
+
+  // Enregistre toute la session de saisie en une fois : un seul POST pour le lot de notes
+  // (sesion_id partagé généré côté serveur), puis upload des photos associées note par note en
+  // réutilisant l'endpoint existant (séquence fiable, erreurs individuelles rapportées sans faire
+  // échouer tout le lot déjà sauvegardé). Le rappel "próximo control" reprend exactement la logique
+  // existante : déclenché dès qu'une entrée "Control" est présente, peu importe le reste du lot.
+  const saveSession = async () => {
+    if (draftEntries.length === 0 || !codigo) return
+    setSavingSession(true)
     setLoading(true)
-    const categoria = composerMode === 'control' ? CATEGORIA_CONTROL : newNoteCategoria
     const res = await fetch(`/api/patients/${patientId}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo, contenido: newNote.trim(), categoria }),
+      body: JSON.stringify({
+        codigo,
+        entradas: draftEntries.map((e) => ({ contenido: e.contenido, categoria: e.categoria })),
+      }),
     })
     const data = await res.json()
     if (!res.ok) {
       toast.error(data.error ?? t('toastErrorGuardarNota'))
       if (res.status === 403) lock()
+      setSavingSession(false)
       setLoading(false)
       return
     }
 
-    const savedNote: PatientNote = { ...data.note, photos: [] }
-    setNotes((prev) => [savedNote, ...prev])
+    const sesionId: string | null = data.sesionId ?? null
+    const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'photos'>>).map((n) => ({
+      ...n,
+      sesionId,
+      photos: [],
+    }))
 
-    // Mode "Control" avec la case "Programar recordatorio" cochée : on programme en plus la relance,
-    // en liant la photo de diagnostic la plus récente (sinon rien).
-    if (composerMode === 'control' && programarRecordatorio && controlMeses !== '') {
+    const photoErrorCategorias: string[] = []
+    for (let i = 0; i < draftEntries.length; i++) {
+      const entry = draftEntries[i]
+      if (!entry.photoFile) continue
+      const noteId = createdNotes[i]?.id
+      if (!noteId) continue
+      const formData = new FormData()
+      formData.append('codigo', codigo)
+      formData.append('file', entry.photoFile)
+      const photoRes = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (photoRes.ok) {
+        const photoData = await photoRes.json()
+        createdNotes[i].photos = [photoData.photo]
+      } else {
+        photoErrorCategorias.push(entry.categoria ?? t('sinCategoria'))
+      }
+      if (entry.photoPreviewUrl) URL.revokeObjectURL(entry.photoPreviewUrl)
+    }
+
+    setNotes((prev) => [...createdNotes, ...prev])
+
+    // Reprend exactement la logique de relance existante -- déclenchée indépendamment du nombre
+    // d'autres catégories envoyées dans le même lot.
+    const controlEntry = draftEntries.find((e) => e.categoria === CATEGORIA_CONTROL)
+    if (controlEntry && controlEntry.programarRecordatorio && controlEntry.controlMeses !== '') {
       const diagnosticoConFoto = notes.find((n) => n.categoria === 'Diagnóstico' && (n.photos?.length ?? 0) > 0)
       const patchRes = await fetch(`/api/patients/${patientId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          proximo_control_meses: controlMeses,
+          proximo_control_meses: controlEntry.controlMeses,
           proximo_control_photo_note_id: diagnosticoConFoto?.id ?? null,
         }),
       })
@@ -331,15 +467,17 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
       } else {
         toast.error(t('toastNotaGuardadaSinRecordatorio'))
       }
-    } else {
-      toast.success(t('toastNotaGuardada'))
+    } else if (photoErrorCategorias.length === 0) {
+      toast.success(t('toastSesionGuardada'))
     }
 
-    setNewNote('')
-    setNewNoteCategoria(null)
-    setComposerMode('categoria')
-    setControlMeses('')
-    setProgramarRecordatorio(false)
+    if (photoErrorCategorias.length > 0) {
+      toast.error(t('toastErrorSubirAlgunasFotos', { categorias: photoErrorCategorias.join(', ') }))
+    }
+
+    setDraftEntries([])
+    closeChip()
+    setSavingSession(false)
     setLoading(false)
   }
 
@@ -366,7 +504,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     })
     const data = await res.json()
     if (res.ok) {
-      setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? { ...data.note, photos: n.photos } : n)))
+      setNotes((prev) => prev.map((n) => (n.id === editingNoteId ? { ...n, ...data.note } : n)))
       toast.success(t('toastNotaActualizada'))
       cancelEditNote()
     } else {
@@ -584,6 +722,114 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     )
   }
 
+  // Rendu d'une note individuelle (vue + édition), partagé entre les groupes "session" (cadre fort,
+  // un seul en-tête, hideDate) et les notes historiques sans sesion_id (chacune dans son propre cadre).
+  const renderNoteItem = (note: PatientNote, opts?: { hideDate?: boolean }) => (
+    <div key={note.id} className="group rounded-lg bg-gray-50 p-3">
+      {editingNoteId === note.id ? (
+        <div>
+          <textarea
+            value={editingContenido}
+            onChange={(e) => setEditingContenido(e.target.value.slice(0, 500))}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2.5 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          />
+          {categorias.length > 0 && (
+            <select
+              value={editingCategoria ?? ''}
+              onChange={(e) => setEditingCategoria(e.target.value || null)}
+              className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            >
+              <option value="">{t('sinCategoria')}</option>
+              {categorias.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          )}
+          {renderPhotosRow(note)}
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={cancelEditNote}
+              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            >
+              {t('cancelar')}
+            </button>
+            <button
+              type="button"
+              onClick={saveEditNote}
+              disabled={loading || !editingContenido.trim()}
+              className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+            >
+              {t('guardar')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mb-1 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {!opts?.hideDate && (
+                <p className="text-xs text-gray-400">
+                  {new Date(note.created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+              )}
+              {note.categoria && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryColor(note.categoria)}`}>
+                  {note.categoria}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={() => startEditNote(note)}
+                aria-label={t('editarNotaLabel')}
+                className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDeleteId(note.id)}
+                aria-label={t('eliminarNotaLabel')}
+                className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-red-600"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed text-gray-700">{note.contenido}</p>
+          {renderPhotosRow(note)}
+          {confirmingDeleteId === note.id && (
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3 py-2">
+              <p className="text-xs text-gray-600">{t('confirmarEliminarNota')}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDeleteId(null)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                >
+                  {t('cancelar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmDeleteNote(note.id)}
+                  disabled={loading}
+                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                >
+                  {t('confirmar')}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
   if (state === 'locked') {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
@@ -660,6 +906,13 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handleFileSelected}
+        className="hidden"
+      />
+      <input
+        ref={draftFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleDraftFileSelected}
         className="hidden"
       />
 
@@ -883,138 +1136,48 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
 
       <div className="mb-4 max-h-96 space-y-4 overflow-y-auto">
         {filteredNotes.length === 0 && <p className="py-4 text-center text-sm text-gray-400">{t('sinNotasRegistradas')}</p>}
-        {groupNotesByFecha(filteredNotes, intlLocale).map((group) => (
-          <div key={group.key}>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-              {group.key} · {t('entradasCount', { count: group.notes.length })}
-            </p>
-            <div className="space-y-2">
-              {group.notes.map((note) => (
-                <div key={note.id} className="group rounded-lg bg-gray-50 p-3">
-                  {editingNoteId === note.id ? (
-              <div>
-                <textarea
-                  value={editingContenido}
-                  onChange={(e) => setEditingContenido(e.target.value.slice(0, 500))}
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2.5 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-                />
-                {categorias.length > 0 && (
-                  <select
-                    value={editingCategoria ?? ''}
-                    onChange={(e) => setEditingCategoria(e.target.value || null)}
-                    className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-                  >
-                    <option value="">{t('sinCategoria')}</option>
-                    {categorias.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {renderPhotosRow(note)}
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={cancelEditNote}
-                    className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
-                  >
-                    {t('cancelar')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveEditNote}
-                    disabled={loading || !editingContenido.trim()}
-                    className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
-                  >
-                    {t('guardar')}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="mb-1 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-gray-400">
-                      {new Date(note.created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
-                    </p>
-                    {note.categoria && (
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryColor(note.categoria)}`}>
-                        {note.categoria}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() => startEditNote(note)}
-                      aria-label={t('editarNotaLabel')}
-                      className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-                    >
-                      <PencilIcon className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingDeleteId(note.id)}
-                      aria-label={t('eliminarNotaLabel')}
-                      className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-red-600"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed text-gray-700">{note.contenido}</p>
-                {renderPhotosRow(note)}
-                {confirmingDeleteId === note.id && (
-                  <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3 py-2">
-                    <p className="text-xs text-gray-600">{t('confirmarEliminarNota')}</p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setConfirmingDeleteId(null)}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-700"
-                      >
-                        {t('cancelar')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => confirmDeleteNote(note.id)}
-                        disabled={loading}
-                        className="text-xs font-medium text-red-600 hover:text-red-700"
-                      >
-                        {t('confirmar')}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-                ))}
+        {groupNotesBySesion(filteredNotes).map((group) =>
+          group.sesionId ? (
+            // Session réelle (sesion_id partagé) : cadre visuellement fort, un seul en-tête de date/heure.
+            <div key={group.key} className="rounded-xl border-2 border-[#6926D2]/40 bg-violet-50/40 p-3">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#6926D2]">
+                {new Date(group.notes[0].created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
+                {' · '}
+                {t('entradasCount', { count: group.notes.length })}
+              </p>
+              <div className="space-y-2">{group.notes.map((note) => renderNoteItem(note, { hideDate: true }))}</div>
             </div>
-          </div>
-        ))}
+          ) : (
+            // Note historique sans sesion_id : pas de regroupement approximatif par date, cadre individuel.
+            <div key={group.key}>{group.notes.map((note) => renderNoteItem(note))}</div>
+          )
+        )}
       </div>
 
+      <p className="mb-1.5 text-xs text-gray-500">{t('composerHint')}</p>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {categorias.map((cat) => {
           const dejaUtilisee = categoriasUtiliseesAujourdhui.has(cat)
-          const selected = composerMode === 'categoria' && newNoteCategoria === cat
+          const filled = draftEntries.some((e) => e.categoria === cat)
+          const isOpen = openCategoria === cat
           return (
             <button
               key={cat}
               type="button"
-              disabled={dejaUtilisee && !selected}
-              onClick={() => {
-                setComposerMode('categoria')
-                setNewNoteCategoria(cat)
-              }}
-              title={dejaUtilisee && !selected ? t('yaHayEntradaCategoria') : undefined}
+              disabled={dejaUtilisee}
+              onClick={() => openChip(cat)}
+              title={dejaUtilisee ? t('yaHayEntradaCategoria') : undefined}
               className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(cat)} ${
-                selected ? `ring-2 ${categoryRingColor(cat)}` : dejaUtilisee ? 'opacity-30' : 'opacity-60 hover:opacity-100'
+                isOpen
+                  ? 'ring-2 ring-[#6926D2]'
+                  : filled
+                    ? `ring-2 ${categoryRingColor(cat)}`
+                    : dejaUtilisee
+                      ? 'opacity-30'
+                      : 'opacity-60 hover:opacity-100'
               }`}
             >
+              {filled && !isOpen ? '✓ ' : ''}
               {cat}
             </button>
           )
@@ -1022,94 +1185,149 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         {!categoriasUtiliseesAujourdhui.has(CATEGORIA_CONTROL) && (
           <button
             type="button"
-            onClick={() => {
-              setComposerMode('control')
-              setNewNoteCategoria(null)
-            }}
+            onClick={() => openChip(CATEGORIA_CONTROL)}
             className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(CATEGORIA_CONTROL)} ${
-              composerMode === 'control' ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
+              openCategoria === CATEGORIA_CONTROL
+                ? 'ring-2 ring-[#6926D2]'
+                : draftEntries.some((e) => e.categoria === CATEGORIA_CONTROL)
+                  ? 'ring-2 ring-orange-400'
+                  : 'opacity-60 hover:opacity-100'
             }`}
           >
+            {draftEntries.some((e) => e.categoria === CATEGORIA_CONTROL) && openCategoria !== CATEGORIA_CONTROL ? '✓ ' : ''}
             {t('controlBadge')}
           </button>
         )}
         <button
           type="button"
-          onClick={() => {
-            setComposerMode('categoria')
-            setNewNoteCategoria(null)
-          }}
+          onClick={() => openChip(null)}
           className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-            composerMode === 'categoria' && newNoteCategoria === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 opacity-60 hover:opacity-100'
+            openCategoria === null
+              ? 'bg-[#6926D2] text-white ring-2 ring-[#6926D2]'
+              : draftEntries.some((e) => e.categoria === null)
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-100 text-gray-500 opacity-60 hover:opacity-100'
           }`}
         >
+          {draftEntries.some((e) => e.categoria === null) && openCategoria !== null ? '✓ ' : ''}
           {t('sinCategoria')}
         </button>
       </div>
 
-      {composerMode === 'control' && (
-        <div className="mb-2 rounded-xl border border-dashed border-orange-300 bg-orange-50 p-3">
-          <label className="flex items-center gap-2 text-xs font-medium text-orange-800">
-            <input
-              type="checkbox"
-              checked={programarRecordatorio}
-              onChange={(e) => setProgramarRecordatorio(e.target.checked)}
-            />
-            {t('programarRecordatorioAutomatico')}
-          </label>
-          {programarRecordatorio && (
-            <select
-              value={controlMeses}
-              onChange={(e) => setControlMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none"
-            >
-              <option value="">{t('elegirEllipsis')}</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {t('elegirMesesOption', { months: m })}
-                </option>
-              ))}
-            </select>
+      {openCategoria !== 'none' && (
+        <div className="mb-3 rounded-xl border border-[#6926D2]/30 bg-violet-50/40 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-700">
+              {openCategoria === CATEGORIA_CONTROL ? t('controlBadge') : openCategoria ?? t('sinCategoria')}
+            </span>
+            <span className="text-xs text-gray-400">{openContenido.length}/500</span>
+          </div>
+          <textarea
+            value={openContenido}
+            onChange={(e) => setOpenContenido(e.target.value.slice(0, 500))}
+            rows={3}
+            placeholder={t('observacionPlaceholder')}
+            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2.5 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          />
+
+          {allowsPhoto(openCategoria) && (
+            <div className="mt-2 flex items-center gap-2">
+              {openPhotoPreview ? (
+                <div className="group/photo relative h-14 w-14 flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={openPhotoPreview}
+                    alt={t('fotoClinicaAlt')}
+                    className="h-full w-full rounded-lg border border-gray-200 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeOpenPhoto}
+                    aria-label={t('eliminarFotoLabel')}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white"
+                  >
+                    <CloseIcon className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => draftFileInputRef.current?.click()}
+                  className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-[#6926D2] hover:text-[#6926D2]"
+                >
+                  <PhotoIcon className="h-4 w-4" />
+                  <span className="text-[9px]">{t('masFoto')}</span>
+                </button>
+              )}
+            </div>
           )}
-          <p className="mt-1.5 text-[11px] text-orange-500">
-            {programarRecordatorio
-              ? t('emailAutomaticoInfo')
-              : t('dejaloSinMarcar')}
-          </p>
+
+          {openCategoria === CATEGORIA_CONTROL && (
+            <div className="mt-2 rounded-lg border border-dashed border-orange-300 bg-orange-50 p-3">
+              <label className="flex items-center gap-2 text-xs font-medium text-orange-800">
+                <input
+                  type="checkbox"
+                  checked={openProgramarRecordatorio}
+                  onChange={(e) => setOpenProgramarRecordatorio(e.target.checked)}
+                />
+                {t('programarRecordatorioAutomatico')}
+              </label>
+              {openProgramarRecordatorio && (
+                <select
+                  value={openControlMeses}
+                  onChange={(e) => setOpenControlMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
+                  className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none"
+                >
+                  <option value="">{t('elegirEllipsis')}</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {t('elegirMesesOption', { months: m })}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="mt-1.5 text-[11px] text-orange-500">
+                {openProgramarRecordatorio ? t('emailAutomaticoInfo') : t('dejaloSinMarcar')}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={closeChip}
+              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            >
+              {t('cancelar')}
+            </button>
+            {draftEntries.some((e) => e.categoria === openCategoria) && (
+              <button
+                type="button"
+                onClick={() => removeEntry(openCategoria === 'none' ? null : openCategoria)}
+                className="flex-1 rounded-lg border border-red-200 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              >
+                {t('quitarEntrada')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={confirmEntry}
+              disabled={!openContenido.trim()}
+              className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+            >
+              {t('agregarEntrada')}
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="mb-1 flex items-center justify-between">
-        <label className="text-xs font-medium text-gray-600" htmlFor="new-note">
-          {t('nuevaNotaConfidencial')}
-        </label>
-        <span className="text-xs text-gray-400">{newNote.length}/500</span>
-      </div>
-      <textarea
-        id="new-note"
-        value={newNote}
-        onChange={(e) => setNewNote(e.target.value.slice(0, 500))}
-        rows={3}
-        placeholder={t('observacionPlaceholder')}
-        className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-      />
-      {(composerMode === 'control' || allowsPhoto(newNoteCategoria)) && (
-        <button
-          type="button"
-          disabled
-          title={t('guardaNotaAntesDeFoto')}
-          className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-300"
-        >
-          <PhotoIcon className="h-4 w-4" />
-        </button>
-      )}
       <button
         type="button"
-        onClick={saveNote}
-        disabled={loading || !newNote.trim() || (composerMode === 'control' && programarRecordatorio && controlMeses === '')}
-        className="mt-2 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
+        onClick={saveSession}
+        disabled={loading || draftEntries.length === 0}
+        className="mt-1 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
       >
-        {t('guardarNota')}
+        {savingSession ? '...' : t('guardarSesion')}
       </button>
     </div>
   )

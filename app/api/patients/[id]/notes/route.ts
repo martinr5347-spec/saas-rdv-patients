@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { data: notes, error } = await supabase
     .from('patient_notes')
-    .select('id, contenido, categoria, created_at, patient_note_photos(id, storage_path, created_at)')
+    .select('id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at)')
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
 
@@ -44,7 +44,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           return { id: photo.id, url: signed?.signedUrl ?? null, created_at: photo.created_at }
         })
       )
-      return { id: note.id, contenido: note.contenido, categoria: note.categoria, created_at: note.created_at, photos }
+      return {
+        id: note.id,
+        contenido: note.contenido,
+        categoria: note.categoria,
+        created_at: note.created_at,
+        sesionId: note.sesion_id,
+        photos,
+      }
     })
   )
 
@@ -90,7 +97,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
 }
 
-// PUT = ajoute une nouvelle note (revérifie le code à chaque écriture)
+// PUT = enregistre un lot de notes (une "session" de saisie multi-catégories) en une seule requête --
+// toutes les notes créées ici partagent un même sesion_id généré côté serveur, qui sert ensuite au
+// regroupement visuel réel côté client (voir PatientDetailView.tsx, groupNotesBySesion). Une session
+// peut contenir une seule entrée (pas de minimum imposé).
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const {
@@ -102,14 +112,27 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   const body = await req.json().catch(() => ({}))
   const codigo = body.codigo as string | undefined
-  const contenido = (body.contenido as string | undefined)?.trim()
-  const categoria = (body.categoria as string | undefined)?.trim() || null
+  const entradasRaw = body.entradas
 
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
   }
-  if (!contenido || contenido.length === 0 || contenido.length > 500) {
-    return NextResponse.json({ error: 'Nota inválida (máx. 500 caracteres)' }, { status: 400 })
+  if (!Array.isArray(entradasRaw) || entradasRaw.length === 0) {
+    return NextResponse.json({ error: 'Ninguna entrada para guardar' }, { status: 400 })
+  }
+
+  const entradas = entradasRaw.map((e: unknown) => {
+    const entry = e as { contenido?: unknown; categoria?: unknown }
+    return {
+      contenido: typeof entry?.contenido === 'string' ? entry.contenido.trim() : '',
+      categoria: typeof entry?.categoria === 'string' && entry.categoria.trim() ? entry.categoria.trim() : null,
+    }
+  })
+
+  for (const entrada of entradas) {
+    if (!entrada.contenido || entrada.contenido.length === 0 || entrada.contenido.length > 500) {
+      return NextResponse.json({ error: 'Nota inválida (máx. 500 caracteres)' }, { status: 400 })
+    }
   }
 
   const check = await verifyCodigo(supabase, authUser.id, codigo)
@@ -128,20 +151,24 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
   }
 
-  const { data: newNote, error } = await supabase
+  const sesionId = crypto.randomUUID()
+
+  const { data: newNotes, error } = await supabase
     .from('patient_notes')
-    .insert({
-      patient_id: params.id,
-      organization_id: patientRow.organization_id,
-      contenido,
-      categoria,
-    })
+    .insert(
+      entradas.map((entrada) => ({
+        patient_id: params.id,
+        organization_id: patientRow.organization_id,
+        contenido: entrada.contenido,
+        categoria: entrada.categoria,
+        sesion_id: sesionId,
+      }))
+    )
     .select('id, contenido, categoria, created_at')
-    .single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ note: newNote })
+  return NextResponse.json({ notes: newNotes, sesionId })
 }

@@ -377,6 +377,9 @@ export interface Database {
           contenido: string
           categoria: string | null
           created_at: string
+          // Lien reel (migration 039) entre les notes d'une meme session de saisie multi-categories --
+          // nullable, les notes creees avant cette migration n'en ont pas.
+          sesion_id: string | null
           patient_note_photos?: patient_note_photosRow[] | null
         }
         Insert: {
@@ -386,6 +389,7 @@ export interface Database {
           contenido: string
           categoria?: string | null
           created_at?: string
+          sesion_id?: string | null
         }
         Update: {
           id?: string
@@ -394,6 +398,7 @@ export interface Database {
           contenido?: string
           categoria?: string | null
           created_at?: string
+          sesion_id?: string | null
         }
         Relationships: [
           { foreignKeyName: 'patient_notes_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },

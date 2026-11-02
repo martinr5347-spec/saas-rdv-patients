@@ -121,7 +121,10 @@ export default function AppointmentsView({
                     <TableCell>
                       <Badge color={STATUS_BADGE[a.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{a.statut}</Badge>
                     </TableCell>
-                    <TableCell>{a.monto_acompte}</TableCell>
+                    <TableCell>
+                      {a.monto_acompte}
+                      {a.statut === 'pendiente' && ` ${t('depositoPendienteSuffix')}`}
+                    </TableCell>
                     <TableCell>
                       <Link href={`/dashboard/appointments/${a.id}`} className="text-brand-600 hover:underline font-medium">
                         {t('details')}

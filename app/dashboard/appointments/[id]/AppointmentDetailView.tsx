@@ -364,7 +364,10 @@ export default function AppointmentDetailView({
           <div className="mt-4 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
             <div>
               <p className="text-xs uppercase tracking-wide text-amber-700">Depósito pendiente (MercadoPago)</p>
-              <p className="text-base font-semibold text-amber-900">{appointment.monto_acompte.toFixed(2)}</p>
+              <p className="text-base font-semibold text-amber-900">
+                {appointment.monto_acompte.toFixed(2)}
+                {appointment.statut === 'pendiente' && ` ${t('depositoPendienteSuffix')}`}
+              </p>
             </div>
             <Badge color="warning">Pendiente</Badge>
           </div>

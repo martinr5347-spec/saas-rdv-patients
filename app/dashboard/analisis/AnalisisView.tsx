@@ -128,10 +128,8 @@ function ParetoInsightCard({ actosRealizados }: { actosRealizados: ActoRealizado
   )
 }
 
-const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-
-function growthLabel(current: number, previous: number): string {
-  if (previous === 0) return current > 0 ? 'Nuevo' : '—'
+function growthLabel(current: number, previous: number, newLabel: string): string {
+  if (previous === 0) return current > 0 ? newLabel : '—'
   const pct = Math.round(((current - previous) / previous) * 100)
   return `${pct >= 0 ? '+' : ''}${pct}%`
 }
@@ -145,6 +143,9 @@ export default function AnalisisView({
   manuales: ManualRow[]
   actosRealizados: ActoRealizadoRow[]
 }) {
+  const t = useTranslations('dashboard.analisis')
+  const MESES = t.raw('monthsShort') as string[]
+  const growthNewLabel = t('growthNew')
   const now = new Date()
   const currentYear = now.getUTCFullYear()
   const previousYear = currentYear - 1
@@ -225,22 +226,22 @@ export default function AnalisisView({
       : null
 
     const kpis = {
-      revenueGrowth: growthLabel(revenueCurrentYTD, revenuePreviousYTD),
-      citasGrowth: growthLabel(citasCurrentYTD, citasPreviousYTD),
+      revenueGrowth: growthLabel(revenueCurrentYTD, revenuePreviousYTD, growthNewLabel),
+      citasGrowth: growthLabel(citasCurrentYTD, citasPreviousYTD, growthNewLabel),
       avgPresence,
     }
 
     return { revenueData, citasData, presenceRate, kpis }
-  }, [appointments, manuales, currentYear, previousYear, lastCompleteMonthIndex])
+  }, [appointments, manuales, currentYear, previousYear, lastCompleteMonthIndex, MESES, growthNewLabel])
 
   if (!hasAnyData) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Análisis</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
         <Card>
           <div className="py-10 text-center">
-            <p className="text-gray-600 font-medium">Aún no hay suficiente actividad para mostrar un análisis.</p>
-            <p className="text-sm text-gray-400 mt-1">Vuelve aquí después de registrar tus primeras citas y pagos.</p>
+            <p className="text-gray-600 font-medium">{t('emptyStateTitle')}</p>
+            <p className="text-sm text-gray-400 mt-1">{t('emptyStateDesc')}</p>
           </div>
         </Card>
         <ParetoInsightCard actosRealizados={actosRealizados} />
@@ -250,29 +251,29 @@ export default function AnalisisView({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Análisis</h1>
-      <p className="text-sm text-gray-500 -mt-4">Comparación mes a mes, {currentYear} vs {previousYear}</p>
+      <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+      <p className="text-sm text-gray-500 -mt-4">{t('comparisonSubtitle', { currentYear, previousYear })}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Crecimiento ingresos</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">{t('kpiRevenueGrowth')}</p>
           <p className="text-2xl font-semibold text-gray-800 mt-1">{kpis.revenueGrowth}</p>
-          <p className="text-xs text-gray-400 mt-0.5">vs mismo período {previousYear}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t('kpiVsSamePeriod', { year: previousYear })}</p>
         </Card>
         <Card>
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Crecimiento citas</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">{t('kpiCitasGrowth')}</p>
           <p className="text-2xl font-semibold text-gray-800 mt-1">{kpis.citasGrowth}</p>
-          <p className="text-xs text-gray-400 mt-0.5">vs mismo período {previousYear}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t('kpiVsSamePeriod', { year: previousYear })}</p>
         </Card>
         <Card>
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Asistencia promedio</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">{t('kpiAvgPresence')}</p>
           <p className="text-2xl font-semibold text-gray-800 mt-1">{kpis.avgPresence !== null ? `${kpis.avgPresence}%` : '—'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{currentYear}, meses completos</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t('kpiMesesCompletos', { year: currentYear })}</p>
         </Card>
       </div>
 
       <Card>
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">Ingresos por mes</h2>
+        <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('chartRevenueTitle')}</h2>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={revenueData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ec" />
@@ -284,11 +285,11 @@ export default function AnalisisView({
             <Bar dataKey={`${currentYear}`} fill="#6926D2" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-        <p className="text-xs text-gray-400 mt-2">* El mes en curso se muestra una vez finalizado, para no distorsionar la comparación.</p>
+        <p className="text-xs text-gray-400 mt-2">{t('chartFootnote')}</p>
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">Citas por mes</h2>
+        <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('chartCitasTitle')}</h2>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={citasData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ec" />
@@ -300,11 +301,11 @@ export default function AnalisisView({
             <Bar dataKey={`${currentYear}`} fill="#0A1422" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-        <p className="text-xs text-gray-400 mt-2">* El mes en curso se muestra una vez finalizado, para no distorsionar la comparación.</p>
+        <p className="text-xs text-gray-400 mt-2">{t('chartFootnote')}</p>
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">Tasa de asistencia por mes</h2>
+        <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('chartPresenceTitle')}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={presenceRate}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ec" />
@@ -316,7 +317,7 @@ export default function AnalisisView({
             <Line type="monotone" dataKey={`${currentYear}`} stroke="#059669" strokeWidth={2} dot={{ r: 3 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-        <p className="text-xs text-gray-400 mt-2">* El mes en curso se muestra una vez finalizado, para no distorsionar la comparación.</p>
+        <p className="text-xs text-gray-400 mt-2">{t('chartFootnote')}</p>
       </Card>
 
       <ParetoInsightCard actosRealizados={actosRealizados} />

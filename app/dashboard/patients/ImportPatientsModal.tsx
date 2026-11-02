@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Step = 'archivo' | 'columnas' | 'vista_previa' | 'resultado'
 type FieldKey = 'nombre' | 'email' | 'telefono' | 'fecha_nacimiento'
@@ -20,14 +21,6 @@ interface CommitResult {
   errores: { fila: number; motivo: string }[]
 }
 
-const FIELD_OPTIONS: { value: '' | FieldKey; label: string }[] = [
-  { value: '', label: 'No importar esta columna' },
-  { value: 'nombre', label: 'Nombre (obligatorio)' },
-  { value: 'email', label: 'Email' },
-  { value: 'telefono', label: 'Teléfono' },
-  { value: 'fecha_nacimiento', label: 'Fecha de nacimiento' },
-]
-
 function mapRow(row: Record<string, unknown>, mapping: Record<string, string>) {
   const result: { nombre: string | null; email: string | null; telefono: string | null } = {
     nombre: null,
@@ -46,6 +39,14 @@ function mapRow(row: Record<string, unknown>, mapping: Record<string, string>) {
 }
 
 export default function ImportPatientsModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const t = useTranslations('dashboard.patients.import')
+  const FIELD_OPTIONS: { value: '' | FieldKey; label: string }[] = [
+    { value: '', label: t('fieldOptionNone') },
+    { value: 'nombre', label: t('fieldOptionNombre') },
+    { value: 'email', label: t('fieldOptionEmail') },
+    { value: 'telefono', label: t('fieldOptionTelefono') },
+    { value: 'fecha_nacimiento', label: t('fieldOptionFechaNacimiento') },
+  ]
   const [step, setStep] = useState<Step>('archivo')
   const [fileName, setFileName] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
@@ -66,7 +67,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
     const data = await res.json()
     setParsing(false)
     if (!res.ok) {
-      setParseError(data.error ?? 'Error al leer el archivo')
+      setParseError(data.error ?? t('errorReadFile'))
       return
     }
     setParseData(data)
@@ -89,7 +90,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
     const data = await res.json()
     setCommitting(false)
     if (!res.ok) {
-      setCommitError(data.error ?? 'Error al importar')
+      setCommitError(data.error ?? t('errorImport'))
       return
     }
     setResult(data)
@@ -102,11 +103,11 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-800">Importar pacientes</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('title')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('closeLabel')}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
             ×
@@ -116,15 +117,12 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
         <div className="p-6">
           {step === 'archivo' && (
             <div>
-              <p className="mb-4 text-sm text-gray-600">
-                Sube un archivo Excel (.xlsx, .xls) o CSV con tus pacientes. Si no tienes uno listo, descarga la
-                plantilla para empezar.
-              </p>
+              <p className="mb-4 text-sm text-gray-600">{t('step1Intro')}</p>
               <a
                 href="/api/patients/import/template"
                 className="mb-4 inline-block text-sm font-medium text-[#6926D2] hover:underline"
               >
-                Descargar plantilla
+                {t('downloadTemplate')}
               </a>
               <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center hover:border-[#6926D2]">
                 <input
@@ -137,22 +135,17 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                     e.target.value = ''
                   }}
                 />
-                <span className="text-sm font-medium text-gray-700">
-                  {fileName ?? 'Haz clic para elegir un archivo'}
-                </span>
-                <span className="text-xs text-gray-400">.xlsx, .xls o .csv -- máx. 5 MB</span>
+                <span className="text-sm font-medium text-gray-700">{fileName ?? t('chooseFilePrompt')}</span>
+                <span className="text-xs text-gray-400">{t('fileFormatsHint')}</span>
               </label>
-              {parsing && <p className="mt-3 text-sm text-gray-500">Leyendo archivo...</p>}
+              {parsing && <p className="mt-3 text-sm text-gray-500">{t('readingFile')}</p>}
               {parseError && <p className="mt-3 text-sm text-red-600">{parseError}</p>}
             </div>
           )}
 
           {step === 'columnas' && parseData && (
             <div>
-              <p className="mb-4 text-sm text-gray-600">
-                Indica qué columna de tu archivo corresponde a cada dato. Al menos una columna debe asignarse a
-                &quot;Nombre&quot;.
-              </p>
+              <p className="mb-4 text-sm text-gray-600">{t('step2Intro')}</p>
               <div className="space-y-3">
                 {parseData.headers.map((header) => (
                   <div key={header} className="flex items-center justify-between gap-3">
@@ -173,16 +166,14 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                   </div>
                 ))}
               </div>
-              {!hasNombreMapped && (
-                <p className="mt-3 text-xs text-amber-600">Asigna una columna a &quot;Nombre&quot; para continuar.</p>
-              )}
+              {!hasNombreMapped && <p className="mt-3 text-xs text-amber-600">{t('assignNombreHint')}</p>}
               <div className="mt-6 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setStep('archivo')}
                   className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:border-gray-300"
                 >
-                  Atrás
+                  {t('back')}
                 </button>
                 <button
                   type="button"
@@ -190,7 +181,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                   disabled={!hasNombreMapped}
                   className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
                 >
-                  Siguiente
+                  {t('next')}
                 </button>
               </div>
             </div>
@@ -198,22 +189,19 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
 
           {step === 'vista_previa' && parseData && (
             <div>
-              <p className="mb-3 text-sm text-gray-600">
-                {parseData.totalRows} {parseData.totalRows === 1 ? 'fila detectada' : 'filas detectadas'}.
-              </p>
+              <p className="mb-3 text-sm text-gray-600">{t('rowsDetected', { count: parseData.totalRows })}.</p>
               {parseData.truncated && (
                 <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                  Tu archivo tiene más de 500 filas -- solo se importarán las primeras 500, puedes importar el resto
-                  en una segunda vez.
+                  {t('truncatedWarning')}
                 </div>
               )}
               <div className="overflow-x-auto rounded-xl border border-gray-200">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-3 py-2 font-medium text-gray-600">Nombre</th>
-                      <th className="px-3 py-2 font-medium text-gray-600">Email</th>
-                      <th className="px-3 py-2 font-medium text-gray-600">Teléfono</th>
+                      <th className="px-3 py-2 font-medium text-gray-600">{t('colNombre')}</th>
+                      <th className="px-3 py-2 font-medium text-gray-600">{t('colEmail')}</th>
+                      <th className="px-3 py-2 font-medium text-gray-600">{t('colTelefono')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -235,7 +223,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                   disabled={committing}
                   className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:border-gray-300 disabled:opacity-50"
                 >
-                  Atrás
+                  {t('back')}
                 </button>
                 <button
                   type="button"
@@ -243,7 +231,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                   disabled={committing}
                   className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
                 >
-                  {committing ? 'Importando...' : 'Importar'}
+                  {committing ? t('importing') : t('importButton')}
                 </button>
               </div>
             </div>
@@ -252,19 +240,21 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
           {step === 'resultado' && result && (
             <div>
               <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-                <p className="text-sm font-semibold text-green-800">{result.importados} pacientes importados</p>
+                <p className="text-sm font-semibold text-green-800">{t('resultImported', { count: result.importados })}</p>
               </div>
               <div className="space-y-1 text-sm text-gray-600">
-                <p>{result.omitidosDuplicadosEnArchivo} omitidos por estar duplicados en el archivo</p>
-                <p>{result.omitidosYaExistentes} omitidos por ya existir en tu lista de pacientes</p>
+                <p>{t('resultDuplicadosArchivo', { count: result.omitidosDuplicadosEnArchivo })}</p>
+                <p>{t('resultYaExistentes', { count: result.omitidosYaExistentes })}</p>
               </div>
               {result.errores.length > 0 && (
                 <div className="mt-4">
-                  <p className="mb-2 text-sm font-medium text-gray-700">{result.errores.length} filas con errores:</p>
+                  <p className="mb-2 text-sm font-medium text-gray-700">
+                    {t('resultErrorsCount', { count: result.errores.length })}
+                  </p>
                   <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200">
                     {result.errores.map((e, i) => (
                       <p key={i} className="border-b border-gray-100 px-3 py-1.5 text-xs text-gray-600 last:border-0">
-                        Fila {e.fila}: {e.motivo}
+                        {t('resultFilaError', { fila: e.fila, motivo: e.motivo })}
                       </p>
                     ))}
                   </div>
@@ -275,7 +265,7 @@ export default function ImportPatientsModal({ onClose, onImported }: { onClose: 
                 onClick={onImported}
                 className="mt-6 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
               >
-                Cerrar
+                {t('closeButton')}
               </button>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
 
 interface ImportRow {
   nombre: string
@@ -11,26 +12,27 @@ const MAX_ROWS = 500
 
 export async function POST(req: Request) {
   const supabase = createClient()
+  const m = getRouteMessages().dashboard.patients.import
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
-    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    return NextResponse.json({ error: m.errorNoAutenticado }, { status: 401 })
   }
 
   const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).maybeSingle()
   if (!profile?.organization_id) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    return NextResponse.json({ error: m.errorNoAutorizado }, { status: 403 })
   }
   const organizationId = profile.organization_id
 
   const body = await req.json().catch(() => ({}))
   const inputRows = body.rows as ImportRow[] | undefined
   if (!Array.isArray(inputRows) || inputRows.length === 0) {
-    return NextResponse.json({ error: 'Ninguna fila para importar' }, { status: 400 })
+    return NextResponse.json({ error: m.errorNingunaFila }, { status: 400 })
   }
   if (inputRows.length > MAX_ROWS) {
-    return NextResponse.json({ error: `Máximo ${MAX_ROWS} filas por importación` }, { status: 400 })
+    return NextResponse.json({ error: m.errorMaxFilas.replace('{max}', String(MAX_ROWS)) }, { status: 400 })
   }
 
   // Normalisation + validation (nom requis, email OU telefono requis)
@@ -42,11 +44,11 @@ export async function POST(req: Request) {
     const telefono = row.telefono ? row.telefono.toString().trim() : null
 
     if (!nombre) {
-      erroresValidacion.push({ fila: i + 1, motivo: 'Falta el nombre' })
+      erroresValidacion.push({ fila: i + 1, motivo: m.errorFaltaNombre })
       return
     }
     if (!email && !telefono) {
-      erroresValidacion.push({ fila: i + 1, motivo: 'Falta email y teléfono (se requiere al menos uno)' })
+      erroresValidacion.push({ fila: i + 1, motivo: m.errorFaltaEmailTelefono })
       return
     }
     candidatos.push({ nombre, email, telefono })
@@ -116,7 +118,7 @@ export async function POST(req: Request) {
       // le dédoublonnage revérifie la base à chaque tentative, relancer le même fichier est sans risque.
       return NextResponse.json(
         {
-          error: 'Error al insertar algunos pacientes -- puedes volver a intentar el mismo archivo, los ya importados se omitirán automáticamente.',
+          error: m.errorInsertParcial,
           detalle: error.message,
         },
         { status: 500 }

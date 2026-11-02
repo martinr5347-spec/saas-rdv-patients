@@ -15,6 +15,13 @@ const STATUS_BADGE = {
   anulado: 'error',
 } as const
 
+const STATUS_LABEL_KEY: Record<string, string> = {
+  pendiente: 'statutPendiente',
+  confirmado: 'statutConfirmado',
+  pagado: 'statutPagado',
+  anulado: 'statutAnulado',
+}
+
 export interface AppointmentRow {
   id: string
   fecha_cita: string
@@ -78,10 +85,10 @@ export default function AppointmentsView({
             <form method="get" className="flex flex-wrap gap-4">
               <select name="statut" defaultValue={statut} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400">
                 <option value="">{t('allStatuses')}</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="confirmado">Confirmado</option>
-                <option value="pagado">Pagado</option>
-                <option value="anulado">Anulado</option>
+                <option value="pendiente">{t('statutPendiente')}</option>
+                <option value="confirmado">{t('statutConfirmado')}</option>
+                <option value="pagado">{t('statutPagado')}</option>
+                <option value="anulado">{t('statutAnulado')}</option>
               </select>
               <input name="depuis" type="date" defaultValue={depuis} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400" />
               <input name="jusquau" type="date" defaultValue={jusquau} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400" />
@@ -119,7 +126,9 @@ export default function AppointmentsView({
                     <TableCell>{a.fecha_cita}</TableCell>
                     <TableCell>{a.hora_cita}</TableCell>
                     <TableCell>
-                      <Badge color={STATUS_BADGE[a.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{a.statut}</Badge>
+                      <Badge color={STATUS_BADGE[a.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>
+                        {STATUS_LABEL_KEY[a.statut] ? t(STATUS_LABEL_KEY[a.statut]) : a.statut}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {a.monto_acompte}

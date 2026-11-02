@@ -1400,6 +1400,14 @@ const STATUS_BADGE = {
   anulado: 'error',
 } as const
 
+const STATUS_LABEL_KEY: Record<string, string> = {
+  pendiente: 'statutPendiente',
+  confirmado: 'statutConfirmado',
+  en_curso: 'statutEnCurso',
+  pagado: 'statutPagado',
+  anulado: 'statutAnulado',
+}
+
 // Prefixees par ! (important) : le parent "divide-y divide-gray-50" genere une regle
 // composite (.divide-gray-50 > :not([hidden]) ~ :not([hidden])) de specificite plus
 // elevee qu'une simple classe et fixe border-color (shorthand 4 cotes) sur chaque ligne
@@ -1783,7 +1791,9 @@ export default function PatientDetailView({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{appt.statut}</Badge>
+                  <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>
+                    {STATUS_LABEL_KEY[appt.statut] ? t(STATUS_LABEL_KEY[appt.statut]) : appt.statut}
+                  </Badge>
                   <span className="text-gray-300 group-hover:text-gray-400">›</span>
                 </div>
               </Link>

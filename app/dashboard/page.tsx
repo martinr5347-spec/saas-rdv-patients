@@ -1,6 +1,9 @@
+import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { toTenantParts } from '@/lib/utils/timezone'
 import DashboardHomeView from './DashboardHomeView'
+
+const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
 function greetingBucket(hour: number): 'morning' | 'afternoon' | 'night' {
   if (hour < 12) return 'morning'
@@ -10,6 +13,8 @@ function greetingBucket(hour: number): 'morning' | 'afternoon' | 'night' {
 
 export default async function DashboardHomePage() {
   const supabase = createClient()
+  const locale = await getLocale()
+  const t = await getTranslations('dashboard.home')
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -50,9 +55,11 @@ export default async function DashboardHomePage() {
   const completedSteps = Object.values(onboarding).filter(Boolean).length
   const totalSteps = 4
 
-  const todayLabelRaw = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' }).format(
-    new Date()
-  )
+  const todayLabelRaw = new Intl.DateTimeFormat(INTL_LOCALE[locale] ?? 'es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date())
   const todayLabel = todayLabelRaw.charAt(0).toUpperCase() + todayLabelRaw.slice(1)
 
   let todayAppointments: Array<{ id: string; horaCita: string; statut: string; patientName: string }> = []
@@ -75,7 +82,7 @@ export default async function DashboardHomePage() {
       id: a.id,
       horaCita: a.hora_cita,
       statut: a.statut,
-      patientName: todayPatients?.find((p) => p.id === a.patient_id)?.nom ?? 'Paciente',
+      patientName: todayPatients?.find((p) => p.id === a.patient_id)?.nom ?? t('patientFallback'),
     }))
 
     const monday = new Date()

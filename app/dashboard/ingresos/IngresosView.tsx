@@ -216,8 +216,8 @@ export default function IngresosView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label={`${t('totalMonth')} (${monnaie})`} value={totalMonth.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalMp')} (${monnaie})`} value={totalMp.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
-        <StatCard label={`Total consulta (${monnaie})`} value={totalConsulta.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
-        <StatCard label={`Total actos (${monnaie})`} value={totalActos.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
+        <StatCard label={`${t('totalConsulta')} (${monnaie})`} value={totalConsulta.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
+        <StatCard label={`${t('totalActos')} (${monnaie})`} value={totalActos.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalManual')} (${monnaie})`} value={totalManual.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
       </div>
 
@@ -300,7 +300,7 @@ export default function IngresosView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <form method="get" className="flex flex-wrap items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Desde</label>
+            <label className="text-sm font-medium text-gray-700">{t('rangeDesde')}</label>
             <select
               name="desde"
               defaultValue={desde}
@@ -315,7 +315,7 @@ export default function IngresosView({
                 ))
               )}
             </select>
-            <label className="text-sm font-medium text-gray-700">Hasta</label>
+            <label className="text-sm font-medium text-gray-700">{t('rangeHasta')}</label>
             <select
               name="hasta"
               defaultValue={hasta}

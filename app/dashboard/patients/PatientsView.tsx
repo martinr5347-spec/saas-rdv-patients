@@ -28,7 +28,7 @@ export default function PatientsView({ patients }: { patients: PatientRow[] }) {
           onClick={() => setImportOpen(true)}
           className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
         >
-          Importar pacientes
+          {t('importButton')}
         </button>
       </div>
       <TableContainer>

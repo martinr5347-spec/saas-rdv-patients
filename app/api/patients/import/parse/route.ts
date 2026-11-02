@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
 import * as XLSX from 'xlsx'
 
 const MAX_ROWS = 500
@@ -30,25 +31,26 @@ function guessField(header: string): string | null {
 
 export async function POST(req: Request) {
   const supabase = createClient()
+  const m = getRouteMessages().dashboard.patients.import
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
-    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    return NextResponse.json({ error: m.errorNoAutenticado }, { status: 401 })
   }
 
   const formData = await req.formData()
   const file = formData.get('file')
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 })
+    return NextResponse.json({ error: m.errorArchivoRequerido }, { status: 400 })
   }
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: 'El archivo supera los 5 MB' }, { status: 400 })
+    return NextResponse.json({ error: m.errorArchivoMuyGrande }, { status: 400 })
   }
 
   const allowedExt = ['.xlsx', '.xls', '.csv']
   if (!allowedExt.some((ext) => file.name.toLowerCase().endsWith(ext))) {
-    return NextResponse.json({ error: 'Formato no soportado (solo .xlsx, .xls, .csv)' }, { status: 400 })
+    return NextResponse.json({ error: m.errorFormatoNoSoportado }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
@@ -61,11 +63,11 @@ export async function POST(req: Request) {
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
     rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '', raw: false })
   } catch {
-    return NextResponse.json({ error: 'No se pudo leer el archivo -- ¿está dañado o en un formato no soportado?' }, { status: 400 })
+    return NextResponse.json({ error: m.errorArchivoIlegible }, { status: 400 })
   }
 
   if (rows.length === 0) {
-    return NextResponse.json({ error: 'El archivo no contiene filas' }, { status: 400 })
+    return NextResponse.json({ error: m.errorArchivoSinFilas }, { status: 400 })
   }
 
   const totalRows = rows.length

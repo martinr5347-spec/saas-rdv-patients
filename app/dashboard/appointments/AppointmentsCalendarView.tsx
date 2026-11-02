@@ -49,6 +49,7 @@ function PoigneeRedimension({
   onPreview: (nuevoFin: Date) => void
   onCommit: (nuevoFin: Date) => void
 }) {
+  const t = useTranslations('dashboard.appointments.calendar')
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
@@ -84,7 +85,7 @@ function PoigneeRedimension({
     <div
       onMouseDown={handleMouseDown}
       className="group/resize absolute inset-x-0 bottom-0 h-2 cursor-ns-resize"
-      title="Arrastra para cambiar la duración"
+      title={t('dragResizeHint')}
     >
       <div className="mx-auto mt-1.5 h-0.5 w-6 rounded-full bg-white/60 opacity-0 transition-opacity group-hover/resize:opacity-100" />
     </div>
@@ -191,9 +192,9 @@ export default function AppointmentsCalendarView({ appointments }: { appointment
         return next
       })
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error ?? 'Error al actualizar la duración de la cita')
+      toast.error(data.error ?? t('toastErrorDuration'))
     } else {
-      toast.success('Duración actualizada')
+      toast.success(t('toastDurationUpdated'))
     }
   }
 
@@ -212,7 +213,7 @@ export default function AppointmentsCalendarView({ appointments }: { appointment
       <Calendar
         localizer={localizer}
         events={events}
-        culture={locale === 'pt' ? 'pt' : 'es'}
+        culture={locale}
         date={date}
         view={view}
         onNavigate={setDate}

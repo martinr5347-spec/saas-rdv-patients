@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { CalendarIcon, UsersIcon, ShieldIcon, CashIcon } from '@/components/layout/icons'
 
 function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -58,17 +59,17 @@ type WeekStats = {
   deltaVsLastWeek: number
 }
 
-const GREETING_TEXT: Record<'morning' | 'afternoon' | 'night', string> = {
-  morning: 'Buenos días',
-  afternoon: 'Buenas tardes',
-  night: 'Buenas noches',
+const GREETING_KEY: Record<'morning' | 'afternoon' | 'night', 'greetingMorning' | 'greetingAfternoon' | 'greetingNight'> = {
+  morning: 'greetingMorning',
+  afternoon: 'greetingAfternoon',
+  night: 'greetingNight',
 }
 
-const STATUT_CONFIG: Record<string, { dot: string; badgeBg: string; badgeText: string; label: string }> = {
-  pendiente: { dot: 'bg-[#D97706]', badgeBg: 'bg-amber-50', badgeText: 'text-[#D97706]', label: 'Pendiente' },
-  confirmado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Confirmado' },
-  pagado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', label: 'Pagado' },
-  anulado: { dot: 'bg-gray-300', badgeBg: 'bg-gray-100', badgeText: 'text-gray-500', label: 'Anulado' },
+const STATUT_CONFIG: Record<string, { dot: string; badgeBg: string; badgeText: string; labelKey: string }> = {
+  pendiente: { dot: 'bg-[#D97706]', badgeBg: 'bg-amber-50', badgeText: 'text-[#D97706]', labelKey: 'statutPendiente' },
+  confirmado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', labelKey: 'statutConfirmado' },
+  pagado: { dot: 'bg-[#059669]', badgeBg: 'bg-green-50', badgeText: 'text-[#059669]', labelKey: 'statutPagado' },
+  anulado: { dot: 'bg-gray-300', badgeBg: 'bg-gray-100', badgeText: 'text-gray-500', labelKey: 'statutAnulado' },
 }
 
 function initials(name: string): string {
@@ -148,6 +149,7 @@ function OnboardingView({
   upcomingCount: number
   patientCount: number
 }) {
+  const t = useTranslations('dashboard.home')
   const progressPercent = Math.round((completedSteps / totalSteps) * 100)
 
   const steps: Array<{
@@ -159,29 +161,29 @@ function OnboardingView({
   }> = [
     {
       key: 'profileDone',
-      label: 'Completa tu perfil',
-      description: 'Añade tu nombre completo y especialidad',
+      label: t('stepProfileLabel'),
+      description: t('stepProfileDesc'),
       href: '/dashboard/settings',
       icon: <ProfileIcon className="h-5 w-5" />,
     },
     {
       key: 'clinicDone',
-      label: 'Configura tu clínica',
-      description: 'Completa la dirección y datos de tu clínica',
+      label: t('stepClinicLabel'),
+      description: t('stepClinicDesc'),
       href: '/dashboard/settings',
       icon: <BuildingIcon className="h-5 w-5" />,
     },
     {
       key: 'patientDone',
-      label: 'Añade tu primer paciente',
-      description: 'Registra el primer paciente de tu agenda',
+      label: t('stepPatientLabel'),
+      description: t('stepPatientDesc'),
       href: '/dashboard/patients',
       icon: <UsersIcon className="h-5 w-5" />,
     },
     {
       key: 'appointmentDone',
-      label: 'Agenda tu primera cita',
-      description: 'Crea tu primera cita médica o estética',
+      label: t('stepAppointmentLabel'),
+      description: t('stepAppointmentDesc'),
       href: '/dashboard/appointments',
       icon: <CalendarIcon className="h-5 w-5" />,
     },
@@ -197,14 +199,12 @@ function OnboardingView({
         <div className="relative">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white animate-pulse" />
-            Configuración inicial: {completedSteps} de {totalSteps} completados
+            {t('setupBannerProgress', { completed: completedSteps, total: totalSteps })}
           </div>
           <h1 className="mt-4 text-2xl font-semibold sm:text-3xl">
-            ¡{GREETING_TEXT[greeting]}, {displayName}!
+            {t(GREETING_KEY[greeting], { name: displayName })}
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-white/80">
-            Tu espacio está listo. Completa los pasos a continuación para comenzar a gestionar citas y pacientes.
-          </p>
+          <p className="mt-2 max-w-xl text-sm text-white/80">{t('welcomeSubtitle')}</p>
         </div>
       </div>
 
@@ -215,10 +215,10 @@ function OnboardingView({
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
               <CheckIcon className="h-4 w-4" />
             </span>
-            <h2 className="text-base font-semibold text-gray-900">Primeros pasos</h2>
+            <h2 className="text-base font-semibold text-gray-900">{t('firstStepsTitle')}</h2>
           </div>
           <p className="text-sm text-gray-500">
-            {completedSteps} de {totalSteps} completados ({progressPercent}%)
+            {t('firstStepsProgress', { completed: completedSteps, total: totalSteps, percent: progressPercent })}
           </p>
         </div>
 
@@ -253,14 +253,14 @@ function OnboardingView({
                 {done ? (
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-500">
-                      Completado
+                      {t('stepCompleted')}
                     </span>
                     <button
                       type="button"
                       disabled
                       className="cursor-not-allowed rounded-xl bg-gray-200 px-4 py-2 text-xs font-medium text-gray-400"
                     >
-                      Registrado
+                      {t('stepRegistered')}
                     </button>
                   </div>
                 ) : (
@@ -268,7 +268,7 @@ function OnboardingView({
                     href={step.href}
                     className="shrink-0 rounded-xl bg-[#6926D2] px-4 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-[#5a20b8]"
                   >
-                    Configurar →
+                    {t('stepConfigure')}
                   </Link>
                 )}
               </div>
@@ -284,8 +284,8 @@ function OnboardingView({
             <CalendarIcon className="h-6 w-6" />
           </div>
           <p className="mt-4 text-2xl font-semibold text-gray-900">{upcomingCount > 0 ? upcomingCount : '-'}</p>
-          <p className="text-sm text-gray-500">Citas programadas</p>
-          <p className="text-xs text-gray-400">desde hoy</p>
+          <p className="text-sm text-gray-500">{t('statCitasProgramadas')}</p>
+          <p className="text-xs text-gray-400">{t('statDesdeHoy')}</p>
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
@@ -293,16 +293,16 @@ function OnboardingView({
             <UsersIcon className="h-6 w-6" />
           </div>
           <p className="mt-4 text-2xl font-semibold text-gray-900">{patientCount > 0 ? patientCount : '-'}</p>
-          <p className="text-sm text-gray-500">Pacientes registrados</p>
+          <p className="text-sm text-gray-500">{t('statPacientesRegistrados')}</p>
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-[#6926D2]">
             <ShieldIcon className="h-6 w-6" />
           </div>
-          <p className="mt-4 text-2xl font-semibold text-gray-900">Activo</p>
-          <p className="text-sm text-gray-500">Plan Núcleo</p>
-          <p className="text-xs text-gray-400">Período de prueba</p>
+          <p className="mt-4 text-2xl font-semibold text-gray-900">{t('statActivo')}</p>
+          <p className="text-sm text-gray-500">{t('statPlanNucleo')}</p>
+          <p className="text-xs text-gray-400">{t('statPeriodoPrueba')}</p>
         </div>
       </div>
     </div>
@@ -324,6 +324,7 @@ function OperationalView({
   weekStats: WeekStats
   patientCount: number
 }) {
+  const t = useTranslations('dashboard.home')
   const pendientesWeek = Math.max(
     weekStats.appointments - Math.round((weekStats.confirmedPct / 100) * weekStats.appointments),
     0
@@ -340,27 +341,23 @@ function OperationalView({
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white animate-pulse" />
-              <span>{todayLabel}</span> · {todayAppointments.length} citas hoy
+              <span>{todayLabel}</span> · {t('citasHoyCount', { count: todayAppointments.length })}
             </div>
-            <h1 className="mt-4 text-2xl font-semibold sm:text-3xl">
-              {GREETING_TEXT[greeting]}, {displayName}
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-white/80">
-              Tu clínica está lista. Gestiona tus citas, pacientes e ingresos desde aquí.
-            </p>
+            <h1 className="mt-4 text-2xl font-semibold sm:text-3xl">{t(GREETING_KEY[greeting], { name: displayName })}</h1>
+            <p className="mt-2 max-w-xl text-sm text-white/80">{t('operationalSubtitle')}</p>
           </div>
           <div className="flex shrink-0 gap-3">
             <Link
               href="/dashboard/appointments"
               className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#6926D2] transition-colors hover:bg-gray-100"
             >
-              + Nueva cita
+              {t('nuevaCitaButton')}
             </Link>
             <Link
               href="/dashboard/appointments"
               className="rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
             >
-              Ver agenda
+              {t('verAgendaButton')}
             </Link>
           </div>
         </div>
@@ -371,21 +368,21 @@ function OperationalView({
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 lg:col-span-2">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Citas de hoy</h2>
+              <h2 className="text-base font-semibold text-gray-900">{t('citasDeHoyTitle')}</h2>
               <p className="text-sm text-gray-500">
-                {todayLabel} · {todayAppointments.length} programadas
+                {todayLabel} · {t('citasProgramadasCount', { count: todayAppointments.length })}
               </p>
             </div>
           </div>
 
           {todayAppointments.length === 0 ? (
             <div className="mb-3 space-y-3">
-              <p className="text-sm text-gray-400">No tienes citas programadas para hoy</p>
+              <p className="text-sm text-gray-400">{t('sinCitasHoy')}</p>
               <Link
                 href="/dashboard/appointments"
                 className="inline-flex items-center gap-1 rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5a20b8]"
               >
-                + Nueva cita
+                {t('nuevaCitaButton')}
               </Link>
             </div>
           ) : (
@@ -406,12 +403,12 @@ function OperationalView({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-900">{appt.patientName}</p>
-                      <p className="text-xs text-gray-500">Consulta médica</p>
+                      <p className="text-xs text-gray-500">{t('consultaMedica')}</p>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${config.badgeBg} ${config.badgeText}`}
                     >
-                      {config.label}
+                      {t(config.labelKey)}
                     </span>
                     <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" />
                   </div>
@@ -423,13 +420,13 @@ function OperationalView({
           <div className="group flex items-center justify-between rounded-xl border border-dashed border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50">
             <div className="flex items-center gap-3 text-gray-400">
               <span className="w-10 text-sm font-medium">--:--</span>
-              <span className="text-sm">Slot disponible</span>
+              <span className="text-sm">{t('slotDisponible')}</span>
             </div>
             <Link
               href="/dashboard/appointments"
               className="flex items-center gap-1 text-sm font-medium text-[#6926D2] group-hover:underline"
             >
-              <span>+ Asignar turno</span>
+              <span>{t('asignarTurno')}</span>
             </Link>
           </div>
         </div>
@@ -437,35 +434,37 @@ function OperationalView({
         {/* Colonne droite */}
         <div className="space-y-4 lg:col-span-1">
           <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Esta semana</h2>
+            <h2 className="mb-4 text-base font-semibold text-gray-900">{t('estaSemanaTitle')}</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Citas</p>
+                <p className="text-xs text-gray-500">{t('citasLabel')}</p>
                 <p className="text-2xl font-semibold text-gray-900">{weekStats.appointments}</p>
                 {weekStats.deltaVsLastWeek > 0 && (
-                  <p className="text-xs font-medium text-[#059669]">↑ +{weekStats.deltaVsLastWeek} vs sem. ant.</p>
+                  <p className="text-xs font-medium text-[#059669]">
+                    {t('deltaVsSemanaAnterior', { delta: weekStats.deltaVsLastWeek })}
+                  </p>
                 )}
               </div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Pacientes</p>
+                <p className="text-xs text-gray-500">{t('pacientesLabel')}</p>
                 <p className="text-2xl font-semibold text-gray-900">{patientCount}</p>
-                <p className="text-xs text-gray-400">total registrados</p>
+                <p className="text-xs text-gray-400">{t('totalRegistrados')}</p>
               </div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Confirmadas</p>
+                <p className="text-xs text-gray-500">{t('confirmadasLabel')}</p>
                 <p className="text-2xl font-semibold text-gray-900">{weekStats.confirmedPct}%</p>
-                <p className="text-xs text-gray-400">{pendientesWeek} pendientes</p>
+                <p className="text-xs text-gray-400">{t('pendientesCount', { count: pendientesWeek })}</p>
               </div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 opacity-50">
-                <p className="text-xs text-gray-500">Ingresos oct.</p>
+                <p className="text-xs text-gray-500">{t('ingresosMesLabel')}</p>
                 <p className="text-2xl font-semibold text-gray-900">—</p>
-                <p className="text-xs text-gray-400">próximamente</p>
+                <p className="text-xs text-gray-400">{t('proximamente')}</p>
               </div>
             </div>
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Acciones rápidas</h2>
+            <h2 className="mb-4 text-base font-semibold text-gray-900">{t('accionesRapidasTitle')}</h2>
             <div className="space-y-2">
               <Link
                 href="/dashboard/appointments"
@@ -475,8 +474,8 @@ function OperationalView({
                   <CalendarIcon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Nueva cita</p>
-                  <p className="text-xs text-gray-500">Agendar en el calendario</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('accionNuevaCita')}</p>
+                  <p className="text-xs text-gray-500">{t('accionNuevaCitaDesc')}</p>
                 </div>
                 <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" />
               </Link>
@@ -488,8 +487,8 @@ function OperationalView({
                   <UsersIcon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Nuevo paciente</p>
-                  <p className="text-xs text-gray-500">Registrar ficha clínica</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('accionNuevoPaciente')}</p>
+                  <p className="text-xs text-gray-500">{t('accionNuevoPacienteDesc')}</p>
                 </div>
                 <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" />
               </Link>
@@ -501,8 +500,8 @@ function OperationalView({
                   <CashIcon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Ver ingresos</p>
-                  <p className="text-xs text-gray-500">Resumen del mes</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('accionVerIngresos')}</p>
+                  <p className="text-xs text-gray-500">{t('accionVerIngresosDesc')}</p>
                 </div>
                 <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" />
               </Link>

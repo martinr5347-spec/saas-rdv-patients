@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+
+const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
 const STATUS_BADGE = {
   pendiente: 'warning',
@@ -14,6 +16,13 @@ const STATUS_BADGE = {
   pagado: 'success',
   anulado: 'error',
 } as const
+
+const STATUS_LABEL_KEY: Record<string, string> = {
+  pendiente: 'statutPendiente',
+  confirmado: 'statutConfirmado',
+  pagado: 'statutPagado',
+  anulado: 'statutAnulado',
+}
 
 export interface NotificationRow {
   id: string
@@ -38,6 +47,7 @@ export interface AppointmentDetail {
 }
 
 function PresenceToggle({ appointmentId, presente }: { appointmentId: string; presente: boolean | null }) {
+  const t = useTranslations('dashboard.appointmentDetail')
   const [value, setValue] = useState<boolean | null>(presente)
   const [loading, setLoading] = useState(false)
 
@@ -50,16 +60,16 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
     })
     if (res.ok) {
       setValue(val)
-      toast.success(val ? 'Asistencia registrada — Presente' : 'Asistencia registrada — Ausente')
+      toast.success(val ? t('toastAsistenciaPresente') : t('toastAsistenciaAusente'))
     } else {
-      toast.error('Error al registrar la asistencia. Intenta de nuevo.')
+      toast.error(t('toastErrorAsistencia'))
     }
     setLoading(false)
   }
 
   return (
     <div className="mt-4">
-      <span className="mb-2 block text-sm text-gray-500">Asistencia</span>
+      <span className="mb-2 block text-sm text-gray-500">{t('asistenciaLabel')}</span>
       <div className="flex gap-2">
         <button
           type="button"
@@ -74,7 +84,7 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
-          Presente
+          {t('presenteLabel')}
         </button>
         <button
           type="button"
@@ -89,12 +99,10 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-          Ausente
+          {t('ausenteLabel')}
         </button>
       </div>
-      {value === null && (
-        <p className="mt-1 text-xs text-gray-400">Marcar la asistencia ayuda a generar estadísticas precisas.</p>
-      )}
+      {value === null && <p className="mt-1 text-xs text-gray-400">{t('asistenciaHint')}</p>}
     </div>
   )
 }
@@ -115,10 +123,12 @@ function ConsultaMontoBlock({
   initial: number | null
   initialConcepto: string | null
 }) {
+  const t = useTranslations('dashboard.appointmentDetail')
+
   if (initial !== null) {
     return (
       <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-gray-400">Monto cobrado en consulta (histórico)</p>
+        <p className="text-xs uppercase tracking-wide text-gray-400">{t('montoConsultaHistoricoLabel')}</p>
         <p className="mt-1 text-base font-semibold text-gray-800">{initial.toFixed(2)}</p>
         {initialConcepto && <p className="mt-0.5 text-sm text-gray-500">{initialConcepto}</p>}
       </div>
@@ -129,19 +139,20 @@ function ConsultaMontoBlock({
 
   return (
     <div className="mt-4">
-      <span className="mb-2 block text-sm text-gray-500">Monto cobrado en consulta</span>
+      <span className="mb-2 block text-sm text-gray-500">{t('montoConsultaLabel')}</span>
       <Link
         href={`/dashboard/patients/${patientId}?addActo=1&appointmentId=${appointmentId}`}
         className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98]"
       >
-        + Agregar acto
+        {t('agregarActoLink')}
       </Link>
-      <p className="mt-1 text-xs text-gray-400">Registra el acto y su monto desde la ficha del paciente.</p>
+      <p className="mt-1 text-xs text-gray-400">{t('agregarActoHint')}</p>
     </div>
   )
 }
 
 function FechaNacimientoInput({ patientId, initial }: { patientId: string; initial: string | null }) {
+  const t = useTranslations('dashboard.appointmentDetail')
   const [value, setValue] = useState(initial ?? '')
   const [saved, setSaved] = useState(Boolean(initial))
   const [loading, setLoading] = useState(false)
@@ -156,16 +167,16 @@ function FechaNacimientoInput({ patientId, initial }: { patientId: string; initi
     })
     if (res.ok) {
       setSaved(true)
-      toast.success('Fecha de nacimiento guardada en la ficha del paciente')
+      toast.success(t('toastFechaNacimientoGuardada'))
     } else {
-      toast.error('Error al guardar')
+      toast.error(t('toastErrorGuardar'))
     }
     setLoading(false)
   }
 
   return (
     <div className="mt-4">
-      <span className="mb-2 block text-sm text-gray-500">Fecha de nacimiento del paciente</span>
+      <span className="mb-2 block text-sm text-gray-500">{t('fechaNacimientoLabel')}</span>
       <div className="flex items-center gap-2">
         <input
           type="date"
@@ -186,10 +197,10 @@ function FechaNacimientoInput({ patientId, initial }: { patientId: string; initi
               : 'border-gray-200 bg-white text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]'
           }`}
         >
-          {saved ? '✓ Guardado' : loading ? '...' : 'Guardar'}
+          {saved ? `✓ ${t('guardadoLabel')}` : loading ? '...' : t('guardarLabel')}
         </button>
       </div>
-      {saved && <p className="mt-1 text-xs text-gray-400">Ya guardado en la ficha del paciente.</p>}
+      {saved && <p className="mt-1 text-xs text-gray-400">{t('fechaNacimientoGuardadaHint')}</p>}
     </div>
   )
 }
@@ -205,6 +216,9 @@ function ProximoControlInput({
   initialFecha: string | null
   initialMeses: number | null
 }) {
+  const t = useTranslations('dashboard.appointmentDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
   const [meses, setMeses] = useState<number | ''>(initialMeses ?? '')
   const [fecha, setFecha] = useState(initialFecha)
   const [loading, setLoading] = useState(false)
@@ -220,9 +234,9 @@ function ProximoControlInput({
     if (res.ok) {
       const data = await res.json()
       setFecha(data.patient.proximo_control_fecha)
-      toast.success('Control programado')
+      toast.success(t('toastControlProgramado'))
     } else {
-      toast.error('Error al programar el control')
+      toast.error(t('toastErrorProgramarControl'))
     }
     setLoading(false)
   }
@@ -237,21 +251,21 @@ function ProximoControlInput({
     if (res.ok) {
       setFecha(null)
       setMeses('')
-      toast.success('Control cancelado')
+      toast.success(t('toastControlCancelado'))
     } else {
-      toast.error('Error al cancelar')
+      toast.error(t('toastErrorCancelarControl'))
     }
     setLoading(false)
   }
 
   return (
     <div className="mt-4">
-      <span className="mb-2 block text-sm text-gray-500">Próximo control</span>
+      <span className="mb-2 block text-sm text-gray-500">{t('proximoControlLabel')}</span>
       {fecha ? (
         <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-gray-800">{new Date(fecha).toLocaleDateString('es-PE')}</p>
-            <p className="text-xs text-gray-400">Recordatorio por email programado</p>
+            <p className="text-sm font-medium text-gray-800">{new Date(fecha).toLocaleDateString(intlLocale)}</p>
+            <p className="text-xs text-gray-400">{t('recordatorioEmailProgramado')}</p>
           </div>
           <button
             type="button"
@@ -259,7 +273,7 @@ function ProximoControlInput({
             disabled={loading}
             className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
           >
-            Cancelar
+            {t('cancelarLabel')}
           </button>
         </div>
       ) : (
@@ -269,10 +283,10 @@ function ProximoControlInput({
             onChange={(e) => setMeses(e.target.value ? parseInt(e.target.value, 10) : '')}
             className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
           >
-            <option value="">Elegir...</option>
+            <option value="">{t('elegirEllipsis')}</option>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                Dentro de {m} {m === 1 ? 'mes' : 'meses'}
+                {t('dentroDeMesesOption', { months: m })}
               </option>
             ))}
           </select>
@@ -282,7 +296,7 @@ function ProximoControlInput({
             disabled={loading || meses === ''}
             className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
           >
-            Programar
+            {t('programarLabel')}
           </button>
         </div>
       )}
@@ -315,6 +329,8 @@ export default function AppointmentDetailView({
   notifications: NotificationRow[]
 }) {
   const t = useTranslations('dashboard.appointmentDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
 
   return (
     <div className="space-y-6">
@@ -331,7 +347,7 @@ export default function AppointmentDetailView({
           <div><span className="text-gray-500">{t('email')}</span><p className="text-gray-800">{patient?.email ?? '-'}</p></div>
           <div><span className="text-gray-500">{t('phone')}</span><p className="text-gray-800">{patient?.telefono ?? '-'}</p></div>
           <div><span className="text-gray-500">{t('dateTime')}</span><p className="text-gray-800">{appointment.fecha_cita} {t('at')} {appointment.hora_cita}</p></div>
-          <div><span className="text-gray-500">{t('status')}</span><p><Badge color={STATUS_BADGE[appointment.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{appointment.statut}</Badge></p></div>
+          <div><span className="text-gray-500">{t('status')}</span><p><Badge color={STATUS_BADGE[appointment.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>{STATUS_LABEL_KEY[appointment.statut] ? t(STATUS_LABEL_KEY[appointment.statut]) : appointment.statut}</Badge></p></div>
         </div>
 
         {appointment.notas && (
@@ -353,23 +369,23 @@ export default function AppointmentDetailView({
         {appointment.statut === 'pagado' && appointment.monto_acompte > 0 && (
           <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">Ya pagado (MercadoPago)</p>
+              <p className="text-xs uppercase tracking-wide text-gray-400">{t('yaPagadoMercadoPago')}</p>
               <p className="text-base font-semibold text-gray-800">{appointment.monto_acompte.toFixed(2)}</p>
             </div>
-            <Badge color="success">Confirmado</Badge>
+            <Badge color="success">{t('statutConfirmado')}</Badge>
           </div>
         )}
 
         {appointment.statut !== 'pagado' && appointment.monto_acompte > 0 && (
           <div className="mt-4 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
             <div>
-              <p className="text-xs uppercase tracking-wide text-amber-700">Depósito pendiente (MercadoPago)</p>
+              <p className="text-xs uppercase tracking-wide text-amber-700">{t('depositoPendienteMercadoPago')}</p>
               <p className="text-base font-semibold text-amber-900">
                 {appointment.monto_acompte.toFixed(2)}
                 {appointment.statut === 'pendiente' && ` ${t('depositoPendienteSuffix')}`}
               </p>
             </div>
-            <Badge color="warning">Pendiente</Badge>
+            <Badge color="warning">{t('statutPendiente')}</Badge>
           </div>
         )}
 
@@ -416,9 +432,11 @@ export default function AppointmentDetailView({
                 <TableCell>{n.canal}</TableCell>
                 <TableCell>{n.type}</TableCell>
                 <TableCell>
-                  <Badge color={n.statut === 'sent' ? 'success' : n.statut === 'failed' ? 'error' : 'gray'}>{n.statut}</Badge>
+                  <Badge color={n.statut === 'sent' ? 'success' : n.statut === 'failed' ? 'error' : 'gray'}>
+                    {n.statut === 'sent' ? t('notifStatutSent') : n.statut === 'failed' ? t('notifStatutFailed') : n.statut}
+                  </Badge>
                 </TableCell>
-                <TableCell>{n.sent_at ? new Date(n.sent_at).toLocaleString() : '-'}</TableCell>
+                <TableCell>{n.sent_at ? new Date(n.sent_at).toLocaleString(intlLocale) : '-'}</TableCell>
                 <TableCell className="text-error-600">{n.error_message ?? '-'}</TableCell>
               </TableRow>
             ))}

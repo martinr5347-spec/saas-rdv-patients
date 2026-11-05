@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
@@ -86,6 +87,11 @@ export default function ReservaView({
 
   const m = BOOKING_MESSAGES[langue]
 
+  // Partie 5b : identifie la session de notes "Control" à l'origine d'une relance "próximo control"
+  // (lien reservar/[slug]?controlSesionId=..., voir lib/cron/patient-recall.ts) -- lu directement
+  // depuis l'URL plutôt que transmis par page.tsx, aucune donnée sensible n'y transite (juste un id).
+  const controlSesionId = useSearchParams().get('controlSesionId')
+
   useEffect(() => {
     setLoadingMes(true)
     fetch(`/api/public/reservar/${slug}?mes=${displayedMonth}`)
@@ -136,7 +142,15 @@ export default function ReservaView({
       const res = await fetch(`/api/public/reservar/${slug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fecha: selectedDate, hora: selectedSlot, nombre, email, indicativo, telefonoNumero }),
+        body: JSON.stringify({
+          fecha: selectedDate,
+          hora: selectedSlot,
+          nombre,
+          email,
+          indicativo,
+          telefonoNumero,
+          controlSesionId: controlSesionId ?? undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {

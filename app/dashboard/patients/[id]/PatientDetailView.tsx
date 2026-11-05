@@ -23,8 +23,13 @@ interface PatientNote {
   created_at: string
   sesionId: string | null
   comentarioFinal?: string | null
+  appointmentId?: string | null
   photos?: PatientNotePhoto[]
 }
+
+// Catégories dont le contenu alimente le résumé affiché dans Historial de citas (Partie 4) une fois
+// Notas clínicas déverrouillée -- mêmes catégories par défaut que categorias_con_foto (migration 026).
+const RESUMEN_CATEGORIAS = ['Diagnóstico', 'Tratamiento']
 
 // Un brouillon local tant que la session n'est pas enregistrée -- rien n'est écrit en base ici.
 interface DraftSessionEntry {
@@ -198,10 +203,17 @@ function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-function NotasClinicasCard({ patientId }: { patientId: string }) {
+function NotasClinicasCard({
+  patientId,
+  onNotesChange,
+}: {
+  patientId: string
+  onNotesChange?: (notes: PatientNote[] | null) => void
+}) {
   const t = useTranslations('dashboard.patientDetail')
   const locale = useLocale()
   const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
+  const searchParams = useSearchParams()
   const [state, setState] = useState<'locked' | 'pin' | 'unlocked'>('locked')
   const [pinDigits, setPinDigits] = useState(['', '', '', ''])
   const [codigo, setCodigo] = useState<string | null>(null) // gardé en mémoire uniquement, jamais persisté
@@ -247,6 +259,24 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
   const [savingSession, setSavingSession] = useState(false)
   const draftFileInputRef = useRef<HTMLInputElement>(null)
 
+  // Prefill depuis le raccourci "+ Agregar nota" de la fiche d'un RDV (voir AppointmentDetailView.tsx)
+  // -- même mécanisme que ?addActo=1&appointmentId=... déjà existant pour les actes (Partie 3).
+  const appointmentIdParam = searchParams.get('appointmentId')
+  const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
+  useEffect(() => {
+    if (searchParams.get('addNota') === '1' && appointmentIdParam) {
+      setAppointmentIdPrefill(appointmentIdParam)
+    }
+  }, [searchParams, appointmentIdParam])
+
+  // Transmet au parent (PatientDetailView) l'état déverrouillé des notes -- consommé par Historial de
+  // citas (Partie 4) pour afficher un résumé par RDV sans jamais contourner le PIN : null tant que ce
+  // n'est pas déverrouillé, y compris après un verrouillage par inactivité.
+  useEffect(() => {
+    onNotesChange?.(state === 'unlocked' ? notes : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, state])
+
   const lock = useCallback(() => {
     setState('locked')
     setCodigo(null)
@@ -279,6 +309,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
     setComentarioFinal('')
+    setAppointmentIdPrefill(null)
   }, [])
 
   // Verrouillage par inactivité réelle (pas sur un simple changement d'onglet) : réinitialise un
@@ -422,6 +453,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         codigo,
         entradas: draftEntries.map((e) => ({ contenido: e.contenido, categoria: e.categoria })),
         comentarioFinal: comentarioFinal.trim() || null,
+        appointmentId: appointmentIdPrefill ?? undefined,
       }),
     })
     const data = await res.json()
@@ -435,11 +467,12 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
 
     const sesionId: string | null = data.sesionId ?? null
     const sesionComentarioFinal: string | null = data.comentarioFinal ?? null
-    const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'comentarioFinal' | 'photos'>>).map(
+    const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'comentarioFinal' | 'appointmentId' | 'photos'>>).map(
       (n) => ({
         ...n,
         sesionId,
         comentarioFinal: sesionComentarioFinal,
+        appointmentId: appointmentIdPrefill ?? null,
         photos: [],
       })
     )
@@ -484,6 +517,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         body: JSON.stringify({
           proximo_control_meses: controlEntry.controlMeses,
           proximo_control_photo_note_id: diagnosticoConFoto?.id ?? null,
+          proximo_control_sesion_id: sesionId,
         }),
       })
       if (patchRes.ok) {
@@ -511,6 +545,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
 
     setDraftEntries([])
     setComentarioFinal('')
+    setAppointmentIdPrefill(null)
     closeChip()
     setSavingSession(false)
     setLoading(false)
@@ -1131,41 +1166,29 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         </div>
       )}
 
-      {/* Filtros por categoría */}
+      {/* Filtro par catégorie -- menu déroulant plutôt que des chips colorées (Partie 2 : évitait un
+          doublon visuel avec la ligne de sélection du composer juste en dessous, sans texte explicatif). */}
       {(categorias.length > 0 || notes.some((n) => n.categoria === CATEGORIA_CONTROL)) && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setFiltroCategoria(null)}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-              filtroCategoria === null ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+        <div className="mb-3 flex items-center gap-2">
+          <label htmlFor="filtro-categoria" className="text-xs text-gray-500">
+            {t('filtrarPorLabel')}
+          </label>
+          <select
+            id="filtro-categoria"
+            value={filtroCategoria ?? ''}
+            onChange={(e) => setFiltroCategoria(e.target.value || null)}
+            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
           >
-            {t('todas')}
-          </button>
-          {categorias.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setFiltroCategoria(cat)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(cat)} ${
-                filtroCategoria === cat ? `ring-2 ${categoryRingColor(cat)}` : 'opacity-60 hover:opacity-100'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-          {notes.some((n) => n.categoria === CATEGORIA_CONTROL) && (
-            <button
-              type="button"
-              onClick={() => setFiltroCategoria(CATEGORIA_CONTROL)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${categoryColor(CATEGORIA_CONTROL)} ${
-                filtroCategoria === CATEGORIA_CONTROL ? 'ring-2 ring-orange-400' : 'opacity-60 hover:opacity-100'
-              }`}
-            >
-              {t('controlBadge')}
-            </button>
-          )}
+            <option value="">{t('todas')}</option>
+            {categorias.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+            {notes.some((n) => n.categoria === CATEGORIA_CONTROL) && (
+              <option value={CATEGORIA_CONTROL}>{t('controlBadge')}</option>
+            )}
+          </select>
         </div>
       )}
 
@@ -1194,6 +1217,7 @@ function NotasClinicasCard({ patientId }: { patientId: string }) {
         )}
       </div>
 
+      {appointmentIdPrefill && <p className="mb-1.5 text-xs text-gray-500">{t('vinculadoCita')}</p>}
       <p className="mb-1.5 text-xs text-gray-500">{t('composerHint')}</p>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {categorias.map((cat) => {
@@ -1441,7 +1465,13 @@ interface ActoHistorial {
 
 // Donnee de facturation (base du Pareto 80/20 dans Analisis), volontairement separee des Notas
 // clinicas ci-dessus : pas de PIN, pas de confidentialite particuliere.
-function ActosRealizadosCard({ patientId }: { patientId: string }) {
+function ActosRealizadosCard({
+  patientId,
+  onHistorialChange,
+}: {
+  patientId: string
+  onHistorialChange?: (historial: ActoHistorial[]) => void
+}) {
   const t = useTranslations('dashboard.patientDetail')
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -1458,6 +1488,13 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
 
   const appointmentIdParam = searchParams.get('appointmentId')
   const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
+
+  // Transmet au parent (PatientDetailView) l'historique des actes réalisés -- consommé par Historial
+  // de citas (Partie 4) pour afficher les actes de la session dans la modale de détail d'un RDV.
+  useEffect(() => {
+    onHistorialChange?.(historial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historial])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1705,6 +1742,168 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
   )
 }
 
+interface AppointmentRow {
+  id: string
+  fecha_cita: string
+  hora_cita: string
+  statut: string
+  presente: boolean | null
+  monto_acompte: number
+}
+
+// Historial de citas (Partie 1 : descendu en pleine largeur sous Notas clínicas/Actos realizados --
+// c'est de la consultation, pas de la saisie) + résumé par RDV (Partie 4), construit uniquement à
+// partir de notesSnapshot/historialActos transmis par les cartes ci-dessus -- jamais de fetch propre
+// ici, pour ne jamais contourner le PIN de Notas clínicas (notesSnapshot reste null tant qu'elle n'est
+// pas déverrouillée).
+function HistorialCitasCard({
+  appointments,
+  notesSnapshot,
+  historialActos,
+}: {
+  appointments: AppointmentRow[]
+  notesSnapshot: PatientNote[] | null
+  historialActos: ActoHistorial[]
+}) {
+  const t = useTranslations('dashboard.patientDetail')
+  const [modalAppointmentId, setModalAppointmentId] = useState<string | null>(null)
+
+  const notasPorCita = new Map<string, PatientNote[]>()
+  if (notesSnapshot) {
+    for (const note of notesSnapshot) {
+      if (!note.appointmentId) continue
+      const arr = notasPorCita.get(note.appointmentId) ?? []
+      arr.push(note)
+      notasPorCita.set(note.appointmentId, arr)
+    }
+  }
+
+  function resumenFor(appointmentId: string): string | null {
+    const notes = notasPorCita.get(appointmentId)
+    if (!notes) return null
+    const relevante = notes.find((n) => n.categoria && RESUMEN_CATEGORIAS.includes(n.categoria))
+    if (!relevante) return null
+    return relevante.contenido.length > 90 ? `${relevante.contenido.slice(0, 90)}…` : relevante.contenido
+  }
+
+  const modalAppointment = appointments.find((a) => a.id === modalAppointmentId) ?? null
+  const modalNotes = modalAppointmentId ? notasPorCita.get(modalAppointmentId) ?? [] : []
+  const modalActos = modalAppointmentId ? historialActos.filter((h) => h.appointmentId === modalAppointmentId) : []
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+          <CalendarIcon className="h-4 w-4" />
+        </div>
+        <h2 className="font-semibold text-gray-800">{t('historialCitas')}</h2>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {appointments.length === 0 && <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinCitas')}</p>}
+        {appointments.map((appt) => {
+          const resumen = resumenFor(appt.id)
+          const rowContent = (
+            <>
+              <div className="flex items-center gap-4">
+                <span className="text-lg">{appt.presente === true ? '✓' : appt.presente === false ? '✗' : '·'}</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {appt.fecha_cita} {t('aLas')} {appt.hora_cita}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {appt.presente === true ? t('presente') : appt.presente === false ? t('ausente') : t('sinMarcar')}
+                  </p>
+                  {resumen && <p className="mt-1 max-w-sm truncate text-xs text-[#6926D2]">{resumen}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>
+                  {STATUS_LABEL_KEY[appt.statut] ? t(STATUS_LABEL_KEY[appt.statut]) : appt.statut}
+                </Badge>
+                <span className="text-gray-300 group-hover:text-gray-400">›</span>
+              </div>
+            </>
+          )
+          const rowClassName = `group flex w-full items-center justify-between border-l-[3px] px-5 py-3 text-left transition-colors hover:bg-gray-50 ${
+            STATUS_BORDER[appt.statut as keyof typeof STATUS_BORDER] ?? '!border-l-gray-200'
+          }`
+          // Ligne cliquable -> modale de détail uniquement quand un résumé est affiché (donc que des
+          // données existent réellement à montrer) -- sinon comportement inchangé (lien direct vers
+          // la fiche du RDV).
+          return resumen ? (
+            <button key={appt.id} type="button" onClick={() => setModalAppointmentId(appt.id)} className={rowClassName}>
+              {rowContent}
+            </button>
+          ) : (
+            <Link key={appt.id} href={`/dashboard/appointments/${appt.id}`} className={rowClassName}>
+              {rowContent}
+            </Link>
+          )
+        })}
+      </div>
+
+      {modalAppointment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+          onClick={() => setModalAppointmentId(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  {modalAppointment.fecha_cita} {t('aLas')} {modalAppointment.hora_cita}
+                </p>
+                <Link
+                  href={`/dashboard/appointments/${modalAppointment.id}`}
+                  className="text-xs text-[#6926D2] hover:underline"
+                >
+                  {t('verDetalleRdvLabel')}
+                </Link>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalAppointmentId(null)}
+                aria-label={t('cerrarLabel')}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {modalNotes.map((note) => (
+                <div key={note.id} className="rounded-lg bg-gray-50 p-2.5">
+                  {note.categoria && (
+                    <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${categoryColor(note.categoria)}`}>
+                      {note.categoria}
+                    </span>
+                  )}
+                  <p className="text-sm text-gray-700">{note.contenido}</p>
+                </div>
+              ))}
+            </div>
+
+            {modalActos.length > 0 && (
+              <div className="mt-3 border-t border-gray-100 pt-3">
+                <p className="mb-1.5 text-xs font-medium text-gray-500">{t('actosRealizadosTitle')}</p>
+                {modalActos.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between py-1 text-sm">
+                    <span className="text-gray-700">{h.nombre}</span>
+                    <span className="font-medium text-gray-800">{h.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PatientDetailView({
   patient,
   appointments,
@@ -1713,19 +1912,14 @@ export default function PatientDetailView({
   markedAppointments,
 }: {
   patient: { id: string; nom: string; email: string | null; telefono: string | null; created_at: string }
-  appointments: Array<{
-    id: string
-    fecha_cita: string
-    hora_cita: string
-    statut: string
-    presente: boolean | null
-    monto_acompte: number
-  }>
+  appointments: AppointmentRow[]
   presenceRate: number | null
   totalAppointments: number
   markedAppointments: number
 }) {
   const t = useTranslations('dashboard.patientDetail')
+  const [notesSnapshot, setNotesSnapshot] = useState<PatientNote[] | null>(null)
+  const [historialActos, setHistorialActos] = useState<ActoHistorial[]>([])
   return (
     <div className="max-w-6xl space-y-6">
       {/* Header */}
@@ -1767,56 +1961,14 @@ export default function PatientDetailView({
         </div>
       </div>
 
-      {/* Historique des RDV + Notas clínicas côte à côte sur desktop, empilés sur mobile */}
+      {/* Notas clínicas + Actos realizados côte à côte (gestes actifs d'une visite) sur desktop,
+          empilés sur mobile -- Historial de citas (consultation, pas saisie) redescendu en dessous. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        {/* Historique des RDV */}
-        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <CalendarIcon className="h-4 w-4" />
-            </div>
-            <h2 className="font-semibold text-gray-800">{t('historialCitas')}</h2>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {appointments.length === 0 && (
-              <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinCitas')}</p>
-            )}
-            {appointments.map((appt) => (
-              <Link
-                key={appt.id}
-                href={`/dashboard/appointments/${appt.id}`}
-                className={`group flex items-center justify-between border-l-[3px] px-5 py-3 transition-colors hover:bg-gray-50 ${
-                  STATUS_BORDER[appt.statut as keyof typeof STATUS_BORDER] ?? '!border-l-gray-200'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-lg">
-                    {appt.presente === true ? '✓' : appt.presente === false ? '✗' : '·'}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {appt.fecha_cita} {t('aLas')} {appt.hora_cita}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {appt.presente === true ? t('presente') : appt.presente === false ? t('ausente') : t('sinMarcar')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge color={STATUS_BADGE[appt.statut as keyof typeof STATUS_BADGE] ?? 'gray'}>
-                    {STATUS_LABEL_KEY[appt.statut] ? t(STATUS_LABEL_KEY[appt.statut]) : appt.statut}
-                  </Badge>
-                  <span className="text-gray-300 group-hover:text-gray-400">›</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <NotasClinicasCard patientId={patient.id} />
+        <NotasClinicasCard patientId={patient.id} onNotesChange={setNotesSnapshot} />
+        <ActosRealizadosCard patientId={patient.id} onHistorialChange={setHistorialActos} />
       </div>
 
-      <ActosRealizadosCard patientId={patient.id} />
+      <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
     </div>
   )
 }

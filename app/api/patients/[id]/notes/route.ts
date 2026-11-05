@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { data: notes, error } = await supabase
     .from('patient_notes')
     .select(
-      'id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at), patient_note_sesiones(comentario_final)'
+      'id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at), patient_note_sesiones(comentario_final, appointment_id)'
     )
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
@@ -53,6 +53,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         created_at: note.created_at,
         sesionId: note.sesion_id,
         comentarioFinal: note.patient_note_sesiones?.comentario_final ?? null,
+        appointmentId: note.patient_note_sesiones?.appointment_id ?? null,
         photos,
       }
     })
@@ -119,6 +120,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const entradasRaw = body.entradas
   const comentarioFinal =
     typeof body.comentarioFinal === 'string' && body.comentarioFinal.trim() ? body.comentarioFinal.trim() : null
+  const appointmentIdRaw = typeof body.appointmentId === 'string' && body.appointmentId ? body.appointmentId : null
 
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
@@ -160,6 +162,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
   }
 
+  // appointmentId optionnel (prefill ?addNota=1&appointmentId=... depuis AppointmentDetailView) --
+  // revalidé contre ce patient avant d'être enregistré, jamais fait confiance tel quel.
+  let appointmentId: string | null = null
+  if (appointmentIdRaw) {
+    const { data: apptRow } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('id', appointmentIdRaw)
+      .eq('patient_id', params.id)
+      .maybeSingle()
+    appointmentId = apptRow?.id ?? null
+  }
+
   // La session (table patient_note_sesiones, migration 040) est créée d'abord -- son id sert ensuite
   // de sesion_id, vraie FK, partagé par toutes les notes du lot.
   const { data: newSesion, error: sesionError } = await supabase
@@ -168,6 +183,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       patient_id: params.id,
       organization_id: patientRow.organization_id,
       comentario_final: comentarioFinal,
+      appointment_id: appointmentId,
     })
     .select('id, comentario_final')
     .single()

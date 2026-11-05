@@ -9,7 +9,7 @@ type OrgSettingsRow = Database['public']['Tables']['org_settings']['Row']
 
 interface PatientWithOrg extends PatientRow {
   organizations:
-    | (Pick<OrganizationRow, 'nom' | 'langue'> & {
+    | (Pick<OrganizationRow, 'nom' | 'langue' | 'slug'> & {
         org_settings: Pick<OrgSettingsRow, 'calendly_url' | 'control_recall_anticipacion_dias'> | null
       })
     | null
@@ -19,7 +19,7 @@ interface PatientWithOrg extends PatientRow {
 // dupliqué ici volontairement plutôt que d'élargir l'API de dispatch() pour un flux patient-level
 // qui n'a pas d'appointment associé.
 function renderControlRecallTemplate(corps: string, vars: Record<string, string>) {
-  const conditions: Record<string, boolean> = { calendly_url: Boolean(vars.calendly_url) }
+  const conditions: Record<string, boolean> = { reserva_url: Boolean(vars.reserva_url) }
   let out = corps.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_match, varName: string, inner: string) =>
     conditions[varName] ? inner : ''
   )
@@ -29,9 +29,20 @@ function renderControlRecallTemplate(corps: string, vars: Record<string, string>
   return out
 }
 
+// Partie 5a : pointe vers la reservation native reservar/[slug] (portant la session Control
+// d'origine en parametre, cf. Partie 5b) plutot que vers calendly_url -- fallback sur calendly_url
+// uniquement si l'organisation n'a pas encore de slug de reservation configure.
+function buildReservaUrl(slug: string | null, calendlyUrl: string | null, controlSesionId: string | null): string {
+  if (slug) {
+    const base = `${process.env.NEXT_PUBLIC_APP_URL}/reservar/${slug}`
+    return controlSesionId ? `${base}?controlSesionId=${controlSesionId}` : base
+  }
+  return calendlyUrl ?? ''
+}
+
 async function sendRecallEmail(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  patient: Pick<PatientWithOrg, 'id' | 'nom' | 'email' | 'organization_id' | 'organizations'>
+  patient: Pick<PatientWithOrg, 'id' | 'nom' | 'email' | 'organization_id' | 'organizations' | 'proximo_control_sesion_id'>
 ): Promise<boolean> {
   if (!patient.email) {
     console.warn(`patient-recall: paciente ${patient.id} sin email, omitido`)
@@ -70,7 +81,11 @@ async function sendRecallEmail(
   const vars = {
     nom_patient: patient.nom,
     nombre_cabinet: patient.organizations?.nom ?? '',
-    calendly_url: patient.organizations?.org_settings?.calendly_url ?? '',
+    reserva_url: buildReservaUrl(
+      patient.organizations?.slug ?? null,
+      patient.organizations?.org_settings?.calendly_url ?? null,
+      patient.proximo_control_sesion_id ?? null
+    ),
   }
   const body = renderControlRecallTemplate(template.corps, vars)
   const subject = template.sujet ? renderControlRecallTemplate(template.sujet, vars) : 'Es momento de tu control'
@@ -89,7 +104,7 @@ export async function handlePatientRecalls() {
   // en mémoire plutôt qu'un simple .lte() sur la date.
   const { data: candidatos, error: errorCandidatos } = await supabase
     .from('patients')
-    .select('id, nom, email, organization_id, proximo_control_fecha, organizations(nom, langue, org_settings(calendly_url, control_recall_anticipacion_dias))')
+    .select('id, nom, email, organization_id, proximo_control_fecha, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias))')
     .eq('proximo_control_enviado', false)
     .not('proximo_control_fecha', 'is', null)
 
@@ -122,7 +137,7 @@ export async function handlePatientRecalls() {
   const seuilUnMois = format(subMonths(today, 1), 'yyyy-MM-dd')
   const { data: patientsARelancer, error: errorRelancer } = await supabase
     .from('patients')
-    .select('id, nom, email, organization_id, organizations(nom, langue, org_settings(calendly_url, control_recall_anticipacion_dias))')
+    .select('id, nom, email, organization_id, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias))')
     .eq('proximo_control_enviado', true)
     .eq('proximo_control_relanzado', false)
     .not('proximo_control_fecha', 'is', null)

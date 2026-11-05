@@ -184,6 +184,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const indicativo = typeof body.indicativo === 'string' ? body.indicativo : ''
   const telefonoNumero = typeof body.telefonoNumero === 'string' ? body.telefonoNumero : ''
+  const controlSesionIdRaw = typeof body.controlSesionId === 'string' && body.controlSesionId ? body.controlSesionId : null
 
   // Revalidation serveur -- ne jamais faire confiance aux validations deja faites cote client.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !/^\d{2}:\d{2}$/.test(hora)) {
@@ -297,6 +298,19 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     }
   }
 
+  // Partie 5b : revalide la session Control d'origine contre CE patient avant de la reporter sur le
+  // RDV -- jamais fait confiance tel quel (le paramètre vient d'une URL publique).
+  let origenControlSesionId: string | null = null
+  if (controlSesionIdRaw) {
+    const { data: sesionRow } = await supabase
+      .from('patient_note_sesiones')
+      .select('id')
+      .eq('id', controlSesionIdRaw)
+      .eq('patient_id', patientId)
+      .maybeSingle()
+    origenControlSesionId = sesionRow?.id ?? null
+  }
+
   const montoAcompte = Number(settings.monto_acompte) || 0
   const statutInicial = montoAcompte > 0 ? 'pendiente' : 'confirmado'
   const externalRef = crypto.randomUUID()
@@ -311,6 +325,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       statut: statutInicial,
       monto_acompte: montoAcompte,
       mp_external_ref: externalRef,
+      origen_control_sesion_id: origenControlSesionId,
     })
     .select('id')
     .single()

@@ -51,6 +51,7 @@ export default async function AppointmentDetailPage({
         notas: appointment.notas,
         link_pago: appointment.link_pago,
         presente: appointment.presente ?? null,
+        origenControlSesionId: appointment.origen_control_sesion_id ?? null,
       }}
       patient={patient}
       notifications={notifications}

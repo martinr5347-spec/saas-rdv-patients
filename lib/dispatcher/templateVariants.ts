@@ -629,7 +629,7 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
   </div>
   <div style="padding:28px 24px;">
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, ha llegado el momento de programar tu consulta de control con <strong>{{nombre_cabinet}}</strong>.</p>
-    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
+    {{#if reserva_url}}<a href="{{reserva_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
   </div>
   <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
@@ -645,7 +645,7 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
   </div>
   <div style="padding:28px 24px;">
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Olá {{nom_patient}}, chegou a hora de agendar sua consulta de retorno com <strong>{{nombre_cabinet}}</strong>.</p>
-    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
+    {{#if reserva_url}}<a href="{{reserva_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
   </div>
   <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
@@ -665,7 +665,7 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
   </div>
   <div style="padding:28px 24px;">
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Ha llegado el momento de tu control con <strong>{{nombre_cabinet}}</strong>. ¡Nos encantaría verte de nuevo!</p>
-    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
+    {{#if reserva_url}}<a href="{{reserva_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reservar mi cita</a>{{/if}}
   </div>
   <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
@@ -681,7 +681,7 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
   </div>
   <div style="padding:28px 24px;">
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Chegou a hora do seu retorno com <strong>{{nombre_cabinet}}</strong>. Ficaríamos muito felizes em te ver de novo!</p>
-    {{#if calendly_url}}<a href="{{calendly_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
+    {{#if reserva_url}}<a href="{{reserva_url}}" style="display:block;text-align:center;background:#6926D2;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Agendar minha consulta</a>{{/if}}
   </div>
   <div style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>

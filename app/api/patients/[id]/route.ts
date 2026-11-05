@@ -13,6 +13,7 @@ type UpdatableFields = Pick<
   | 'proximo_control_enviado_at'
   | 'proximo_control_relanzado'
   | 'proximo_control_photo_note_id'
+  | 'proximo_control_sesion_id'
 >
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -38,8 +39,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updateData.proximo_control_enviado = false
       updateData.proximo_control_enviado_at = null
       updateData.proximo_control_relanzado = false
-      // on n'efface PAS proximo_control_photo_note_id ici volontairement : si body ne le précise
-      // pas explicitement, on ne touche pas au lien photo existant (voir bloc dédié plus bas)
+      // on n'efface PAS proximo_control_photo_note_id/proximo_control_sesion_id ici volontairement :
+      // si body ne les précise pas explicitement, on ne touche pas aux liens existants (voir blocs
+      // dédiés plus bas)
     } else {
       if (!Number.isInteger(meses) || meses < 1 || meses > 12) {
         return NextResponse.json({ error: 'Meses inválido (1-12)' }, { status: 400 })
@@ -63,6 +65,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // sans notes/photos) ne l'envoie jamais ; seul le flux "Control" de NotasClinicasCard l'envoie.
   if (body.proximo_control_photo_note_id !== undefined) {
     updateData.proximo_control_photo_note_id = body.proximo_control_photo_note_id as string | null
+  }
+
+  // Session de notes "Control" à l'origine de la relance (Partie 5b) -- même logique que le champ
+  // photo ci-dessus : géré séparément de proximo_control_meses, uniquement envoyé par le flux
+  // "Control" de NotasClinicasCard.
+  if (body.proximo_control_sesion_id !== undefined) {
+    updateData.proximo_control_sesion_id = body.proximo_control_sesion_id as string | null
   }
 
   if (Object.keys(updateData).length === 0) {

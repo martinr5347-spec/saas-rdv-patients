@@ -338,6 +338,7 @@ export interface Database {
           proximo_control_enviado_at: string | null
           proximo_control_relanzado: boolean
           proximo_control_photo_note_id: string | null
+          proximo_control_sesion_id: string | null
           created_at: string
         }
         Insert: {
@@ -355,6 +356,7 @@ export interface Database {
           proximo_control_enviado_at?: string | null
           proximo_control_relanzado?: boolean
           proximo_control_photo_note_id?: string | null
+          proximo_control_sesion_id?: string | null
           created_at?: string
         }
         Update: {
@@ -372,6 +374,7 @@ export interface Database {
           proximo_control_enviado_at?: string | null
           proximo_control_relanzado?: boolean
           proximo_control_photo_note_id?: string | null
+          proximo_control_sesion_id?: string | null
           created_at?: string
         }
         Relationships: [
@@ -423,6 +426,7 @@ export interface Database {
           patient_id: string
           organization_id: string
           comentario_final: string | null
+          appointment_id: string | null
           created_at: string
         }
         Insert: {
@@ -430,6 +434,7 @@ export interface Database {
           patient_id: string
           organization_id: string
           comentario_final?: string | null
+          appointment_id?: string | null
           created_at?: string
         }
         Update: {
@@ -437,6 +442,7 @@ export interface Database {
           patient_id?: string
           organization_id?: string
           comentario_final?: string | null
+          appointment_id?: string | null
           created_at?: string
         }
         Relationships: [
@@ -498,6 +504,9 @@ export interface Database {
           // Capacite d'acces public (annulation/reprogrammation patient, migration 034) -- distinct
           // de `id`, genere automatiquement (DEFAULT uuid_generate_v4()), jamais defini par le code.
           gestion_token: string
+          // Session de controle d'origine ayant genere le lien de relance utilise pour reserver ce
+          // RDV (migration 043) -- null pour tout RDV qui ne vient pas d'une relance de controle.
+          origen_control_sesion_id: string | null
           patients?: patientsRow | null
           organizations?: (organizationsRow & { org_settings?: org_settingsRow | null }) | null
         }
@@ -520,6 +529,7 @@ export interface Database {
           presente?: boolean | null
           montant_consultation?: number | null
           concepto_consultation?: string | null
+          origen_control_sesion_id?: string | null
           created_at?: string
         }
         Update: {
@@ -541,6 +551,7 @@ export interface Database {
           presente?: boolean | null
           montant_consultation?: number | null
           concepto_consultation?: string | null
+          origen_control_sesion_id?: string | null
           created_at?: string
         }
         Relationships: [

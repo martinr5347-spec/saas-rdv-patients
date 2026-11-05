@@ -44,6 +44,7 @@ export interface AppointmentDetail {
   notas: string | null
   link_pago: string | null
   presente: boolean | null
+  origenControlSesionId: string | null
 }
 
 function PresenceToggle({ appointmentId, presente }: { appointmentId: string; presente: boolean | null }) {
@@ -304,6 +305,125 @@ function ProximoControlInput({
   )
 }
 
+// Résumé de l'historique clinique du patient sur la page du RDV (Partie 5c) -- protégé par le même
+// PIN de 4 chiffres que Notas clínicas (verifyCodigo, voir app/api/patients/[id]/notes/route.ts) :
+// aucun contenu clínico n'est jamais affiché sans ce code, même ici, pour ne pas contourner la
+// confidentialité volontairement mise en place sur ces données (cf. PatientDetailView.tsx).
+interface HistorialNote {
+  id: string
+  contenido: string
+  categoria: string | null
+  sesionId: string | null
+}
+
+function HistorialClinicoBlock({
+  patientId,
+  origenControlSesionId,
+}: {
+  patientId: string
+  origenControlSesionId: string | null
+}) {
+  const t = useTranslations('dashboard.appointmentDetail')
+  const [state, setState] = useState<'locked' | 'unlocked'>('locked')
+  const [pin, setPin] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<HistorialNote[]>([])
+
+  const unlock = async () => {
+    if (pin.length !== 4) return
+    setLoading(true)
+    setError(null)
+    const res = await fetch(`/api/patients/${patientId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo: pin }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setNotes(data.notes ?? [])
+      setState('unlocked')
+    } else {
+      setError(data.error ?? t('toastCodigoIncorrecto'))
+      setPin('')
+    }
+    setLoading(false)
+  }
+
+  if (state === 'locked') {
+    return (
+      <div className="mt-4 rounded-xl border border-gray-200 p-3">
+        <p className="text-sm text-gray-500">{t('historialClinicoTitle')}</p>
+        <p className="mt-1 text-xs text-gray-400">{t('historialClinicoCollapsedHint')}</p>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder={t('codigoSeguridadPlaceholder')}
+            className="w-28 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          />
+          <button
+            type="button"
+            onClick={unlock}
+            disabled={loading || pin.length !== 4}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50"
+          >
+            {t('verResumenLabel')}
+          </button>
+        </div>
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      </div>
+    )
+  }
+
+  const sesionOrigen = origenControlSesionId ? notes.filter((n) => n.sesionId === origenControlSesionId) : []
+  const relevantes = notes.filter((n) => n.categoria === 'Diagnóstico' || n.categoria === 'Tratamiento')
+  const sesionesVistas = new Set<string>()
+  const ultimas: HistorialNote[] = []
+  for (const n of relevantes) {
+    const key = n.sesionId ?? n.id
+    if (sesionesVistas.has(key)) continue
+    sesionesVistas.add(key)
+    ultimas.push(n)
+    if (ultimas.length >= 3) break
+  }
+
+  // Patient sans historique clínico réel (premier RDV) -- rien à montrer, pas de texte générique.
+  if (sesionOrigen.length === 0 && ultimas.length === 0) return null
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 p-3">
+      <p className="mb-2 text-sm font-medium text-gray-700">{t('historialClinicoTitle')}</p>
+      {sesionOrigen.length > 0 && (
+        <div className="mb-3 rounded-lg border border-orange-200 bg-orange-50 p-2.5">
+          <p className="mb-1 text-xs font-semibold text-orange-800">{t('motivoControlLabel')}</p>
+          {sesionOrigen.map((n) => (
+            <p key={n.id} className="text-sm text-orange-900">
+              {n.contenido}
+            </p>
+          ))}
+        </div>
+      )}
+      {ultimas.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-gray-500">{t('ultimasSesionesLabel')}</p>
+          {ultimas.map((n) => (
+            <p key={n.id} className="text-sm text-gray-700">
+              <span className="mr-1.5 inline-block rounded-full bg-violet-100 px-1.5 py-0.5 text-[11px] font-medium text-violet-700">
+                {n.categoria}
+              </span>
+              {n.contenido}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AppointmentNotFound() {
   const t = useTranslations('dashboard.appointmentDetail')
   return <div className="text-error-600">{t('notFound')}</div>
@@ -398,6 +518,19 @@ export default function AppointmentDetailView({
           initialConcepto={appointment.concepto_consultation}
         />
 
+        {patient && (
+          <div className="mt-4">
+            <span className="mb-2 block text-sm text-gray-500">{t('notaClinicaLabel')}</span>
+            <Link
+              href={`/dashboard/patients/${patient.id}?addNota=1&appointmentId=${appointment.id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98]"
+            >
+              {t('agregarNotaLink')}
+            </Link>
+            <p className="mt-1 text-xs text-gray-400">{t('agregarNotaHint')}</p>
+          </div>
+        )}
+
         {patient && <FechaNacimientoInput patientId={patient.id} initial={patient.fecha_nacimiento} />}
 
         {patient && (
@@ -407,6 +540,10 @@ export default function AppointmentDetailView({
             initialFecha={patient.proximo_control_fecha}
             initialMeses={patient.proximo_control_meses}
           />
+        )}
+
+        {patient && (
+          <HistorialClinicoBlock patientId={patient.id} origenControlSesionId={appointment.origenControlSesionId} />
         )}
       </Card>
 

@@ -1607,6 +1607,8 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
                   const chosen = catalogo.find((a) => a.id === nextActoId)
                   if (chosen?.precioDefault !== null && chosen?.precioDefault !== undefined) {
                     setMonto(String(chosen.precioDefault))
+                  } else {
+                    setMonto('')
                   }
                 }}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"

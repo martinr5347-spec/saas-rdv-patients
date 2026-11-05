@@ -63,19 +63,21 @@ function rangeFromMonthsAgo(monthsAgo: number) {
   return { desde, hasta }
 }
 
+// labelKey plutot qu'un libelle en dur -- ce tableau est module-level (hors composant, ne peut pas
+// appeler useTranslations lui-meme), resolu via t() au moment du rendu.
 const PRESETS = [
   {
-    label: 'Este mes',
+    labelKey: 'presetEsteMes',
     getRange: () => {
       const n = new Date()
       const p = `${n.getUTCFullYear()}-${pad2(n.getUTCMonth() + 1)}`
       return { desde: p, hasta: p }
     },
   },
-  { label: 'Últimos 3 meses', getRange: () => rangeFromMonthsAgo(2) },
-  { label: 'Últimos 6 meses', getRange: () => rangeFromMonthsAgo(5) },
+  { labelKey: 'presetUltimos3Meses', getRange: () => rangeFromMonthsAgo(2) },
+  { labelKey: 'presetUltimos6Meses', getRange: () => rangeFromMonthsAgo(5) },
   {
-    label: 'Este año',
+    labelKey: 'presetEsteAno',
     getRange: () => {
       const n = new Date()
       return { desde: `${n.getUTCFullYear()}-01`, hasta: `${n.getUTCFullYear()}-${pad2(n.getUTCMonth() + 1)}` }
@@ -188,9 +190,11 @@ export default function IngresosView({
     efectivo: t('metodoEfectivo'),
     transferencia: t('metodoTransferencia'),
     otro: t('metodoOtro'),
-    mercadopago: 'MP',
-    consulta: 'Consulta',
-    acto: 'Acto',
+    // "MP" reste un sigle volontaire (abreviation de MercadoPago), identique dans les 3 langues --
+    // passe tout de meme par t() pour la coherence avec le reste de cette table, pas une traduction.
+    mercadopago: t('metodoMercadopago'),
+    consulta: t('metodoConsulta'),
+    acto: t('metodoActo'),
   }
 
   function handleDeleteSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -336,11 +340,11 @@ export default function IngresosView({
               const range = p.getRange()
               return (
                 <a
-                  key={p.label}
+                  key={p.labelKey}
                   href={`/dashboard/ingresos?desde=${range.desde}&hasta=${range.hasta}`}
                   className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-[#6926D2] hover:text-[#6926D2]"
                 >
-                  {p.label}
+                  {t(p.labelKey)}
                 </a>
               )
             })}

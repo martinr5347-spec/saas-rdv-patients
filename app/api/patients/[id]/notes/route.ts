@@ -173,23 +173,72 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .eq('patient_id', params.id)
       .maybeSingle()
     appointmentId = apptRow?.id ?? null
+  } else {
+    // Aucun raccourci RDV explicite -- on ne déduit un appointment_id que si ce patient a
+    // EXACTEMENT un RDV le jour même (date serveur). Zéro ou plusieurs RDV ce jour-là : aucune
+    // déduction, appointment_id reste null (comportement actuel inchangé), jamais de fusion
+    // ambiguë entre plusieurs RDV du même jour.
+    const hoy = new Date().toISOString().slice(0, 10)
+    const { data: citasHoy } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('patient_id', params.id)
+      .eq('fecha_cita', hoy)
+    if (citasHoy && citasHoy.length === 1) {
+      appointmentId = citasHoy[0].id
+    }
+  }
+
+  // Une session de notes correspond à un RDV, pas à un clic sur "Guardar sesión" : si une session
+  // existe déjà pour ce même appointment_id, on la réutilise (fusion) au lieu d'en créer une
+  // nouvelle -- comentario_final remplace alors l'ancien plutôt que de le dupliquer.
+  let sesion: { id: string; comentario_final: string | null } | null = null
+  let sesionEsNueva = false
+  if (appointmentId) {
+    const { data: existingSesion } = await supabase
+      .from('patient_note_sesiones')
+      .select('id, comentario_final')
+      .eq('appointment_id', appointmentId)
+      .eq('patient_id', params.id)
+      .maybeSingle()
+
+    if (existingSesion) {
+      if (comentarioFinal !== null) {
+        const { data: updatedSesion, error: updateError } = await supabase
+          .from('patient_note_sesiones')
+          .update({ comentario_final: comentarioFinal })
+          .eq('id', existingSesion.id)
+          .select('id, comentario_final')
+          .single()
+        if (updateError) {
+          return NextResponse.json({ error: updateError.message }, { status: 500 })
+        }
+        sesion = updatedSesion
+      } else {
+        sesion = existingSesion
+      }
+    }
   }
 
   // La session (table patient_note_sesiones, migration 040) est créée d'abord -- son id sert ensuite
   // de sesion_id, vraie FK, partagé par toutes les notes du lot.
-  const { data: newSesion, error: sesionError } = await supabase
-    .from('patient_note_sesiones')
-    .insert({
-      patient_id: params.id,
-      organization_id: patientRow.organization_id,
-      comentario_final: comentarioFinal,
-      appointment_id: appointmentId,
-    })
-    .select('id, comentario_final')
-    .single()
+  if (!sesion) {
+    const { data: newSesion, error: sesionError } = await supabase
+      .from('patient_note_sesiones')
+      .insert({
+        patient_id: params.id,
+        organization_id: patientRow.organization_id,
+        comentario_final: comentarioFinal,
+        appointment_id: appointmentId,
+      })
+      .select('id, comentario_final')
+      .single()
 
-  if (sesionError || !newSesion) {
-    return NextResponse.json({ error: sesionError?.message ?? 'Error al crear la sesión' }, { status: 500 })
+    if (sesionError || !newSesion) {
+      return NextResponse.json({ error: sesionError?.message ?? 'Error al crear la sesión' }, { status: 500 })
+    }
+    sesion = newSesion
+    sesionEsNueva = true
   }
 
   const { data: newNotes, error } = await supabase
@@ -200,16 +249,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         organization_id: patientRow.organization_id,
         contenido: entrada.contenido,
         categoria: entrada.categoria,
-        sesion_id: newSesion.id,
+        sesion_id: sesion!.id,
       }))
     )
     .select('id, contenido, categoria, created_at')
 
   if (error) {
-    // Nettoyage : si l'insertion des notes échoue, ne pas laisser une session orpheline sans notes.
-    await supabase.from('patient_note_sesiones').delete().eq('id', newSesion.id)
+    // Nettoyage : si l'insertion des notes échoue, ne pas laisser une session orpheline sans notes --
+    // uniquement si on vient de la créer dans cet appel (jamais une session existante fusionnée, qui
+    // a déjà ses propres notes).
+    if (sesionEsNueva) {
+      await supabase.from('patient_note_sesiones').delete().eq('id', sesion.id)
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ notes: newNotes, sesionId: newSesion.id, comentarioFinal: newSesion.comentario_final })
+  return NextResponse.json({
+    notes: newNotes,
+    sesionId: sesion.id,
+    comentarioFinal: sesion.comentario_final,
+    appointmentId,
+  })
 }

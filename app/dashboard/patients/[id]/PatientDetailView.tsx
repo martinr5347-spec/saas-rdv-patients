@@ -467,12 +467,15 @@ function NotasClinicasCard({
 
     const sesionId: string | null = data.sesionId ?? null
     const sesionComentarioFinal: string | null = data.comentarioFinal ?? null
+    // appointmentId résolu côté serveur (prefill explicite OU déduit d'un unique RDV du jour même) --
+    // reflète fidèlement ce qui a réellement été enregistré, même quand le client n'avait rien fourni.
+    const resolvedAppointmentId: string | null = data.appointmentId ?? null
     const createdNotes: PatientNote[] = (data.notes as Array<Omit<PatientNote, 'sesionId' | 'comentarioFinal' | 'appointmentId' | 'photos'>>).map(
       (n) => ({
         ...n,
         sesionId,
         comentarioFinal: sesionComentarioFinal,
-        appointmentId: appointmentIdPrefill ?? null,
+        appointmentId: resolvedAppointmentId,
         photos: [],
       })
     )

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifyCodigo } from '@/lib/security/verifyCodigo'
+import { ahoraEnFuseau } from '@/lib/utils/timezone'
 
 // POST = déverrouille ET retourne la liste des notes existantes, l'alerte clínica y las categorías disponibles
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -151,10 +152,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: check.reason }, { status: check.status })
   }
 
-  // organization_id récupéré depuis le patient, jamais depuis le body
+  // organization_id récupéré depuis le patient, jamais depuis le body -- fuseau de l'organisation
+  // inclus pour calculer "aujourd'hui" dans le bon jour calendaire (voir déduction ci-dessous).
   const { data: patientRow } = await supabase
     .from('patients')
-    .select('organization_id')
+    .select('organization_id, organizations(fuseau)')
     .eq('id', params.id)
     .single()
 
@@ -175,10 +177,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     appointmentId = apptRow?.id ?? null
   } else {
     // Aucun raccourci RDV explicite -- on ne déduit un appointment_id que si ce patient a
-    // EXACTEMENT un RDV le jour même (date serveur). Zéro ou plusieurs RDV ce jour-là : aucune
-    // déduction, appointment_id reste null (comportement actuel inchangé), jamais de fusion
-    // ambiguë entre plusieurs RDV du même jour.
-    const hoy = new Date().toISOString().slice(0, 10)
+    // EXACTEMENT un RDV le jour même, calculé dans le fuseau de l'organisation (pas le jour UTC
+    // serveur -- en soirée dans un fuseau négatif, le jour UTC peut déjà être passé au lendemain).
+    // Zéro ou plusieurs RDV ce jour-là : aucune déduction, appointment_id reste null (comportement
+    // actuel inchangé), jamais de fusion ambiguë entre plusieurs RDV du même jour.
+    const hoy = ahoraEnFuseau(patientRow.organizations?.fuseau ?? 'America/Lima').fecha
     const { data: citasHoy } = await supabase
       .from('appointments')
       .select('id')
@@ -234,11 +237,46 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .select('id, comentario_final')
       .single()
 
-    if (sesionError || !newSesion) {
-      return NextResponse.json({ error: sesionError?.message ?? 'Error al crear la sesión' }, { status: 500 })
+    if (sesionError) {
+      // Race condition (migration 044, index unique partiel sur appointment_id) : une autre
+      // requête quasi simultanée vient de créer la session pour ce même appointment_id entre
+      // notre SELECT de fusion ci-dessus et cet INSERT -- on la récupère et on y fusionne nos
+      // notes plutôt que de renvoyer une erreur 500 au praticien.
+      if (sesionError.code === '23505' && appointmentId) {
+        const { data: concurrentSesion } = await supabase
+          .from('patient_note_sesiones')
+          .select('id, comentario_final')
+          .eq('appointment_id', appointmentId)
+          .eq('patient_id', params.id)
+          .maybeSingle()
+
+        if (!concurrentSesion) {
+          return NextResponse.json({ error: sesionError.message }, { status: 500 })
+        }
+
+        if (comentarioFinal !== null) {
+          const { data: updatedSesion, error: updateError } = await supabase
+            .from('patient_note_sesiones')
+            .update({ comentario_final: comentarioFinal })
+            .eq('id', concurrentSesion.id)
+            .select('id, comentario_final')
+            .single()
+          if (updateError) {
+            return NextResponse.json({ error: updateError.message }, { status: 500 })
+          }
+          sesion = updatedSesion
+        } else {
+          sesion = concurrentSesion
+        }
+      } else {
+        return NextResponse.json({ error: sesionError.message }, { status: 500 })
+      }
+    } else if (!newSesion) {
+      return NextResponse.json({ error: 'Error al crear la sesión' }, { status: 500 })
+    } else {
+      sesion = newSesion
+      sesionEsNueva = true
     }
-    sesion = newSesion
-    sesionEsNueva = true
   }
 
   const { data: newNotes, error } = await supabase

@@ -694,6 +694,9 @@ export interface Database {
           especialidad_origen: 'estetica_dermato' | 'clinica_medica' | null
           activo: boolean
           created_at: string
+          // Tarif par defaut optionnel (migration 041) -- pre-remplit le montant a la selection de
+          // cet acte en fiche patient, jamais une contrainte (saisie manuelle toujours possible).
+          precio_default: number | null
         }
         Insert: {
           id?: string
@@ -702,6 +705,7 @@ export interface Database {
           especialidad_origen?: 'estetica_dermato' | 'clinica_medica' | null
           activo?: boolean
           created_at?: string
+          precio_default?: number | null
         }
         Update: {
           id?: string
@@ -710,6 +714,7 @@ export interface Database {
           especialidad_origen?: 'estetica_dermato' | 'clinica_medica' | null
           activo?: boolean
           created_at?: string
+          precio_default?: number | null
         }
         Relationships: [
           { foreignKeyName: 'actos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }

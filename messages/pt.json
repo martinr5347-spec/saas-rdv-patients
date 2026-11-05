@@ -510,6 +510,12 @@
       "toastCategoriasSaved": "Categorias salvas",
       "toastCategoriasError": "Erro ao salvar as categorias",
       "toastGenericError": "Erro ao salvar",
+      "tarifasTitle": "Tarifas",
+      "tarifasDesc": "Defina um valor de referência por procedimento do seu catálogo. Será usado para preencher o campo ao adicioná-lo na ficha do paciente — você sempre poderá alterá-lo para uma consulta específica.",
+      "tarifasEmpty": "Nenhum procedimento no seu catálogo ainda.",
+      "precioPlaceholder": "Sem tarifa",
+      "toastTarifasSaved": "Tarifas salvas",
+      "toastTarifasError": "Erro ao salvar as tarifas",
       "dropImageHere": "Solte a imagem aqui",
       "dragImageHint": "ou arraste uma imagem aqui"
     },

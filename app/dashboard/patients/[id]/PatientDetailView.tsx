@@ -1428,6 +1428,7 @@ export function PatientNotFound() {
 interface ActoCatalogo {
   id: string
   nombre: string
+  precioDefault: number | null
 }
 
 interface ActoHistorial {
@@ -1598,7 +1599,16 @@ function ActosRealizadosCard({ patientId }: { patientId: string }) {
               <label className="mb-1 block text-xs font-medium text-gray-600">{t('actoLabel')}</label>
               <select
                 value={actoId}
-                onChange={(e) => setActoId(e.target.value)}
+                onChange={(e) => {
+                  const nextActoId = e.target.value
+                  setActoId(nextActoId)
+                  // Pre-remplit le montant avec le tarif par defaut de l'acte choisi (Configuracion)
+                  // -- valeur de depart seulement, jamais une contrainte : reste librement modifiable.
+                  const chosen = catalogo.find((a) => a.id === nextActoId)
+                  if (chosen?.precioDefault !== null && chosen?.precioDefault !== undefined) {
+                    setMonto(String(chosen.precioDefault))
+                  }
+                }}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
               >
                 <option value="">{t('seleccionarEllipsis')}</option>

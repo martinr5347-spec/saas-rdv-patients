@@ -397,6 +397,82 @@ function TwilioSettingsFields({
   )
 }
 
+interface ActoCatalogoSettings {
+  id: string
+  nombre: string
+  precioDefault: number | null
+}
+
+// Tarif de reference par acte du catalogue -- jamais obligatoire, pre-remplit seulement le champ
+// montant a la selection de l'acte en fiche patient (ActosRealizadosCard, PatientDetailView.tsx),
+// aucune creation d'acte possible ici (seul le flux "nuevo acto" en fiche patient en cree).
+function TarifasActosCard({
+  actos,
+  updateActoPreciosAction,
+}: {
+  actos: ActoCatalogoSettings[]
+  updateActoPreciosAction: (precios: { id: string; precio: number | null }[]) => Promise<{ ok: boolean; error?: string }>
+}) {
+  const t = useTranslations('dashboard.settings')
+  const [precios, setPrecios] = useState<Record<string, string>>(
+    Object.fromEntries(actos.map((a) => [a.id, a.precioDefault !== null ? String(a.precioDefault) : '']))
+  )
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    setSaving(true)
+    const payload = actos.map((a) => {
+      const raw = (precios[a.id] ?? '').trim()
+      const num = raw === '' ? null : Number(raw)
+      return { id: a.id, precio: num !== null && Number.isFinite(num) ? num : null }
+    })
+    const res = await updateActoPreciosAction(payload)
+    if (res.ok) {
+      toast.success(t('toastTarifasSaved'))
+    } else {
+      toast.error(res.error ?? t('toastTarifasError'))
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card>
+      <h2 className="text-sm font-semibold text-gray-800">{t('tarifasTitle')}</h2>
+      <p className="mb-3 mt-1 text-xs text-gray-500">{t('tarifasDesc')}</p>
+      {actos.length === 0 ? (
+        <p className="text-xs text-gray-400">{t('tarifasEmpty')}</p>
+      ) : (
+        <>
+          <div className="mb-3 space-y-1.5">
+            {actos.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-1.5">
+                <span className="text-xs font-medium text-gray-700">{a.nombre}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={precios[a.id] ?? ''}
+                  onChange={(e) => setPrecios((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                  placeholder={t('precioPlaceholder')}
+                  className="w-28 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
+          >
+            {saving ? '...' : t('save')}
+          </button>
+        </>
+      )}
+    </Card>
+  )
+}
+
 function CategoriasNotasCard({
   initial,
   initialConFoto,
@@ -544,12 +620,14 @@ export default function SettingsView({
   mpTokenLast4,
   twilioAuthTokenConfigured,
   twilioAuthTokenLast4,
+  actos,
   updateSettingsAction,
   openBillingPortalAction,
   updateCategoriasNotasAction,
   updateCategoriasConFotoAction,
   updateMpAccessTokenAction,
   updateTwilioSettingsAction,
+  updateActoPreciosAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -566,6 +644,7 @@ export default function SettingsView({
   mpTokenLast4: string | null
   twilioAuthTokenConfigured: boolean
   twilioAuthTokenLast4: string | null
+  actos: ActoCatalogoSettings[]
   updateSettingsAction: (formData: FormData) => void
   openBillingPortalAction: () => void
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
@@ -576,6 +655,7 @@ export default function SettingsView({
     whatsappNumber: string,
     authToken: string
   ) => Promise<{ ok: boolean; error?: string; last4?: string }>
+  updateActoPreciosAction: (precios: { id: string; precio: number | null }[]) => Promise<{ ok: boolean; error?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
@@ -931,6 +1011,8 @@ export default function SettingsView({
         updateCategoriasNotasAction={updateCategoriasNotasAction}
         updateCategoriasConFotoAction={updateCategoriasConFotoAction}
       />
+
+      <TarifasActosCard actos={actos} updateActoPreciosAction={updateActoPreciosAction} />
     </div>
   )
 }

@@ -336,6 +336,52 @@ export async function updateCategoriasConFoto(categorias: string[]) {
   return { ok: true, categorias: cleaned }
 }
 
+// Tarifs par defaut du catalogue d'actes (Configuracion) -- pre-remplissent (sans contraindre) le
+// montant a la selection d'un acte en fiche patient, voir ActosRealizadosCard. N'ajoute jamais de
+// nouvel acte : seul le flux "nuevo acto" en fiche patient cree des entrees dans `actos`.
+export async function updateActoPrecios(
+  precios: { id: string; precio: number | null }[]
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return { ok: false, error: 'No autorizado' }
+  const organizationId = profile.organization_id
+
+  for (const { precio } of precios) {
+    if (precio !== null && (!Number.isFinite(precio) || precio < 0)) {
+      return { ok: false, error: 'Precio inválido' }
+    }
+  }
+  if (precios.length === 0) return { ok: true }
+
+  // Un update par acte (scope par .eq('organization_id', ...) -- empeche qu'un id manipule cote
+  // client touche l'acte d'une autre organisation), mais tous lances en parallele plutot
+  // qu'en sequence : un catalogue d'une dizaine d'actes rendait la sauvegarde perceptiblement
+  // lente (~2.5s) en attendant chaque aller-retour l'un apres l'autre.
+  const resultats = await Promise.all(
+    precios.map(({ id, precio }) =>
+      supabase.from('actos').update({ precio_default: precio }).eq('id', id).eq('organization_id', organizationId)
+    )
+  )
+  const echec = resultats.find((r) => r.error)
+  if (echec?.error) return { ok: false, error: echec.error.message }
+
+  // Pas de revalidatePath sur /dashboard/patients : ActosRealizadosCard (PatientDetailView.tsx)
+  // charge toujours son catalogue via un fetch() client frais a chaque montage, jamais via le
+  // cache de donnees Next -- un revalidatePath ici serait sans effet, juste un appel en plus.
+  revalidatePath('/dashboard/settings')
+  return { ok: true }
+}
+
 export async function openBillingPortal() {
   const supabase = createClient()
   const {

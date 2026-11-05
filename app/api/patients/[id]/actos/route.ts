@@ -33,10 +33,16 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const { data: catalogo } = await supabase
     .from('actos')
-    .select('id, nombre')
+    .select('id, nombre, precio_default')
     .eq('organization_id', auth.organizationId)
     .eq('activo', true)
     .order('nombre')
+
+  const catalogoResuelto = (catalogo ?? []).map((a) => ({
+    id: a.id,
+    nombre: a.nombre,
+    precioDefault: a.precio_default !== null ? Number(a.precio_default) : null,
+  }))
 
   const { data: historial } = await supabase
     .from('actos_realizados')
@@ -52,7 +58,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     nombre: (h.actos as unknown as { nombre: string } | null)?.nombre ?? h.acto_texto_libre ?? '',
   }))
 
-  return NextResponse.json({ catalogo: catalogo ?? [], historial: historialResuelto })
+  return NextResponse.json({ catalogo: catalogoResuelto, historial: historialResuelto })
 }
 
 // POST = ajoute un acte realise. 3 modes :
@@ -157,6 +163,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       appointmentId: realizado.appointment_id,
       nombre: nombreParaRespuesta,
     },
-    nuevoEnCatalogo: mode === 'nuevo' ? { id: actoId, nombre: nombreParaRespuesta } : null,
+    nuevoEnCatalogo: mode === 'nuevo' ? { id: actoId, nombre: nombreParaRespuesta, precioDefault: null } : null,
   })
 }

@@ -510,6 +510,12 @@
       "toastCategoriasSaved": "Catégories enregistrées",
       "toastCategoriasError": "Erreur lors de l'enregistrement des catégories",
       "toastGenericError": "Erreur lors de l'enregistrement",
+      "tarifasTitle": "Tarification",
+      "tarifasDesc": "Définissez un montant de référence par acte de votre catalogue. Il sera utilisé pour pré-remplir le champ lors de son ajout dans la fiche du patient — vous pourrez toujours le modifier pour un rendez-vous précis.",
+      "tarifasEmpty": "Aucun acte dans votre catalogue pour l'instant.",
+      "precioPlaceholder": "Pas de tarif",
+      "toastTarifasSaved": "Tarifs enregistrés",
+      "toastTarifasError": "Erreur lors de l'enregistrement des tarifs",
       "dropImageHere": "Déposez l'image ici",
       "dragImageHint": "ou glissez une image ici"
     },

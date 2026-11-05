@@ -7,6 +7,7 @@ import {
   updateCategoriasConFoto,
   updateMpAccessToken,
   updateTwilioSettings,
+  updateActoPrecios,
 } from './actions'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 
@@ -92,6 +93,19 @@ export default async function SettingsPage() {
     .eq('id', profile?.organization_id ?? '')
     .maybeSingle()
 
+  const { data: actosRaw } = await supabase
+    .from('actos')
+    .select('id, nombre, precio_default')
+    .eq('organization_id', profile?.organization_id ?? '')
+    .eq('activo', true)
+    .order('nombre')
+
+  const actos = (actosRaw ?? []).map((a) => ({
+    id: a.id,
+    nombre: a.nombre,
+    precioDefault: a.precio_default !== null ? Number(a.precio_default) : null,
+  }))
+
   return (
     <SettingsView
       settings={settings}
@@ -109,12 +123,14 @@ export default async function SettingsPage() {
       mpTokenLast4={mpTokenLast4}
       twilioAuthTokenConfigured={twilioAuthTokenConfigured}
       twilioAuthTokenLast4={twilioAuthTokenLast4}
+      actos={actos}
       updateSettingsAction={updateSettings}
       openBillingPortalAction={openBillingPortal}
       updateCategoriasNotasAction={updateCategoriasNotas}
       updateCategoriasConFotoAction={updateCategoriasConFoto}
       updateMpAccessTokenAction={updateMpAccessToken}
       updateTwilioSettingsAction={updateTwilioSettings}
+      updateActoPreciosAction={updateActoPrecios}
     />
   )
 }

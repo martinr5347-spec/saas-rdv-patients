@@ -2,6 +2,7 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/dispatcher/channels/email'
 import { subDays, subMonths, format } from 'date-fns'
 import type { Database } from '@/types/database'
+import { extraerPrimerNombre } from '@/lib/utils/nombre'
 
 type PatientRow = Database['public']['Tables']['patients']['Row']
 type OrganizationRow = Database['public']['Tables']['organizations']['Row']
@@ -79,7 +80,7 @@ async function sendRecallEmail(
   }
 
   const vars = {
-    nom_patient: patient.nom,
+    nom_patient: extraerPrimerNombre(patient.nom),
     nombre_cabinet: patient.organizations?.nom ?? '',
     reserva_url: buildReservaUrl(
       patient.organizations?.slug ?? null,

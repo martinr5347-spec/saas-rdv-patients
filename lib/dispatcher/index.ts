@@ -8,6 +8,7 @@ import { getDailyLimit, startOfTodayIso, MIN_SECONDS_BETWEEN_MESSAGES } from './
 import { formatDisplayDate, formatDisplayTime } from '@/lib/utils/timezone'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 import { NotificationType, VariantId, getTwilioContentSid } from './templateVariants'
+import { extraerPrimerNombre } from '@/lib/utils/nombre'
 
 type Appointment = Database['public']['Tables']['appointments']['Row']
 type OrgSettings = Database['public']['Tables']['org_settings']['Row']
@@ -38,7 +39,7 @@ function buildTemplateValues(appt: AppointmentWithRelations): Record<string, str
   const restoPagar = hasCostoDesglose ? costoTotal - montoAcompte : null
 
   return {
-    nom_patient: patient?.nom ?? '',
+    nom_patient: extraerPrimerNombre(patient?.nom ?? ''),
     fecha_cita: fechaCita,
     hora_cita: horaCita,
     link_pago: appt.link_pago ?? '',

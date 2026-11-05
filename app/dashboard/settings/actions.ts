@@ -94,6 +94,13 @@ export async function updateSettings(formData: FormData) {
   const anticipacionDiasRaw = Number(formData.get('control_recall_anticipacion_dias'))
   const anticipacionDias = Number.isFinite(anticipacionDiasRaw) ? Math.min(90, Math.max(0, Math.round(anticipacionDiasRaw))) : 14
 
+  const googleReviewLink = String(formData.get('google_review_link') ?? '').trim() || null
+  const resenaDelayRaw = Number(formData.get('solicitud_resena_delay_dias'))
+  const solicitudResenaDelayDias = Number.isFinite(resenaDelayRaw) ? Math.min(30, Math.max(1, Math.round(resenaDelayRaw))) : 3
+  // Double garde (cf. prompt "Ce qu'il NE FAUT PAS faire") : jamais active sans lien reellement
+  // renseigne, meme si la case a ete cochee cote client avant que le champ lien ne soit vide.
+  const solicitudResenaActiva = googleReviewLink !== null && formData.get('solicitud_resena_activa') === 'on'
+
   await supabase
     .from('org_settings')
     .update({
@@ -112,6 +119,9 @@ export async function updateSettings(formData: FormData) {
       variantes_mensaje: variantes,
       variante_control_recall: varianteControlRecall,
       control_recall_anticipacion_dias: anticipacionDias,
+      google_review_link: googleReviewLink,
+      solicitud_resena_activa: solicitudResenaActiva,
+      solicitud_resena_delay_dias: solicitudResenaDelayDias,
     })
     .eq('organization_id', profile.organization_id)
 

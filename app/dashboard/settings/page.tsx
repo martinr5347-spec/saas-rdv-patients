@@ -30,7 +30,7 @@ export default async function SettingsPage() {
   const { data: settingsRaw } = await supabase
     .from('org_settings')
     .select(
-      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias'
+      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
     )
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
@@ -78,6 +78,9 @@ export default async function SettingsPage() {
         categorias_con_foto: settingsRaw.categorias_con_foto,
         variante_control_recall: settingsRaw.variante_control_recall,
         control_recall_anticipacion_dias: settingsRaw.control_recall_anticipacion_dias,
+        google_review_link: settingsRaw.google_review_link,
+        solicitud_resena_activa: settingsRaw.solicitud_resena_activa,
+        solicitud_resena_delay_dias: settingsRaw.solicitud_resena_delay_dias,
       }
     : null
 

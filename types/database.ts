@@ -163,6 +163,9 @@ export interface Database {
           twilio_subaccount_sid: string | null
           twilio_whatsapp_number: string | null
           twilio_auth_token_encrypted: string | null
+          google_review_link: string | null
+          solicitud_resena_activa: boolean
+          solicitud_resena_delay_dias: number
           updated_at: string
         }
         Insert: {
@@ -193,6 +196,9 @@ export interface Database {
           twilio_subaccount_sid?: string | null
           twilio_whatsapp_number?: string | null
           twilio_auth_token_encrypted?: string | null
+          google_review_link?: string | null
+          solicitud_resena_activa?: boolean
+          solicitud_resena_delay_dias?: number
           updated_at?: string
         }
         Update: {
@@ -223,6 +229,9 @@ export interface Database {
           twilio_subaccount_sid?: string | null
           twilio_whatsapp_number?: string | null
           twilio_auth_token_encrypted?: string | null
+          google_review_link?: string | null
+          solicitud_resena_activa?: boolean
+          solicitud_resena_delay_dias?: number
           updated_at?: string
         }
         Relationships: [
@@ -576,7 +585,7 @@ export interface Database {
           id: string
           appointment_id: string
           canal: 'email' | 'whatsapp' | 'sms'
-          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien'
+          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien' | 'solicitud_resena'
           statut: 'pending' | 'sent' | 'failed'
           error_message: string | null
           sent_at: string | null
@@ -588,7 +597,7 @@ export interface Database {
           id?: string
           appointment_id: string
           canal: 'email' | 'whatsapp' | 'sms'
-          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien'
+          type: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien' | 'solicitud_resena'
           statut?: 'pending' | 'sent' | 'failed'
           error_message?: string | null
           sent_at?: string | null
@@ -600,7 +609,7 @@ export interface Database {
           id?: string
           appointment_id?: string
           canal?: 'email' | 'whatsapp' | 'sms'
-          type?: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio'
+          type?: 'confirmation' | 'aviso' | 'pago' | 'pago_praticien' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'cambio_praticien' | 'solicitud_resena'
           statut?: 'pending' | 'sent' | 'failed'
           error_message?: string | null
           sent_at?: string | null

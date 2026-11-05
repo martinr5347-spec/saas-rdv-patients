@@ -41,6 +41,9 @@ export interface OrgSettings {
   categorias_con_foto: string[] | null
   variante_control_recall: string | null
   control_recall_anticipacion_dias: number | null
+  google_review_link: string | null
+  solicitud_resena_activa: boolean | null
+  solicitud_resena_delay_dias: number | null
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -663,6 +666,9 @@ export default function SettingsView({
   const [previewName, setPreviewName] = useState(nombreCompleto ?? '')
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Controle (pas defaultValue) : le toggle solicitud_resena_activa ci-dessous doit apparaitre/
+  // disparaitre en reagissant a la frappe, sans attendre un submit.
+  const [googleReviewLinkDraft, setGoogleReviewLinkDraft] = useState(settings?.google_review_link ?? '')
 
   const handleFile = (file: File | undefined) => {
     if (file && file.type.startsWith('image/')) {
@@ -895,6 +901,51 @@ export default function SettingsView({
               </label>
               <input name="mp_notification_url" defaultValue={settings?.mp_notification_url ?? ''} className={inputClass} />
             </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('googleReviewSectionTitle')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  {t('googleReviewLinkLabel')}
+                  <InfoTooltip text={t('googleReviewLinkInfo')} />
+                </label>
+                <input
+                  name="google_review_link"
+                  type="url"
+                  value={googleReviewLinkDraft}
+                  onChange={(e) => setGoogleReviewLinkDraft(e.target.value)}
+                  placeholder={t('googleReviewLinkPlaceholder')}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  {t('googleReviewDelayLabel')}
+                  <InfoTooltip text={t('googleReviewDelayInfo')} />
+                </label>
+                <input
+                  name="solicitud_resena_delay_dias"
+                  type="number"
+                  min={1}
+                  max={30}
+                  defaultValue={settings?.solicitud_resena_delay_dias ?? 3}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            {googleReviewLinkDraft.trim() && (
+              <label className="mt-3 flex items-center gap-2">
+                <input
+                  name="solicitud_resena_activa"
+                  type="checkbox"
+                  defaultChecked={settings?.solicitud_resena_activa ?? false}
+                  className="accent-brand-600"
+                />
+                <span className="text-sm text-gray-700">{t('googleReviewActivaLabel')}</span>
+              </label>
+            )}
           </div>
         </Card>
 

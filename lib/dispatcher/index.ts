@@ -50,6 +50,11 @@ function buildTemplateValues(appt: AppointmentWithRelations): Record<string, str
     costo_total: typeof costoTotal === 'number' ? costoTotal.toFixed(2) : '',
     resto_pagar: restoPagar !== null ? restoPagar.toFixed(2) : '',
     gestion_link: `${process.env.NEXT_PUBLIC_APP_URL}/gestionar/${appt.gestion_token}`,
+    // Núcleo s'adresse a un praticien individuel par organisation (pas une equipe) -- meme valeur
+    // que nombre_cabinet, exposee sous un second nom pour les messages a la premiere personne
+    // du singulier (solicitud_resena) ou "{{praticien}}" se lit comme une signature.
+    praticien: org?.nom ?? '',
+    google_review_link: settings?.google_review_link ?? '',
   }
 }
 
@@ -345,11 +350,10 @@ export async function dispatch(job: NotificationJob) {
           error_message: warmingCheck.reason,
           sent_at: null,
         }
-        if (isRepeatable) {
-          await supabase.from('notifications').upsert(warmingRow, { onConflict: 'appointment_id,canal,type' })
-        } else {
-          await supabase.from('notifications').insert(warmingRow)
-        }
+        // Meme raison que l'upsert plus bas : un essai precedent peut avoir laisse une ligne
+        // 'failed' pour ce (appointment_id,canal,type) -- un .insert() ici la dupliquerait en
+        // violant la contrainte unique et echouerait silencieusement.
+        await supabase.from('notifications').upsert(warmingRow, { onConflict: 'appointment_id,canal,type' })
         continue
       }
     }
@@ -432,10 +436,13 @@ export async function dispatch(job: NotificationJob) {
       sent_at: statut === 'sent' ? new Date().toISOString() : null,
       ...(twilioMessageSid ? { twilio_message_sid: twilioMessageSid } : {}),
     }
-    if (isRepeatable) {
-      await supabase.from('notifications').upsert(resultRow, { onConflict: 'appointment_id,canal,type' })
-    } else {
-      await supabase.from('notifications').insert(resultRow)
-    }
+    // Toujours upsert, meme hors isRepeatable : un premier essai 'failed' laisse une ligne en
+    // base (appointment_id,canal,type) -- un .insert() sur la relance violerait la contrainte
+    // unique et echouerait silencieusement (resultat ignore), laissant la ligne bloquee a
+    // 'failed' pour toujours meme si l'envoi reussit ensuite, et risquant un renvoi reel a
+    // chaque passage de cron tant que la ligne n'est jamais mise a jour. Le garde-fou
+    // alreadySent ci-dessus (ignore uniquement pour isRepeatable) empeche deja toute reecriture
+    // d'une ligne 'sent' existante -- upsert est donc strictement sans risque ici.
+    await supabase.from('notifications').upsert(resultRow, { onConflict: 'appointment_id,canal,type' })
   }
 }

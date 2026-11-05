@@ -8,7 +8,7 @@
 // blocs {{#if}} intacts) est copié dans un override org-spécifique de message_templates
 // (voir app/dashboard/settings/page.tsx) — le moteur de rendu ne change pas.
 
-export type NotificationType = 'confirmation' | 'aviso' | 'pago' | 'anulacion' | 'recordatorio' | 'reprogramacion'
+export type NotificationType = 'confirmation' | 'aviso' | 'pago' | 'anulacion' | 'recordatorio' | 'reprogramacion' | 'solicitud_resena'
 export type VariantId = 'standard' | 'calido'
 export type Canal = 'email' | 'whatsapp'
 export type Langue = 'es' | 'pt'
@@ -29,6 +29,9 @@ export const VARIANT_LABELS: Record<Langue, Record<VariantId, string>> = {
   },
 }
 
+// 'solicitud_resena' n'apparait dans aucun des 2 -- NOTIFICATION_TYPES (SettingsView.tsx/actions.ts)
+// reste une liste figee a 6 entrees, pas derivee de NotificationType -- ces 2 lignes n'existent
+// que pour satisfaire Record<NotificationType, ...> et ne s'affichent nulle part pour l'instant.
 export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, string>> = {
   es: {
     confirmation: 'Confirmación de cita',
@@ -37,6 +40,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, s
     anulacion: 'Anulación automática',
     recordatorio: 'Recordatorio de cita (24h)',
     reprogramacion: 'Reprogramación de cita',
+    solicitud_resena: 'Solicitud de reseña Google',
   },
   pt: {
     confirmation: 'Confirmação de consulta',
@@ -45,6 +49,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<Langue, Record<NotificationType, s
     anulacion: 'Cancelamento automático',
     recordatorio: 'Lembrete de consulta (24h)',
     reprogramacion: 'Remarcação de consulta',
+    solicitud_resena: 'Pedido de avaliação no Google',
   },
 }
 
@@ -471,6 +476,54 @@ ${dateBox('às')}
       },
     },
   },
+
+  // Contenu patient (es/pt) fourni mot pour mot par le prompt d'origine, a la premiere personne du
+  // singulier ("yo", jamais "nosotros") -- PT redige dans le meme esprit, pas une traduction litterale.
+  // Pas de card() a bandeau degrade (aucune maquette visuelle n'etait fournie) -- format simple comme
+  // 'reprogramacion' ci-dessus. {{praticien}} et {{google_review_link}} sont calcules par
+  // buildTemplateValues() (lib/dispatcher/index.ts).
+  solicitud_resena: {
+    standard: {
+      email: {
+        es: {
+          sujet: '¿Cómo fue tu experiencia?',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, gracias por confiar en mí para tu última consulta.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Si te sientes cómodo compartiendo tu experiencia, puedes dejar una reseña aquí:</p><a href="{{google_review_link}}" style="display:block;text-align:center;background:#ca8a04;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Dejar mi reseña</a><p style="margin:20px 0 0;font-size:14px;line-height:1.5;color:#4b5563;">Tu opinión me ayuda mucho.<br>Saludos,<br>{{praticien}}</p></div>`,
+        },
+        pt: {
+          sujet: 'Como foi sua experiência?',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1f2937;">Olá {{nom_patient}}, obrigado por confiar em mim para sua última consulta.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Se você se sentir confortável em compartilhar sua experiência, pode deixar uma avaliação aqui:</p><a href="{{google_review_link}}" style="display:block;text-align:center;background:#ca8a04;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Deixar minha avaliação</a><p style="margin:20px 0 0;font-size:14px;line-height:1.5;color:#4b5563;">Sua opinião me ajuda muito.<br>Um abraço,<br>{{praticien}}</p></div>`,
+        },
+      },
+      whatsapp: {
+        es: {
+          corps: `⭐ Hola {{nom_patient}} 👋\n\nEspero que te sientas muy bien después de tu consulta. Si tienes un minuto, me ayudaría mucho que dejes tu opinión aquí:\n{{google_review_link}}\n\n¡Gracias!`,
+        },
+        pt: {
+          corps: `⭐ Olá {{nom_patient}} 👋\n\nEspero que você esteja se sentindo muito bem depois da sua consulta. Se tiver um minuto, me ajudaria muito que você deixasse sua opinião aqui:\n{{google_review_link}}\n\nObrigado!`,
+        },
+      },
+    },
+    calido: {
+      email: {
+        es: {
+          sujet: 'Tu opinión significa mucho para mí',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:19px;color:#111827;">⭐ Hola {{nom_patient}}</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1f2937;">Espero que te sientas muy bien después de tu última visita conmigo.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Si tienes un minuto, me encantaría que compartas tu experiencia en Google — cada reseña me ayuda a seguir mejorando:</p><a href="{{google_review_link}}" style="display:block;text-align:center;background:#ca8a04;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Compartir mi experiencia</a><p style="margin:20px 0 0;font-size:14px;line-height:1.5;color:#4b5563;">Gracias de corazón,<br>{{praticien}}</p></div>`,
+        },
+        pt: {
+          sujet: 'Sua opinião significa muito para mim',
+          corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;"><h2 style="margin:0 0 16px;font-size:19px;color:#111827;">⭐ Olá {{nom_patient}}</h2><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1f2937;">Espero que você esteja se sentindo muito bem depois da sua última visita comigo.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Se tiver um minuto, eu adoraria que você compartilhasse sua experiência no Google — cada avaliação me ajuda a continuar melhorando:</p><a href="{{google_review_link}}" style="display:block;text-align:center;background:#ca8a04;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Compartilhar minha experiência</a><p style="margin:20px 0 0;font-size:14px;line-height:1.5;color:#4b5563;">Obrigado de coração,<br>{{praticien}}</p></div>`,
+        },
+      },
+      whatsapp: {
+        es: {
+          corps: `💛 Hola {{nom_patient}}, ¿cómo te sientes después de tu última visita?\n\nSi todo fue bien, me encantaría que compartas tu experiencia en Google, me ayuda muchísimo a seguir mejorando:\n{{google_review_link}}\n\nUn abrazo, {{praticien}}.`,
+        },
+        pt: {
+          corps: `💛 Olá {{nom_patient}}, como você está se sentindo depois da sua última visita?\n\nSe tudo correu bem, eu adoraria que você compartilhasse sua experiência no Google, isso me ajuda muito a continuar melhorando:\n{{google_review_link}}\n\nUm abraço, {{praticien}}.`,
+        },
+      },
+    },
+  },
 }
 
 export function getVariantContent(type: NotificationType, variant: VariantId, canal: Canal, langue: Langue): VariantContent {
@@ -539,6 +592,16 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
     calido: {
       es: '¡Todo listo, [Nombre]! 😊\nTu cita con [Clínica] quedó reprogramada para: [Fecha] a las [Hora]. ¡Nos vemos pronto!',
       pt: 'Tudo certo, [Nome]! 😊 Sua consulta com [Clínica] foi remarcada para: [Data] às [Hora]. Até breve!',
+    },
+  },
+  solicitud_resena: {
+    standard: {
+      es: 'Hola [Nombre] 👋\nEspero que te sientas muy bien después de tu consulta. Si tienes un minuto, me ayudaría mucho que dejes tu opinión aquí: [Link]. ¡Gracias!',
+      pt: 'Olá [Nome] 👋\nEspero que você esteja se sentindo bem depois da consulta. Se tiver um minuto, deixe sua opinião aqui: [Link]. Obrigado!',
+    },
+    calido: {
+      es: '¿Cómo te sientes, [Nombre]?\nSi todo fue bien, me encantaría que compartas tu experiencia en Google: [Link]. Un abrazo, [Praticien].',
+      pt: 'Como você está, [Nome]?\nSe tudo correu bem, compartilhe sua experiência no Google: [Link]. Um abraço, [Praticien].',
     },
   },
 }
@@ -666,6 +729,7 @@ export const TWILIO_CONTENT_SIDS: TwilioContentSidCatalog = {
   anulacion: { standard: nullPerLangue(), calido: nullPerLangue() },
   recordatorio: { standard: nullPerLangue(), calido: nullPerLangue() },
   reprogramacion: { standard: nullPerLangue(), calido: nullPerLangue() },
+  solicitud_resena: { standard: nullPerLangue(), calido: nullPerLangue() },
 }
 
 export function getTwilioContentSid(type: NotificationType, variant: VariantId, langue: Langue): string | null {

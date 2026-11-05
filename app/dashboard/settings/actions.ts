@@ -19,7 +19,16 @@ import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CANALES = ['email', 'whatsapp'] as const
 
-export async function updateSettings(formData: FormData) {
+// Le gros formulaire unique d'origine (updateSettings) a ete decoupe en 5 actions independantes,
+// une par carte de SettingsView.tsx -- chaque carte a maintenant son propre <form>/bouton Guardar
+// juste en dessous de ses champs, pour qu'une modification dans une carte ne se perde plus si le
+// praticien ne scrolle jamais jusqu'au bouton du bas (bug reel rapporte par Martin : changement
+// d'especialidad perdu car jamais clique sur le Guardar global, ~350 lignes plus bas). Aucune des
+// validations/clamps/logique metier n'a change -- seul le decoupage "qui declenche quoi" a bouge.
+
+// Carte "Mi perfil" : nom, photo, especialidad texte, pais, area de specialisation (qui declenche
+// le reseed du catalogue d'actes -- comportement inchange, seulement deplace ici).
+export async function updateProfile(formData: FormData) {
   const supabase = createClient()
   const {
     data: { user },
@@ -27,12 +36,11 @@ export async function updateSettings(formData: FormData) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('organization_id, role')
+    .select('organization_id')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
   if (!profile?.organization_id) return
-  const canManagePayments = profile.role === 'praticien' || profile.role === 'admin'
 
   if (user?.id) {
     const nombreCompleto = String(formData.get('nombre_completo') ?? '').trim() || null
@@ -65,6 +73,92 @@ export async function updateSettings(formData: FormData) {
     }
   }
 
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('especialidad')
+    .eq('id', profile.organization_id)
+    .maybeSingle()
+
+  const especialidadInput = String(formData.get('organizacion_especialidad') ?? '')
+  const nuevaEspecialidad: Especialidad | null =
+    especialidadInput === 'estetica_dermato' || especialidadInput === 'clinica_medica' ? especialidadInput : null
+
+  // Corrige le pays d'une organisation deja creee (ex. par erreur sur le defaut SQL 'PE') --
+  // ne touche jamais monnaie ici, meme si le pays change : le mapping pays->monnaie automatique
+  // ne joue qu'a l'inscription, jamais en ecrasement a posteriori (le praticien a pu la changer
+  // volontairement pour une autre raison).
+  const paisInput = String(formData.get('organizacion_pais') ?? '')
+  const nuevoPais = PAISES_LATAM.some((p) => p.pais === paisInput) ? paisInput : 'PE'
+
+  await supabase
+    .from('organizations')
+    .update({ especialidad: nuevaEspecialidad, pays: nuevoPais })
+    .eq('id', profile.organization_id)
+
+  // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty
+  // ne fait de toute facon rien si la liste de l'organisation n'est plus vide (jamais d'ecrasement
+  // d'une liste deja personnalisee par le praticien), mais on evite l'appel inutile sinon.
+  if (nuevaEspecialidad && nuevaEspecialidad !== organization?.especialidad) {
+    try {
+      await seedActosIfEmpty(supabase, profile.organization_id, nuevaEspecialidad)
+    } catch (e) {
+      console.error('Erreur seed actos apres changement especialidad:', e)
+    }
+  }
+
+  revalidatePath('/dashboard', 'layout')
+  redirect(`/dashboard/settings?saved=${Date.now()}`)
+}
+
+// Carte "Facturación y plazos" : delais de paiement/aviso/recordatorio, adelanto, costo, moneda.
+export async function updateFacturacion(formData: FormData) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return
+
+  await supabase
+    .from('org_settings')
+    .update({
+      delai_paiement_h: Number(formData.get('delai_paiement_h')),
+      delai_aviso_h: Number(formData.get('delai_aviso_h')),
+      delai_rappel_h: Number(formData.get('delai_rappel_h')),
+      monto_acompte: Number(formData.get('monto_acompte')),
+      monnaie: String(formData.get('monnaie') ?? 'PEN'),
+      costo_total: formData.get('costo_total') ? Number(formData.get('costo_total')) : null,
+    })
+    .eq('organization_id', profile.organization_id)
+
+  revalidatePath('/dashboard', 'layout')
+  redirect(`/dashboard/settings?saved=${Date.now()}`)
+}
+
+// Carte "Integraciones" : direccion, Calendly, Unipile, webhook MercadoPago + section "Solicitud
+// de reseña en Google" (lien/delai/toggle) -- cette derniere n'a pas d'action serveur dediee
+// propre (contrairement a updateMpAccessToken/updateTwilioSettings), elle reste donc ici.
+export async function updateIntegraciones(formData: FormData) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id, role')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return
+  const canManagePayments = profile.role === 'praticien' || profile.role === 'admin'
+
   const { data: current } = await supabase
     .from('org_settings')
     .select('unipile_account_id, unipile_connected_at, mp_notification_url')
@@ -86,14 +180,6 @@ export async function updateSettings(formData: FormData) {
     ? String(formData.get('mp_notification_url') ?? '')
     : current?.mp_notification_url ?? ''
 
-  const variantes: Record<NotificationType, VariantId> = {} as Record<NotificationType, VariantId>
-  for (const type of NOTIFICATION_TYPES) {
-    variantes[type] = formData.get(`variante_${type}`) === 'calido' ? 'calido' : 'standard'
-  }
-  const varianteControlRecall: VariantId = formData.get('variante_control_recall') === 'calido' ? 'calido' : 'standard'
-  const anticipacionDiasRaw = Number(formData.get('control_recall_anticipacion_dias'))
-  const anticipacionDias = Number.isFinite(anticipacionDiasRaw) ? Math.min(90, Math.max(0, Math.round(anticipacionDiasRaw))) : 14
-
   const googleReviewLink = String(formData.get('google_review_link') ?? '').trim() || null
   const resenaDelayRaw = Number(formData.get('solicitud_resena_delay_dias'))
   const solicitudResenaDelayDias = Number.isFinite(resenaDelayRaw) ? Math.min(30, Math.max(1, Math.round(resenaDelayRaw))) : 3
@@ -104,60 +190,91 @@ export async function updateSettings(formData: FormData) {
   await supabase
     .from('org_settings')
     .update({
-      delai_paiement_h: Number(formData.get('delai_paiement_h')),
-      delai_aviso_h: Number(formData.get('delai_aviso_h')),
-      delai_rappel_h: Number(formData.get('delai_rappel_h')),
-      monto_acompte: Number(formData.get('monto_acompte')),
       calendly_url: String(formData.get('calendly_url') ?? ''),
       unipile_account_id: unipileAccountId,
       unipile_connected_at: unipileConnectedAt,
       mp_notification_url: mpNotificationUrl,
-      canal_email: formData.get('canal_email') === 'on',
-      canal_whatsapp: formData.get('canal_whatsapp') === 'on',
-      monnaie: String(formData.get('monnaie') ?? 'PEN'),
-      costo_total: formData.get('costo_total') ? Number(formData.get('costo_total')) : null,
-      variantes_mensaje: variantes,
-      variante_control_recall: varianteControlRecall,
-      control_recall_anticipacion_dias: anticipacionDias,
       google_review_link: googleReviewLink,
       solicitud_resena_activa: solicitudResenaActiva,
       solicitud_resena_delay_dias: solicitudResenaDelayDias,
     })
     .eq('organization_id', profile.organization_id)
 
+  await supabase
+    .from('organizations')
+    .update({ adresse: String(formData.get('adresse') ?? '') })
+    .eq('id', profile.organization_id)
+
+  revalidatePath('/dashboard', 'layout')
+  redirect(`/dashboard/settings?saved=${Date.now()}`)
+}
+
+// Carte "Canales" : email/whatsapp actifs.
+export async function updateCanales(formData: FormData) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return
+
+  await supabase
+    .from('org_settings')
+    .update({
+      canal_email: formData.get('canal_email') === 'on',
+      canal_whatsapp: formData.get('canal_whatsapp') === 'on',
+    })
+    .eq('organization_id', profile.organization_id)
+
+  revalidatePath('/dashboard', 'layout')
+  redirect(`/dashboard/settings?saved=${Date.now()}`)
+}
+
+// Carte "Plantillas de mensaje" : variantes standard/calido des 6 types generiques + control_recall,
+// anticipacion du rappel de controle.
+export async function updatePlantillas(formData: FormData) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user?.id ?? '')
+    .maybeSingle()
+
+  if (!profile?.organization_id) return
+
+  const variantes: Record<NotificationType, VariantId> = {} as Record<NotificationType, VariantId>
+  for (const type of NOTIFICATION_TYPES) {
+    variantes[type] = formData.get(`variante_${type}`) === 'calido' ? 'calido' : 'standard'
+  }
+  const varianteControlRecall: VariantId = formData.get('variante_control_recall') === 'calido' ? 'calido' : 'standard'
+  const anticipacionDiasRaw = Number(formData.get('control_recall_anticipacion_dias'))
+  const anticipacionDias = Number.isFinite(anticipacionDiasRaw) ? Math.min(90, Math.max(0, Math.round(anticipacionDiasRaw))) : 14
+
+  await supabase
+    .from('org_settings')
+    .update({
+      variantes_mensaje: variantes,
+      variante_control_recall: varianteControlRecall,
+      control_recall_anticipacion_dias: anticipacionDias,
+    })
+    .eq('organization_id', profile.organization_id)
+
   const { data: organization } = await supabase
     .from('organizations')
-    .select('langue, especialidad')
+    .select('langue')
     .eq('id', profile.organization_id)
     .maybeSingle()
   const finalLangue = organization?.langue === 'pt' ? 'pt' : 'es'
-
-  const especialidadInput = String(formData.get('organizacion_especialidad') ?? '')
-  const nuevaEspecialidad: Especialidad | null =
-    especialidadInput === 'estetica_dermato' || especialidadInput === 'clinica_medica' ? especialidadInput : null
-
-  // Corrige le pays d'une organisation deja creee (ex. par erreur sur le defaut SQL 'PE') --
-  // ne touche jamais monnaie ici, meme si le pays change : le mapping pays->monnaie automatique
-  // ne joue qu'a l'inscription, jamais en ecrasement a posteriori (le praticien a pu la changer
-  // volontairement pour une autre raison).
-  const paisInput = String(formData.get('organizacion_pais') ?? '')
-  const nuevoPais = PAISES_LATAM.some((p) => p.pais === paisInput) ? paisInput : 'PE'
-
-  await supabase
-    .from('organizations')
-    .update({ adresse: String(formData.get('adresse') ?? ''), especialidad: nuevaEspecialidad, pays: nuevoPais })
-    .eq('id', profile.organization_id)
-
-  // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty
-  // ne fait de toute facon rien si la liste de l'organisation n'est plus vide (jamais d'ecrasement
-  // d'une liste deja personnalisee par le praticien), mais on evite l'appel inutile sinon.
-  if (nuevaEspecialidad && nuevaEspecialidad !== organization?.especialidad) {
-    try {
-      await seedActosIfEmpty(supabase, profile.organization_id, nuevaEspecialidad)
-    } catch (e) {
-      console.error('Erreur seed actos apres changement especialidad:', e)
-    }
-  }
 
   for (const type of NOTIFICATION_TYPES) {
     const variantId = variantes[type]

@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import SettingsView from './SettingsView'
 import {
-  updateSettings,
+  updateProfile,
+  updateFacturacion,
+  updateIntegraciones,
+  updateCanales,
+  updatePlantillas,
   openBillingPortal,
   updateCategoriasNotas,
   updateCategoriasConFoto,
@@ -127,7 +131,11 @@ export default async function SettingsPage() {
       twilioAuthTokenConfigured={twilioAuthTokenConfigured}
       twilioAuthTokenLast4={twilioAuthTokenLast4}
       actos={actos}
-      updateSettingsAction={updateSettings}
+      updateProfileAction={updateProfile}
+      updateFacturacionAction={updateFacturacion}
+      updateIntegracionesAction={updateIntegraciones}
+      updateCanalesAction={updateCanales}
+      updatePlantillasAction={updatePlantillas}
       openBillingPortalAction={openBillingPortal}
       updateCategoriasNotasAction={updateCategoriasNotas}
       updateCategoriasConFotoAction={updateCategoriasConFoto}

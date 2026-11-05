@@ -624,7 +624,11 @@ export default function SettingsView({
   twilioAuthTokenConfigured,
   twilioAuthTokenLast4,
   actos,
-  updateSettingsAction,
+  updateProfileAction,
+  updateFacturacionAction,
+  updateIntegracionesAction,
+  updateCanalesAction,
+  updatePlantillasAction,
   openBillingPortalAction,
   updateCategoriasNotasAction,
   updateCategoriasConFotoAction,
@@ -648,7 +652,11 @@ export default function SettingsView({
   twilioAuthTokenConfigured: boolean
   twilioAuthTokenLast4: string | null
   actos: ActoCatalogoSettings[]
-  updateSettingsAction: (formData: FormData) => void
+  updateProfileAction: (formData: FormData) => void
+  updateFacturacionAction: (formData: FormData) => void
+  updateIntegracionesAction: (formData: FormData) => void
+  updateCanalesAction: (formData: FormData) => void
+  updatePlantillasAction: (formData: FormData) => void
   openBillingPortalAction: () => void
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
@@ -703,7 +711,7 @@ export default function SettingsView({
           </div>
         </Card>
       )}
-      <form action={updateSettingsAction} className="space-y-6">
+      <form action={updateProfileAction}>
         <Card>
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupProfile')}</h2>
           <div className="flex items-center gap-4 mb-4">
@@ -787,8 +795,16 @@ export default function SettingsView({
               </select>
             </div>
           </div>
+          <button
+            type="submit"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
+          >
+            {t('save')}
+          </button>
         </Card>
+      </form>
 
+      <form action={updateFacturacionAction}>
         <Card>
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupBilling')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -857,8 +873,16 @@ export default function SettingsView({
               </select>
             </div>
           </div>
+          <button
+            type="submit"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
+          >
+            {t('save')}
+          </button>
         </Card>
+      </form>
 
+      <form action={updateIntegracionesAction}>
         <Card>
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupIntegrations')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -947,8 +971,16 @@ export default function SettingsView({
               </label>
             )}
           </div>
+          <button
+            type="submit"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
+          >
+            {t('save')}
+          </button>
         </Card>
+      </form>
 
+      <form action={updateCanalesAction}>
         <Card>
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupChannels')}</h2>
           <div className="flex gap-6">
@@ -961,8 +993,16 @@ export default function SettingsView({
               <span className="text-sm text-gray-700">{t('whatsappActive')}</span>
             </label>
           </div>
+          <button
+            type="submit"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
+          >
+            {t('save')}
+          </button>
         </Card>
+      </form>
 
+      <form action={updatePlantillasAction}>
         <Card>
           <h2 className="text-sm font-semibold text-gray-800">{t('messageTemplate')}</h2>
           <p className="text-xs text-gray-500 mt-0.5 mb-4">{t('messageTemplateDesc')}</p>
@@ -1047,11 +1087,13 @@ export default function SettingsView({
               className="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
             />
           </div>
+          <button
+            type="submit"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"
+          >
+            {t('save')}
+          </button>
         </Card>
-
-        <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]">
-          {t('save')}
-        </button>
       </form>
 
       <SeguridadNotasCard lastUpdated={codigoSeguridadUpdatedAt} />

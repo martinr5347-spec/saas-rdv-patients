@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
 import AppointmentsCalendarView, { type PaidAppointment } from './AppointmentsCalendarView'
+import { computeParetoInsight, type ActoRealizadoRow } from '@/lib/analytics/pareto'
 
 const STATUS_BADGE = {
   pendiente: 'warning',
@@ -31,9 +32,40 @@ export interface AppointmentRow {
   patients: { nom: string } | null
 }
 
+// Mini-resume "top traitements" (esprit Pareto de analisis/AnalisisView.tsx, sans le detail
+// complet) -- seulement le TOP 3 par chiffre d'affaires, rien si aucun acte ce mois-ci.
+function TopTratamientosCard({ actosDelMes }: { actosDelMes: ActoRealizadoRow[] }) {
+  const t = useTranslations('dashboard.appointments')
+  const { porMonto } = computeParetoInsight(actosDelMes)
+
+  if (porMonto.length === 0) return null
+
+  const top3 = porMonto.slice(0, 3)
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-800">{t('topTratamientosTitle')}</h2>
+        <Link href="/dashboard/analisis" className="text-xs font-medium text-brand-600 hover:text-brand-700">
+          {t('verAnalisisCompleto')}
+        </Link>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {top3.map((g) => (
+          <div key={g.nombre} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+            <span className="text-gray-700">{g.nombre}</span>
+            <span className="font-medium text-gray-800">{g.monto.toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export default function AppointmentsView({
   appointments,
   paidAppointments,
+  actosDelMes,
   error,
   statut,
   depuis,
@@ -41,6 +73,7 @@ export default function AppointmentsView({
 }: {
   appointments: AppointmentRow[]
   paidAppointments: PaidAppointment[]
+  actosDelMes: ActoRealizadoRow[]
   error: string | null
   statut: string
   depuis: string
@@ -97,6 +130,8 @@ export default function AppointmentsView({
               </button>
             </form>
           </Card>
+
+          <TopTratamientosCard actosDelMes={actosDelMes} />
 
           {error && <p className="text-error-600 text-sm">{error}</p>}
 

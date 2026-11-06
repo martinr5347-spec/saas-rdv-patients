@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 import Card from '@/components/ui/Card'
+import { computeParetoInsight } from '@/lib/analytics/pareto'
 
 interface AppointmentRow {
   fecha_cita: string
@@ -24,49 +25,13 @@ interface ActoRealizadoRow {
   nombre: string
 }
 
-interface ParetoGroup {
-  nombre: string
-  monto: number
-  cantidad: number
-}
-
-// Vrai groupby de actos_realizados -- rien de simule. Groupe par nom resolu (acto.nombre ou
-// acto_texto_libre, deja fusionnes cote serveur) plutot que par acto_id, pour que deux entrees
-// "solo esta vez" avec le meme libelle se cumulent naturellement comme un seul acte dans l'insight.
-function groupActos(actos: ActoRealizadoRow[]): ParetoGroup[] {
-  const map = new Map<string, ParetoGroup>()
-  for (const a of actos) {
-    const key = a.nombre || '—'
-    const existing = map.get(key)
-    if (existing) {
-      existing.monto += Number(a.monto)
-      existing.cantidad += 1
-    } else {
-      map.set(key, { nombre: key, monto: Number(a.monto), cantidad: 1 })
-    }
-  }
-  return Array.from(map.values())
-}
-
 function ParetoInsightCard({ actosRealizados }: { actosRealizados: ActoRealizadoRow[] }) {
   const t = useTranslations('dashboard.analisis')
 
-  const { porMonto, porCantidad, totalMonto, actosPara80 } = useMemo(() => {
-    const groups = groupActos(actosRealizados)
-    const porMonto = [...groups].sort((a, b) => b.monto - a.monto)
-    const porCantidad = [...groups].sort((a, b) => b.cantidad - a.cantidad)
-    const totalMonto = porMonto.reduce((s, g) => s + g.monto, 0)
-
-    let acumulado = 0
-    let actosPara80 = 0
-    for (const g of porMonto) {
-      acumulado += g.monto
-      actosPara80 += 1
-      if (totalMonto > 0 && acumulado / totalMonto >= 0.8) break
-    }
-
-    return { porMonto, porCantidad, totalMonto, actosPara80 }
-  }, [actosRealizados])
+  const { porMonto, porCantidad, totalMonto, actosPara80 } = useMemo(
+    () => computeParetoInsight(actosRealizados),
+    [actosRealizados]
+  )
 
   if (actosRealizados.length === 0) {
     return (

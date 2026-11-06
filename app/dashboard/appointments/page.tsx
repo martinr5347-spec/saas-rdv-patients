@@ -33,6 +33,22 @@ export default async function AppointmentsPage({
     .order('fecha_cita', { ascending: true })
     .limit(500)
 
+  // Widget compact "top 3 traitements" (voir AppointmentsView) -- meme requete que
+  // analisis/page.tsx mais limitee au mois en cours, isolation par organisation deja garantie
+  // par la RLS (tenant_isolation, migration 038) comme les deux requetes appointments ci-dessus.
+  const now = new Date()
+  const debutMois = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
+  const { data: actosRealizadosRaw } = await supabase
+    .from('actos_realizados')
+    .select('monto, fecha, acto_texto_libre, actos(nombre)')
+    .gte('fecha', debutMois)
+
+  const actosDelMes = (actosRealizadosRaw ?? []).map((a) => ({
+    monto: Number(a.monto),
+    fecha: a.fecha,
+    nombre: (a.actos as unknown as { nombre: string } | null)?.nombre ?? a.acto_texto_libre ?? '',
+  }))
+
   return (
     <AppointmentsView
       appointments={(appointments ?? []).map((a) => ({
@@ -43,6 +59,7 @@ export default async function AppointmentsPage({
         ...a,
         patients: a.patients as { nom: string } | null,
       }))}
+      actosDelMes={actosDelMes}
       error={error?.message ?? null}
       statut={searchParams.statut ?? ''}
       depuis={searchParams.depuis ?? ''}

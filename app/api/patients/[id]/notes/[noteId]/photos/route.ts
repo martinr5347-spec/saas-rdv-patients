@@ -19,6 +19,8 @@ export async function POST(req: Request, { params }: { params: { id: string; not
   const formData = await req.formData()
   const codigo = formData.get('codigo') as string | null
   const file = formData.get('file') as File | null
+  const momentoRaw = formData.get('momento') as string | null
+  const momento = momentoRaw === 'antes' || momentoRaw === 'despues' ? momentoRaw : null
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
   }
@@ -67,8 +69,8 @@ export async function POST(req: Request, { params }: { params: { id: string; not
 
   const { data: photoRow, error: insertError } = await supabase
     .from('patient_note_photos')
-    .insert({ note_id: noteRow.id, organization_id: noteRow.organization_id, storage_path: storagePath })
-    .select('id, storage_path, created_at')
+    .insert({ note_id: noteRow.id, organization_id: noteRow.organization_id, storage_path: storagePath, momento })
+    .select('id, storage_path, created_at, momento')
     .single()
   if (insertError) {
     // Nettoyage : si l'insertion en base échoue, ne pas laisser un fichier orphelin dans le bucket.

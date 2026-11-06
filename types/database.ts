@@ -457,6 +457,7 @@ export interface Database {
           organization_id: string
           storage_path: string
           created_at: string
+          momento: 'antes' | 'despues' | null
         }
         Insert: {
           id?: string
@@ -464,6 +465,7 @@ export interface Database {
           organization_id: string
           storage_path: string
           created_at?: string
+          momento?: 'antes' | 'despues' | null
         }
         Update: {
           id?: string
@@ -471,6 +473,7 @@ export interface Database {
           organization_id?: string
           storage_path?: string
           created_at?: string
+          momento?: 'antes' | 'despues' | null
         }
         Relationships: [
           { foreignKeyName: 'patient_note_photos_note_id_fkey'; columns: ['note_id']; isOneToOne: false; referencedRelation: 'patient_notes'; referencedColumns: ['id'] },

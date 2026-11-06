@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { data: notes, error } = await supabase
     .from('patient_notes')
     .select(
-      'id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at), patient_note_sesiones(comentario_final, appointment_id)'
+      'id, contenido, categoria, created_at, sesion_id, patient_note_photos(id, storage_path, created_at, momento), patient_note_sesiones(comentario_final, appointment_id)'
     )
     .eq('patient_id', params.id)
     .order('created_at', { ascending: false })
@@ -44,7 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           const { data: signed } = await supabase.storage
             .from('clinical-photos')
             .createSignedUrl(photo.storage_path, 300)
-          return { id: photo.id, url: signed?.signedUrl ?? null, created_at: photo.created_at }
+          return { id: photo.id, url: signed?.signedUrl ?? null, created_at: photo.created_at, momento: photo.momento ?? null }
         })
       )
       return {

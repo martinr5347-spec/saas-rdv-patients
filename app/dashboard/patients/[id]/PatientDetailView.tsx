@@ -14,6 +14,7 @@ interface PatientNotePhoto {
   id: string
   url: string | null
   created_at: string
+  momento: 'antes' | 'despues' | null
 }
 
 interface PatientNote {
@@ -27,9 +28,22 @@ interface PatientNote {
   photos?: PatientNotePhoto[]
 }
 
-// Catégories dont le contenu alimente le résumé affiché dans Historial de citas (Partie 4) une fois
-// Notas clínicas déverrouillée -- mêmes catégories par défaut que categorias_con_foto (migration 026).
+// Catégories dont le contenu alimente le résumé affiché dans Historial de citas (Partie 4) et dans
+// l'onglet Resumen (fiche patient en onglets) une fois Notas clínicas déverrouillée -- mêmes
+// catégories par défaut que categorias_con_foto (migration 026).
 const RESUMEN_CATEGORIAS = ['Diagnóstico', 'Tratamiento']
+
+function truncate(text: string, max = 90): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
+// Note la plus récente de categoria Diagnóstico/Tratamiento -- notes est déjà trié du plus récent
+// au plus ancien (ordre serveur conservé par saveSession, cf. plus bas), donc le premier match est
+// le plus récent. Partagé entre HistorialCitasCard.resumenFor (par RDV) et l'onglet Resumen (global).
+function findUltimoResumen(notes: PatientNote[] | null): PatientNote | null {
+  if (!notes) return null
+  return notes.find((n) => n.categoria && RESUMEN_CATEGORIAS.includes(n.categoria)) ?? null
+}
 
 // Un brouillon local tant que la session n'est pas enregistrée -- rien n'est écrit en base ici.
 interface DraftSessionEntry {
@@ -37,6 +51,7 @@ interface DraftSessionEntry {
   contenido: string
   photoFile: File | null
   photoPreviewUrl: string | null
+  photoMomento?: 'antes' | 'despues' | null
   programarRecordatorio?: boolean // uniquement pertinent pour categoria === CATEGORIA_CONTROL
   controlMeses?: number | ''
 }
@@ -206,9 +221,17 @@ function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
 function NotasClinicasCard({
   patientId,
   onNotesChange,
+  onProximoControlChange,
+  autoOpenRequest,
 }: {
   patientId: string
   onNotesChange?: (notes: PatientNote[] | null) => void
+  onProximoControlChange?: (proximoControl: ProximoControl | null) => void
+  // "Acciones rápidas" de l'onglet Resumen -- demande (one-shot, identifiée par nonce) d'ouvrir
+  // directement une chip du composer une fois déverrouillé. 'control' = chip Control (raccourci
+  // "Programar control") ; 'photoCategoria' = première catégorie autorisant une photo, sinon rien
+  // (raccourci "Subir fotos", best-effort : l'architecture n'a pas d'upload indépendant d'une note).
+  autoOpenRequest?: { type: 'control' | 'photoCategoria'; nonce: number } | null
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const locale = useLocale()
@@ -237,6 +260,10 @@ function NotasClinicasCard({
 
   const [uploadTargetNoteId, setUploadTargetNoteId] = useState<string | null>(null)
   const [uploadingNoteId, setUploadingNoteId] = useState<string | null>(null)
+  // Étape intermédiaire avant l'upload réel d'une photo sur une note déjà existante (pas le
+  // composer) -- laisse le temps de proposer le sélecteur optionnel Antes/Después/— avant d'envoyer.
+  const [pendingPhotoUpload, setPendingPhotoUpload] = useState<{ noteId: string; file: File; previewUrl: string } | null>(null)
+  const [pendingPhotoMomento, setPendingPhotoMomento] = useState<'antes' | 'despues' | null>(null)
   const [confirmingDeletePhoto, setConfirmingDeletePhoto] = useState<{ noteId: string; photoId: string } | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -253,6 +280,7 @@ function NotasClinicasCard({
   const [openContenido, setOpenContenido] = useState('')
   const [openPhotoFile, setOpenPhotoFile] = useState<File | null>(null)
   const [openPhotoPreview, setOpenPhotoPreview] = useState<string | null>(null)
+  const [openPhotoMomento, setOpenPhotoMomento] = useState<'antes' | 'despues' | null>(null)
   const [openProgramarRecordatorio, setOpenProgramarRecordatorio] = useState(false)
   const [openControlMeses, setOpenControlMeses] = useState<number | ''>('')
   const [comentarioFinal, setComentarioFinal] = useState('') // libre, optionnel, couvre toute la session
@@ -277,6 +305,30 @@ function NotasClinicasCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, state])
 
+  // Transmet au parent le próximo control calculé côté serveur (même logique que notesSnapshot
+  // ci-dessus) -- consommé par l'onglet Resumen pour son résumé compact, jamais recalculé ailleurs.
+  useEffect(() => {
+    onProximoControlChange?.(state === 'unlocked' ? proximoControl : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proximoControl, state])
+
+  // "Acciones rápidas" (onglet Resumen) : ouvre la chip demandée dès que déverrouillé. Si encore
+  // verrouillé au moment de la demande, reste en attente (nonce pas encore marqué traité) et
+  // s'exécute dès le déverrouillage, sans jamais contourner le PIN.
+  const handledAutoOpenNonceRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!autoOpenRequest || state !== 'unlocked') return
+    if (handledAutoOpenNonceRef.current === autoOpenRequest.nonce) return
+    handledAutoOpenNonceRef.current = autoOpenRequest.nonce
+    if (autoOpenRequest.type === 'control') {
+      openChip(CATEGORIA_CONTROL)
+    } else {
+      const target = categoriasConFoto.find((c) => c !== CATEGORIA_CONTROL)
+      if (target) openChip(target)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenRequest, state, categoriasConFoto])
+
   const lock = useCallback(() => {
     setState('locked')
     setCodigo(null)
@@ -298,6 +350,11 @@ function NotasClinicasCard({
     setUploadingNoteId(null)
     setConfirmingDeletePhoto(null)
     setLightboxUrl(null)
+    setPendingPhotoUpload((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+    setPendingPhotoMomento(null)
     setCategoriasConFoto([])
     setProximoControl(null)
     setBannerDismissed(false)
@@ -306,6 +363,7 @@ function NotasClinicasCard({
     setOpenContenido('')
     setOpenPhotoFile(null)
     setOpenPhotoPreview(null)
+    setOpenPhotoMomento(null)
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
     setComentarioFinal('')
@@ -381,6 +439,7 @@ function NotasClinicasCard({
     setOpenContenido(existing?.contenido ?? '')
     setOpenPhotoFile(existing?.photoFile ?? null)
     setOpenPhotoPreview(existing?.photoPreviewUrl ?? null)
+    setOpenPhotoMomento(existing?.photoMomento ?? null)
     setOpenProgramarRecordatorio(existing?.programarRecordatorio ?? false)
     setOpenControlMeses(existing?.controlMeses ?? '')
   }
@@ -390,6 +449,7 @@ function NotasClinicasCard({
     setOpenContenido('')
     setOpenPhotoFile(null)
     setOpenPhotoPreview(null)
+    setOpenPhotoMomento(null)
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
   }
@@ -406,6 +466,7 @@ function NotasClinicasCard({
         contenido: openContenido.trim(),
         photoFile: openPhotoFile,
         photoPreviewUrl: openPhotoPreview,
+        photoMomento: openPhotoMomento,
         programarRecordatorio: categoria === CATEGORIA_CONTROL ? openProgramarRecordatorio : undefined,
         controlMeses: categoria === CATEGORIA_CONTROL ? openControlMeses : undefined,
       },
@@ -435,6 +496,7 @@ function NotasClinicasCard({
     if (openPhotoPreview) URL.revokeObjectURL(openPhotoPreview)
     setOpenPhotoFile(null)
     setOpenPhotoPreview(null)
+    setOpenPhotoMomento(null)
   }
 
   // Enregistre toute la session de saisie en une fois : un seul POST pour le lot de notes
@@ -489,6 +551,7 @@ function NotasClinicasCard({
       const formData = new FormData()
       formData.append('codigo', codigo)
       formData.append('file', entry.photoFile)
+      if (entry.photoMomento) formData.append('momento', entry.photoMomento)
       const photoRes = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
         method: 'POST',
         body: formData,
@@ -612,16 +675,32 @@ function NotasClinicasCard({
     fileInputRef.current?.click()
   }
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Ne lance pas l'upload tout de suite -- laisse d'abord choisir le tag optionnel Antes/Después/—
+  // (voir pendingPhotoUpload ci-dessous), affiché juste sous la note concernée.
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     const noteId = uploadTargetNoteId
     e.target.value = '' // permet de re-sélectionner le même fichier ensuite
-    if (!file || !noteId || !codigo) return
+    if (!file || !noteId) return
+    setPendingPhotoUpload({ noteId, file, previewUrl: URL.createObjectURL(file) })
+    setPendingPhotoMomento(null)
+    setUploadTargetNoteId(null)
+  }
 
+  const cancelPendingPhotoUpload = () => {
+    if (pendingPhotoUpload) URL.revokeObjectURL(pendingPhotoUpload.previewUrl)
+    setPendingPhotoUpload(null)
+    setPendingPhotoMomento(null)
+  }
+
+  const confirmPendingPhotoUpload = async () => {
+    if (!pendingPhotoUpload || !codigo) return
+    const { noteId, file, previewUrl } = pendingPhotoUpload
     setUploadingNoteId(noteId)
     const formData = new FormData()
     formData.append('codigo', codigo)
     formData.append('file', file)
+    if (pendingPhotoMomento) formData.append('momento', pendingPhotoMomento)
     const res = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
       method: 'POST',
       body: formData,
@@ -636,8 +715,10 @@ function NotasClinicasCard({
       toast.error(data.error ?? t('toastErrorSubirFoto'))
       if (res.status === 403) lock()
     }
+    URL.revokeObjectURL(previewUrl)
+    setPendingPhotoUpload(null)
+    setPendingPhotoMomento(null)
     setUploadingNoteId(null)
-    setUploadTargetNoteId(null)
   }
 
   const confirmDeletePhoto = async (noteId: string, photoId: string) => {
@@ -754,7 +835,7 @@ function NotasClinicasCard({
             </button>
           </div>
         ))}
-        {photos.length < MAX_PHOTOS_PER_NOTE && (
+        {photos.length < MAX_PHOTOS_PER_NOTE && pendingPhotoUpload?.noteId !== note.id && (
           <button
             type="button"
             onClick={() => openFilePicker(note.id)}
@@ -770,6 +851,38 @@ function NotasClinicasCard({
               </>
             )}
           </button>
+        )}
+        {pendingPhotoUpload?.noteId === note.id && (
+          <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5">
+            <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingPhotoUpload.previewUrl} alt={t('fotoClinicaAlt')} className="h-full w-full object-cover" />
+            </div>
+            <select
+              value={pendingPhotoMomento ?? ''}
+              onChange={(e) => setPendingPhotoMomento(e.target.value === 'antes' || e.target.value === 'despues' ? e.target.value : null)}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            >
+              <option value="">{t('momentoSinTag')}</option>
+              <option value="antes">{t('momentoAntes')}</option>
+              <option value="despues">{t('momentoDespues')}</option>
+            </select>
+            <button
+              type="button"
+              onClick={cancelPendingPhotoUpload}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700"
+            >
+              {t('cancelar')}
+            </button>
+            <button
+              type="button"
+              onClick={confirmPendingPhotoUpload}
+              disabled={uploadingNoteId === note.id}
+              className="rounded-lg bg-[#6926D2] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+            >
+              {uploadingNoteId === note.id ? '...' : t('subirFotoLabel')}
+            </button>
+          </div>
         )}
         {confirmingDeletePhoto?.noteId === note.id && (
           <div className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs">
@@ -1300,22 +1413,33 @@ function NotasClinicasCard({
           {allowsPhoto(openCategoria) && (
             <div className="mt-2 flex items-center gap-2">
               {openPhotoPreview ? (
-                <div className="group/photo relative h-14 w-14 flex-shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={openPhotoPreview}
-                    alt={t('fotoClinicaAlt')}
-                    className="h-full w-full rounded-lg border border-gray-200 object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeOpenPhoto}
-                    aria-label={t('eliminarFotoLabel')}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white"
+                <>
+                  <div className="group/photo relative h-14 w-14 flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={openPhotoPreview}
+                      alt={t('fotoClinicaAlt')}
+                      className="h-full w-full rounded-lg border border-gray-200 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeOpenPhoto}
+                      aria-label={t('eliminarFotoLabel')}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white"
+                    >
+                      <CloseIcon className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <select
+                    value={openPhotoMomento ?? ''}
+                    onChange={(e) => setOpenPhotoMomento(e.target.value === 'antes' || e.target.value === 'despues' ? e.target.value : null)}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
                   >
-                    <CloseIcon className="h-3 w-3" />
-                  </button>
-                </div>
+                    <option value="">{t('momentoSinTag')}</option>
+                    <option value="antes">{t('momentoAntes')}</option>
+                    <option value="despues">{t('momentoDespues')}</option>
+                  </select>
+                </>
               ) : (
                 <button
                   type="button"
@@ -1471,9 +1595,13 @@ interface ActoHistorial {
 function ActosRealizadosCard({
   patientId,
   onHistorialChange,
+  autoOpenFormNonce,
 }: {
   patientId: string
   onHistorialChange?: (historial: ActoHistorial[]) => void
+  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") -- ouvre le formulaire dès que ce
+  // compteur change, incrémenté à chaque clic côté parent (voir PatientDetailView).
+  autoOpenFormNonce?: number
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const searchParams = useSearchParams()
@@ -1522,6 +1650,16 @@ function ActosRealizadosCard({
       setAppointmentIdPrefill(appointmentIdParam)
     }
   }, [searchParams, appointmentIdParam])
+
+  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") -- même mécanisme one-shot par
+  // nonce que NotasClinicasCard.autoOpenRequest, pas de PIN ici donc pas besoin d'attendre un état.
+  const handledAutoOpenFormNonceRef = useRef(0)
+  useEffect(() => {
+    if (!autoOpenFormNonce) return
+    if (handledAutoOpenFormNonceRef.current === autoOpenFormNonce) return
+    handledAutoOpenFormNonceRef.current = autoOpenFormNonce
+    setShowForm(true)
+  }, [autoOpenFormNonce])
 
   const resetForm = () => {
     setMode('catalogo')
@@ -1782,11 +1920,8 @@ function HistorialCitasCard({
   }
 
   function resumenFor(appointmentId: string): string | null {
-    const notes = notasPorCita.get(appointmentId)
-    if (!notes) return null
-    const relevante = notes.find((n) => n.categoria && RESUMEN_CATEGORIAS.includes(n.categoria))
-    if (!relevante) return null
-    return relevante.contenido.length > 90 ? `${relevante.contenido.slice(0, 90)}…` : relevante.contenido
+    const relevante = findUltimoResumen(notasPorCita.get(appointmentId) ?? null)
+    return relevante ? truncate(relevante.contenido) : null
   }
 
   const modalAppointment = appointments.find((a) => a.id === modalAppointmentId) ?? null
@@ -1907,6 +2042,260 @@ function HistorialCitasCard({
   )
 }
 
+// Onglet Resumen : "Acciones rápidas" (raccourcis vers des actions déjà existantes, jamais de
+// logique dupliquée) + résumé compact construit uniquement à partir de notesSnapshot/proximoControl
+// transmis par NotasClinicasCard -- mêmes règles de confidentialité que Historial de citas (rien
+// n'est montré tant que Notas clínicas n'est pas déverrouillée).
+function ResumenTab({
+  notesSnapshot,
+  proximoControl,
+  onAgregarActo,
+  onProgramarControl,
+  onSubirFotos,
+}: {
+  notesSnapshot: PatientNote[] | null
+  proximoControl: ProximoControl | null
+  onAgregarActo: () => void
+  onProgramarControl: () => void
+  onSubirFotos: () => void
+}) {
+  const t = useTranslations('dashboard.patientDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
+  const ultimoResumen = findUltimoResumen(notesSnapshot)
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-3 font-semibold text-gray-800">{t('accionesRapidasTitle')}</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={onAgregarActo}
+            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
+              <CashIcon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">{t('agregarActo')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onProgramarControl}
+            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
+              <CalendarIcon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">{t('programarControlQuickAction')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onSubirFotos}
+            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
+              <PhotoIcon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">{t('subirFotosQuickAction')}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-3 font-semibold text-gray-800">{t('resumenClinicoTitle')}</h2>
+
+        {proximoControl?.fecha && (
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500">
+              <CalendarIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-orange-800">{t('proximoControlLabel')}</p>
+              <p className="text-xs text-orange-600">
+                {new Date(proximoControl.fecha).toLocaleDateString(intlLocale)}
+                {proximoControl.meses ? ` · ${t('proximoControlDentroDe', { months: proximoControl.meses })}` : ''}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {ultimoResumen ? (
+          <div className="rounded-lg bg-gray-50 p-3">
+            {ultimoResumen.categoria && (
+              <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${categoryColor(ultimoResumen.categoria)}`}>
+                {ultimoResumen.categoria}
+              </span>
+            )}
+            <p className="text-sm text-gray-700">{truncate(ultimoResumen.contenido, 160)}</p>
+          </div>
+        ) : notesSnapshot === null ? (
+          <p className="text-sm text-gray-400">{t('resumenBloqueadoHint')}</p>
+        ) : !proximoControl?.fecha ? (
+          <p className="text-sm text-gray-400">{t('sinResumenClinico')}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+interface FotoItem {
+  photo: PatientNotePhoto
+  noteId: string
+  date: string
+  pairLabel?: 'antes' | 'despues'
+}
+
+// Construit la liste d'items à afficher dans l'onglet Fotos -- une note avec exactement une photo
+// "antes" ET une photo "despues" devient une paire (affichées côte à côte) ; toute autre
+// combinaison (pas de tag, un seul tag, ou plusieurs photos sans la paire complète) reste un
+// affichage chronologique simple, photo par photo. notes est déjà trié du plus récent au plus
+// ancien (ordre serveur), donc l'ordre de sortie l'est aussi.
+function buildFotoRows(notes: PatientNote[]): { key: string; pair: [FotoItem, FotoItem] | null; single: FotoItem | null }[] {
+  const rows: { key: string; pair: [FotoItem, FotoItem] | null; single: FotoItem | null }[] = []
+  for (const note of notes) {
+    const photos = note.photos ?? []
+    const antes = photos.find((p) => p.momento === 'antes')
+    const despues = photos.find((p) => p.momento === 'despues')
+    if (antes && despues) {
+      rows.push({
+        key: `${note.id}-pair`,
+        pair: [
+          { photo: antes, noteId: note.id, date: note.created_at, pairLabel: 'antes' },
+          { photo: despues, noteId: note.id, date: note.created_at, pairLabel: 'despues' },
+        ],
+        single: null,
+      })
+      for (const p of photos) {
+        if (p.id !== antes.id && p.id !== despues.id) {
+          rows.push({ key: p.id, pair: null, single: { photo: p, noteId: note.id, date: note.created_at } })
+        }
+      }
+    } else {
+      for (const p of photos) {
+        rows.push({ key: p.id, pair: null, single: { photo: p, noteId: note.id, date: note.created_at } })
+      }
+    }
+  }
+  return rows
+}
+
+// Onglet Fotos : TOUTES les photos du patient, toutes notes confondues -- construit uniquement à
+// partir de notesSnapshot transmis par NotasClinicasCard, jamais de fetch propre (même raison que
+// HistorialCitasCard : ne jamais contourner le PIN de Notas clínicas).
+function FotosTab({ notesSnapshot, onGoToNotas }: { notesSnapshot: PatientNote[] | null; onGoToNotas: () => void }) {
+  const t = useTranslations('dashboard.patientDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  if (notesSnapshot === null) {
+    return (
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-[#6926D2]">
+          <LockIcon className="h-6 w-6" />
+        </div>
+        <p className="text-sm text-gray-500">{t('fotosBloqueadoHint')}</p>
+        <button type="button" onClick={onGoToNotas} className="mt-3 text-sm font-medium text-[#6926D2] hover:underline">
+          {t('irANotasClinicas')}
+        </button>
+      </div>
+    )
+  }
+
+  const rows = buildFotoRows(notesSnapshot)
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      {lightboxUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" onClick={() => setLightboxUrl(null)}>
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            aria-label={t('cerrarLabel')}
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxUrl} alt={t('fotoClinicaAlt')} className="max-h-full max-w-full rounded-lg object-contain" />
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <p className="py-6 text-center text-sm text-gray-400">{t('sinFotos')}</p>
+      ) : (
+        <div className="space-y-4">
+          {rows.map((row) =>
+            row.pair ? (
+              <div key={row.key} className="grid grid-cols-2 gap-3">
+                {row.pair.map((item) => (
+                  <div key={item.photo.id} className="overflow-hidden rounded-xl border border-gray-200">
+                    {item.photo.url ? (
+                      <button type="button" onClick={() => setLightboxUrl(item.photo.url)} className="block w-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.photo.url} alt={t('fotoClinicaAlt')} className="h-40 w-full object-cover" />
+                      </button>
+                    ) : (
+                      <div className="flex h-40 w-full items-center justify-center bg-gray-100 text-gray-400">
+                        <PhotoIcon className="h-6 w-6" />
+                      </div>
+                    )}
+                    <p className="bg-violet-50 px-2 py-1 text-center text-xs font-medium text-[#6926D2]">
+                      {item.pairLabel === 'antes' ? t('momentoAntes') : t('momentoDespues')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : row.single ? (
+              <div key={row.key} className="flex items-center gap-3 rounded-xl border border-gray-100 p-2">
+                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200">
+                  {row.single.photo.url ? (
+                    <button type="button" onClick={() => setLightboxUrl(row.single!.photo.url)} className="block h-full w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={row.single.photo.url} alt={t('fotoClinicaAlt')} className="h-full w-full object-cover" />
+                    </button>
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                      <PhotoIcon className="h-5 w-5" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">{new Date(row.single.date).toLocaleDateString(intlLocale)}</p>
+                  {row.single.photo.momento && (
+                    <span className="mt-0.5 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-[#6926D2]">
+                      {row.single.photo.momento === 'antes' ? t('momentoAntes') : t('momentoDespues')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+type PatientTabId = 'resumen' | 'notas' | 'actos' | 'fotos' | 'historial'
+
+function PercentIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 5L5 19M7.5 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm9 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+    </svg>
+  )
+}
+
+function XCircleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M12 21a9 9 0 100-18 9 9 0 000 18z" />
+    </svg>
+  )
+}
+
 export default function PatientDetailView({
   patient,
   appointments,
@@ -1923,6 +2312,39 @@ export default function PatientDetailView({
   const t = useTranslations('dashboard.patientDetail')
   const [notesSnapshot, setNotesSnapshot] = useState<PatientNote[] | null>(null)
   const [historialActos, setHistorialActos] = useState<ActoHistorial[]>([])
+  const [proximoControlSnapshot, setProximoControlSnapshot] = useState<ProximoControl | null>(null)
+  const [activeTab, setActiveTab] = useState<PatientTabId>('resumen')
+
+  // Signaux one-shot (Acciones rápidas, onglet Resumen) consommés respectivement par
+  // ActosRealizadosCard.autoOpenFormNonce et NotasClinicasCard.autoOpenRequest -- jamais de logique
+  // dupliquée, uniquement un changement d'onglet + une demande d'ouverture déjà gérée par ces cartes.
+  const [autoOpenActoFormNonce, setAutoOpenActoFormNonce] = useState(0)
+  const [notasAutoOpenRequest, setNotasAutoOpenRequest] = useState<{ type: 'control' | 'photoCategoria'; nonce: number } | null>(null)
+  const notasNonceRef = useRef(0)
+
+  const handleAgregarActo = () => {
+    setActiveTab('actos')
+    setAutoOpenActoFormNonce((n) => n + 1)
+  }
+  const handleProgramarControl = () => {
+    notasNonceRef.current += 1
+    setActiveTab('notas')
+    setNotasAutoOpenRequest({ type: 'control', nonce: notasNonceRef.current })
+  }
+  const handleSubirFotos = () => {
+    notasNonceRef.current += 1
+    setActiveTab('notas')
+    setNotasAutoOpenRequest({ type: 'photoCategoria', nonce: notasNonceRef.current })
+  }
+
+  const TABS: { id: PatientTabId; label: string }[] = [
+    { id: 'resumen', label: t('tabResumen') },
+    { id: 'notas', label: t('tabNotasClinicas') },
+    { id: 'actos', label: t('tabActosRealizados') },
+    { id: 'fotos', label: t('tabFotos') },
+    { id: 'historial', label: t('tabHistorialCitas') },
+  ]
+
   return (
     <div className="max-w-6xl space-y-6">
       {/* Header */}
@@ -1943,35 +2365,83 @@ export default function PatientDetailView({
         </Link>
       </div>
 
-      {/* Stats en ligne */}
+      {/* Stats en ligne -- icône en médaillon violet/vert/rose, mêmes données qu'avant */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
-          <p className="text-3xl font-semibold text-gray-900">{totalAppointments}</p>
-          <p className="mt-1 text-xs text-gray-500">{t('citasTotales')}</p>
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
+            <CalendarIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-gray-900">{totalAppointments}</p>
+            <p className="text-xs text-gray-500">{t('citasTotales')}</p>
+          </div>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
-          <p className="text-3xl font-semibold text-gray-900">
-            {presenceRate !== null ? `${presenceRate}%` : '—'}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">{t('tasaAsistencia')}</p>
-          {presenceRate !== null && <p className="mt-0.5 text-xs text-gray-400">{t('marcadas', { count: markedAppointments })}</p>}
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <PercentIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-gray-900">{presenceRate !== null ? `${presenceRate}%` : '—'}</p>
+            <p className="text-xs text-gray-500">{t('tasaAsistencia')}</p>
+            {presenceRate !== null && <p className="text-xs text-gray-400">{t('marcadas', { count: markedAppointments })}</p>}
+          </div>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-sm">
-          <p className="text-3xl font-semibold text-gray-900">
-            {appointments.filter((a) => a.presente === false).length}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">{t('noShows')}</p>
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+            <XCircleIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-gray-900">{appointments.filter((a) => a.presente === false).length}</p>
+            <p className="text-xs text-gray-500">{t('noShows')}</p>
+          </div>
         </div>
       </div>
 
-      {/* Notas clínicas + Actos realizados côte à côte (gestes actifs d'une visite) sur desktop,
-          empilés sur mobile -- Historial de citas (consultation, pas saisie) redescendu en dessous. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <NotasClinicasCard patientId={patient.id} onNotesChange={setNotesSnapshot} />
-        <ActosRealizadosCard patientId={patient.id} onHistorialChange={setHistorialActos} />
+      {/* Onglets */}
+      <div className="flex gap-1 overflow-x-auto border-b border-gray-200">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id ? 'border-[#6926D2] text-[#6926D2]' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
+      {/* Tous les panneaux restent montés en permanence (affichage CSS only, jamais démontés) :
+          NotasClinicasCard doit garder son minuteur d'inactivité, son brouillon de session et son
+          état déverrouillé intacts quel que soit l'onglet affiché. */}
+      <div className={activeTab === 'resumen' ? '' : 'hidden'}>
+        <ResumenTab
+          notesSnapshot={notesSnapshot}
+          proximoControl={proximoControlSnapshot}
+          onAgregarActo={handleAgregarActo}
+          onProgramarControl={handleProgramarControl}
+          onSubirFotos={handleSubirFotos}
+        />
+      </div>
+      <div className={activeTab === 'notas' ? '' : 'hidden'}>
+        <NotasClinicasCard
+          patientId={patient.id}
+          onNotesChange={setNotesSnapshot}
+          onProximoControlChange={setProximoControlSnapshot}
+          autoOpenRequest={notasAutoOpenRequest}
+        />
+      </div>
+      <div className={activeTab === 'actos' ? '' : 'hidden'}>
+        <ActosRealizadosCard patientId={patient.id} onHistorialChange={setHistorialActos} autoOpenFormNonce={autoOpenActoFormNonce} />
+      </div>
+      <div className={activeTab === 'fotos' ? '' : 'hidden'}>
+        <FotosTab notesSnapshot={notesSnapshot} onGoToNotas={() => setActiveTab('notas')} />
+      </div>
+      <div className={activeTab === 'historial' ? '' : 'hidden'}>
+        <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
+      </div>
     </div>
   )
 }

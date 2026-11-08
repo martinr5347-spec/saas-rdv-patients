@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
-import { telefonosCoinciden } from '@/lib/patients/normalizeTelefono'
+import { telefonosCoinciden, telefonoTieneLongitudMinima } from '@/lib/patients/normalizeTelefono'
 
 export async function POST(req: Request) {
   const supabase = createClient()
@@ -29,6 +29,9 @@ export async function POST(req: Request) {
   }
   if (!email && !telefono) {
     return NextResponse.json({ error: m.errorFaltaEmailTelefono }, { status: 400 })
+  }
+  if (telefono && !telefonoTieneLongitudMinima(telefono)) {
+    return NextResponse.json({ error: m.errorTelefonoInvalido }, { status: 400 })
   }
 
   // Dédoublonnage contre les patients déjà existants de l'organisation -- même règle que l'import

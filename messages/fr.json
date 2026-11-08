@@ -285,6 +285,7 @@
         "submitting": "Création...",
         "errorFaltaNombre": "Le nom est manquant",
         "errorFaltaEmailTelefono": "E-mail et téléphone manquants (au moins l'un des deux est requis)",
+        "errorTelefonoInvalido": "Téléphone invalide (minimum 6 chiffres)",
         "errorNoAutenticado": "Non authentifié",
         "errorNoAutorizado": "Non autorisé",
         "errorCrear": "Erreur lors de la création du patient",
@@ -334,6 +335,7 @@
         "errorMaxFilas": "Maximum {max} lignes par importation",
         "errorFaltaNombre": "Le nom est manquant",
         "errorFaltaEmailTelefono": "E-mail et téléphone manquants (au moins l'un des deux est requis)",
+        "errorTelefonoInvalido": "Téléphone invalide (minimum 6 chiffres)",
         "errorInsertParcial": "Erreur lors de l'insertion de certains patients -- vous pouvez réessayer avec le même fichier, ceux déjà importés seront automatiquement ignorés."
       }
     },

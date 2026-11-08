@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
-import { telefonosCoinciden } from '@/lib/patients/normalizeTelefono'
+import { telefonosCoinciden, telefonoTieneLongitudMinima } from '@/lib/patients/normalizeTelefono'
 
 interface ImportRow {
   nombre: string
@@ -50,6 +50,10 @@ export async function POST(req: Request) {
     }
     if (!email && !telefono) {
       erroresValidacion.push({ fila: i + 1, motivo: m.errorFaltaEmailTelefono })
+      return
+    }
+    if (telefono && !telefonoTieneLongitudMinima(telefono)) {
+      erroresValidacion.push({ fila: i + 1, motivo: m.errorTelefonoInvalido })
       return
     }
     candidatos.push({ nombre, email, telefono })

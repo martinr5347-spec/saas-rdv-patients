@@ -285,6 +285,7 @@
         "submitting": "Criando...",
         "errorFaltaNombre": "Falta o nome",
         "errorFaltaEmailTelefono": "Falta e-mail e telefone (pelo menos um é necessário)",
+        "errorTelefonoInvalido": "Telefone inválido (mínimo de 6 dígitos)",
         "errorNoAutenticado": "Não autenticado",
         "errorNoAutorizado": "Não autorizado",
         "errorCrear": "Erro ao criar o paciente",
@@ -334,6 +335,7 @@
         "errorMaxFilas": "Máximo de {max} linhas por importação",
         "errorFaltaNombre": "Falta o nome",
         "errorFaltaEmailTelefono": "Falta e-mail e telefone (pelo menos um é necessário)",
+        "errorTelefonoInvalido": "Telefone inválido (mínimo de 6 dígitos)",
         "errorInsertParcial": "Erro ao inserir alguns pacientes -- você pode tentar novamente com o mesmo arquivo, os já importados serão ignorados automaticamente."
       }
     },

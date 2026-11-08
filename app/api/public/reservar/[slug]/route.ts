@@ -5,6 +5,7 @@ import { createPaymentLink } from '@/lib/payments/mercadopago'
 import { dispatch } from '@/lib/dispatcher'
 import { ahoraEnFuseau } from '@/lib/utils/timezone'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
+import { TELEFONO_MIN_DIGITOS, telefonosCoinciden } from '@/lib/patients/normalizeTelefono'
 
 // Ajoute des jours a une date 'YYYY-MM-DD' en arithmetique UTC explicite -- new Date(`${fecha}T00:00:00`)
 // dependrait du fuseau local du processus Node qui execute cette route, pas de celui de l'organisation ;
@@ -170,6 +171,21 @@ function normalizarTelefono(indicativo: string, numero: string): string {
   return `${indicativo}${digitos}`
 }
 
+// telefonosCoinciden() ne s'exprime pas en filtre .eq() (comparaison normalisee sur le suffixe) --
+// meme approche que POST /api/patients et import/commit/route.ts : charger les patients de
+// l'organisation une fois et comparer en memoire.
+async function findPatientByTelefono(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  organizationId: string,
+  telefono: string
+): Promise<{ id: string } | null> {
+  const { data: existants } = await supabase.from('patients').select('id, telefono').eq('organization_id', organizationId)
+  for (const p of existants ?? []) {
+    if (telefonosCoinciden(telefono, p.telefono)) return { id: p.id }
+  }
+  return null
+}
+
 export async function POST(req: Request, { params }: { params: { slug: string } }) {
   const supabase = createServiceRoleClient()
   const body = await req.json().catch(() => null)
@@ -196,7 +212,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
   }
-  if (!/^\+\d{1,4}$/.test(indicativo) || telefonoNumero.replace(/\D/g, '').length < 6) {
+  if (!/^\+\d{1,4}$/.test(indicativo) || telefonoNumero.replace(/\D/g, '').length < TELEFONO_MIN_DIGITOS) {
     return NextResponse.json({ error: 'Teléfono inválido' }, { status: 400 })
   }
   const telefono = normalizarTelefono(indicativo, telefonoNumero)
@@ -264,9 +280,13 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     return NextResponse.json({ error: 'Este horario ya no está disponible, elige otro.' }, { status: 409 })
   }
 
-  // Dedup patient -- meme ordre que le webhook Calendly : telefono d'abord, email ensuite.
+  // Dedup patient -- meme ordre que le webhook Calendly : telefono d'abord, email ensuite. Le
+  // telefono se compare normalise (lib/patients/normalizeTelefono.ts, meme fonction que
+  // POST /api/patients et l'import en masse) -- pas une egalite stricte de chaine, puisque ce
+  // telefono est stocke ici au format canonique indicativo+chiffres alors qu'un patient cree a
+  // la main ou importe peut avoir ete enregistre dans un autre format pour le meme numero.
   let patientId: string | null = null
-  const { data: byPhone } = await supabase.from('patients').select('id').eq('organization_id', org.id).eq('telefono', telefono).maybeSingle()
+  const byPhone = await findPatientByTelefono(supabase, org.id, telefono)
   if (byPhone) patientId = byPhone.id
   if (!patientId) {
     const { data: byEmail } = await supabase.from('patients').select('id').eq('organization_id', org.id).eq('email', email).maybeSingle()
@@ -284,7 +304,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       // vraie erreur : l'autre requete a cree le patient entre notre lookup et notre insert,
       // on le recupere au lieu d'echouer.
       if (patientError?.code === '23505') {
-        const { data: retryPhone } = await supabase.from('patients').select('id').eq('organization_id', org.id).eq('telefono', telefono).maybeSingle()
+        const retryPhone = await findPatientByTelefono(supabase, org.id, telefono)
         const { data: retryEmail } = !retryPhone
           ? await supabase.from('patients').select('id').eq('organization_id', org.id).eq('email', email).maybeSingle()
           : { data: null }

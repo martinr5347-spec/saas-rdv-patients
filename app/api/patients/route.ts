@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
+import { telefonosCoinciden } from '@/lib/patients/normalizeTelefono'
 
 export async function POST(req: Request) {
   const supabase = createClient()
@@ -66,23 +67,19 @@ async function findDuplicatePatient(
   email: string | null,
   telefono: string | null
 ): Promise<{ id: string } | null> {
-  if (email) {
-    const { data } = await supabase
-      .from('patients')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('email', email)
-      .maybeSingle()
-    if (data) return data
-  }
-  if (telefono) {
-    const { data } = await supabase
-      .from('patients')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('telefono', telefono)
-      .maybeSingle()
-    if (data) return data
+  if (!email && !telefono) return null
+
+  // Le telefono se compare normalise (cf. lib/patients/normalizeTelefono.ts), ce qu'un filtre
+  // .eq() ne peut pas exprimer -- on charge donc les patients de l'organisation une fois et on
+  // compare en memoire, meme approche que l'import en masse (import/commit/route.ts).
+  const { data: existants } = await supabase
+    .from('patients')
+    .select('id, email, telefono')
+    .eq('organization_id', organizationId)
+
+  for (const p of existants ?? []) {
+    if (email && p.email === email) return { id: p.id }
+    if (telefono && telefonosCoinciden(telefono, p.telefono)) return { id: p.id }
   }
   return null
 }

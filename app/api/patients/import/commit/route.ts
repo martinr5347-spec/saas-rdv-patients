@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getRouteMessages } from '@/lib/i18n/getRouteLocale'
+import { telefonosCoinciden } from '@/lib/patients/normalizeTelefono'
 
 interface ImportRow {
   nombre: string
@@ -54,20 +55,22 @@ export async function POST(req: Request) {
     candidatos.push({ nombre, email, telefono })
   })
 
-  // Dédoublonnage DANS le fichier lui-même (garde la première occurrence)
+  // Dédoublonnage DANS le fichier lui-même (garde la première occurrence). Le telefono se compare
+  // normalisé (lib/patients/normalizeTelefono.ts) -- pas d'égalité stricte de chaîne, donc pas de
+  // Set direct pour lui, une liste parcourue avec telefonosCoinciden() à la place.
   const emailsVus = new Set<string>()
-  const telefonosVus = new Set<string>()
+  const telefonosVus: string[] = []
   const omitidosEnArchivo: number[] = []
   const unicos: ImportRow[] = []
   candidatos.forEach((row, i) => {
     const dupEmail = row.email && emailsVus.has(row.email)
-    const dupTelefono = row.telefono && telefonosVus.has(row.telefono)
+    const dupTelefono = row.telefono && telefonosVus.some((t) => telefonosCoinciden(t, row.telefono))
     if (dupEmail || dupTelefono) {
       omitidosEnArchivo.push(i)
       return
     }
     if (row.email) emailsVus.add(row.email)
-    if (row.telefono) telefonosVus.add(row.telefono)
+    if (row.telefono) telefonosVus.push(row.telefono)
     unicos.push(row)
   })
 
@@ -88,11 +91,11 @@ export async function POST(req: Request) {
       .eq('organization_id', organizationId)
 
     const emailsExistants = new Set((existants ?? []).map((p) => p.email).filter(Boolean))
-    const telefonosExistants = new Set((existants ?? []).map((p) => p.telefono).filter(Boolean))
+    const telefonosExistants = (existants ?? []).map((p) => p.telefono).filter(Boolean) as string[]
 
     aInserer = unicos.filter((r) => {
       const yaExisteEmail = r.email && emailsExistants.has(r.email)
-      const yaExisteTelefono = r.telefono && telefonosExistants.has(r.telefono)
+      const yaExisteTelefono = r.telefono && telefonosExistants.some((t) => telefonosCoinciden(t, r.telefono))
       return !yaExisteEmail && !yaExisteTelefono
     })
   }

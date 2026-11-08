@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
 import ImportPatientsModal from './ImportPatientsModal'
+import NewPatientModal from './NewPatientModal'
 
 export interface PatientRow {
   id: string
@@ -18,18 +19,28 @@ export default function PatientsView({ patients }: { patients: PatientRow[] }) {
   const t = useTranslations('dashboard.patients')
   const router = useRouter()
   const [importOpen, setImportOpen] = useState(false)
+  const [newPatientOpen, setNewPatientOpen] = useState(false)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
-        <button
-          type="button"
-          onClick={() => setImportOpen(true)}
-          className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
-        >
-          {t('importButton')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setNewPatientOpen(true)}
+            className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+          >
+            {t('newPatientButton')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="rounded-xl border border-[#6926D2] px-4 py-2 text-sm font-medium text-[#6926D2] transition-all hover:bg-[#6926D2]/5 active:scale-[0.98]"
+          >
+            {t('importButton')}
+          </button>
+        </div>
       </div>
       <TableContainer>
         <Table>
@@ -60,6 +71,15 @@ export default function PatientsView({ patients }: { patients: PatientRow[] }) {
           onClose={() => setImportOpen(false)}
           onImported={() => {
             setImportOpen(false)
+            router.refresh()
+          }}
+        />
+      )}
+      {newPatientOpen && (
+        <NewPatientModal
+          onClose={() => setNewPatientOpen(false)}
+          onCreated={() => {
+            setNewPatientOpen(false)
             router.refresh()
           }}
         />

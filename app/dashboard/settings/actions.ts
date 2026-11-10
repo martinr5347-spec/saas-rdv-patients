@@ -357,54 +357,13 @@ export async function updateMpAccessToken(token: string): Promise<{ ok: boolean;
   }
 }
 
-// Chemin de sauvegarde dedie aux champs Twilio -- meme raison que updateMpAccessToken : le token
-// doit etre chiffre avant stockage et jamais renvoye en clair, et ne doit jamais etre ecrase par
-// une valeur vide (laisser le champ auth token vide = "je ne change pas le token actuel"). Pas de
-// toggle self-service pour canal_whatsapp_provider ici -- bascule geree manuellement par Martin en
-// base le temps de valider le flux pour chaque organisation.
-export async function updateTwilioSettings(
-  subaccountSid: string,
-  whatsappNumber: string,
-  authToken: string
-): Promise<{ ok: boolean; error?: string; last4?: string }> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('organization_id, role')
-    .eq('id', user?.id ?? '')
-    .maybeSingle()
-
-  if (!profile?.organization_id) return { ok: false, error: 'No autorizado' }
-  if (profile.role !== 'praticien' && profile.role !== 'admin') {
-    return { ok: false, error: 'No tienes permiso para modificar la integración de WhatsApp' }
-  }
-
-  const trimmedSid = subaccountSid.trim()
-  const trimmedNumber = whatsappNumber.trim()
-  const trimmedToken = authToken.trim()
-
-  if (!trimmedSid || !trimmedNumber) {
-    return { ok: false, error: 'Completa el subaccount SID y el número de WhatsApp' }
-  }
-
-  const update: { twilio_subaccount_sid: string; twilio_whatsapp_number: string; twilio_auth_token_encrypted?: string } = {
-    twilio_subaccount_sid: trimmedSid,
-    twilio_whatsapp_number: trimmedNumber,
-  }
-  if (trimmedToken) {
-    update.twilio_auth_token_encrypted = encryptSecret(trimmedToken)
-  }
-
-  const { error } = await supabase.from('org_settings').update(update).eq('organization_id', profile.organization_id)
-
-  if (error) return { ok: false, error: error.message }
-
-  revalidatePath('/dashboard/settings')
-  return { ok: true, last4: trimmedToken ? trimmedToken.slice(-4) : undefined }
+// Le compte Twilio (subaccount SID, numero WhatsApp, token) est gere et paye entierement par
+// Martin, jamais par le praticien -- cf. TwilioSettingsFields retire de SettingsView.tsx. Cette
+// action reste exportee (donc joignable en appel direct hors UI, ex. requete reseau directe vers
+// la server action) mais ne doit plus jamais avoir d'effet : elle renvoie toujours une erreur sans
+// lire ni ecrire org_settings. Martin continue d'editer ces 3 champs directement en base.
+export async function updateTwilioSettings(): Promise<{ ok: boolean; error?: string; last4?: string }> {
+  return { ok: false, error: 'No autorizado' }
 }
 
 export async function updateCategoriasNotas(categorias: string[]) {

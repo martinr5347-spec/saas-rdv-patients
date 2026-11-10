@@ -10,7 +10,6 @@ import {
   updateCategoriasNotas,
   updateCategoriasConFoto,
   updateMpAccessToken,
-  updateTwilioSettings,
   updateActoPrecios,
 } from './actions'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
@@ -27,14 +26,16 @@ export default async function SettingsPage() {
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
-  // IMPORTANT : jamais select('*') ici -- mp_access_token/twilio_auth_token_encrypted ne doivent
-  // jamais atteindre le payload envoyé au client. Sélectionnés explicitement ci-dessous uniquement
-  // pour calculer les indicateurs "configuré/termine en" côté serveur, puis exclus de l'objet
-  // `settings` transmis à la vue.
+  // IMPORTANT : jamais select('*') ici -- mp_access_token ne doit jamais atteindre le payload
+  // envoyé au client. Sélectionné explicitement ci-dessous uniquement pour calculer l'indicateur
+  // "configuré/termine en" côté serveur, puis exclu de l'objet `settings` transmis à la vue.
+  // twilio_subaccount_sid/twilio_whatsapp_number/twilio_auth_token_encrypted ne sont plus
+  // sélectionnés ici : ces champs ne sont plus affichés ni modifiables depuis cette page (compte
+  // Twilio géré par Martin directement en base), seul lib/dispatcher les lit encore.
   const { data: settingsRaw } = await supabase
     .from('org_settings')
     .select(
-      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
+      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
     )
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
@@ -48,16 +49,6 @@ export default async function SettingsPage() {
       // Valeur stockée avant le chiffrement (legacy en clair) ou corrompue -- ne pas planter la
       // page pour autant, juste ne pas afficher les 4 derniers chiffres.
       console.error('Erreur déchiffrement mp_access_token:', e)
-    }
-  }
-
-  const twilioAuthTokenConfigured = !!settingsRaw?.twilio_auth_token_encrypted
-  let twilioAuthTokenLast4: string | null = null
-  if (settingsRaw?.twilio_auth_token_encrypted) {
-    try {
-      twilioAuthTokenLast4 = decryptSecret(settingsRaw.twilio_auth_token_encrypted).slice(-4)
-    } catch (e) {
-      console.error('Erreur déchiffrement twilio_auth_token_encrypted:', e)
     }
   }
 
@@ -75,8 +66,6 @@ export default async function SettingsPage() {
         canal_email: settingsRaw.canal_email,
         canal_whatsapp: settingsRaw.canal_whatsapp,
         canal_whatsapp_provider: settingsRaw.canal_whatsapp_provider,
-        twilio_subaccount_sid: settingsRaw.twilio_subaccount_sid,
-        twilio_whatsapp_number: settingsRaw.twilio_whatsapp_number,
         variantes_mensaje: settingsRaw.variantes_mensaje,
         categorias_notas: settingsRaw.categorias_notas,
         categorias_con_foto: settingsRaw.categorias_con_foto,
@@ -128,8 +117,6 @@ export default async function SettingsPage() {
       codigoSeguridadUpdatedAt={profile?.codigo_seguridad_updated_at ?? null}
       mpTokenConfigured={mpTokenConfigured}
       mpTokenLast4={mpTokenLast4}
-      twilioAuthTokenConfigured={twilioAuthTokenConfigured}
-      twilioAuthTokenLast4={twilioAuthTokenLast4}
       actos={actos}
       updateProfileAction={updateProfile}
       updateFacturacionAction={updateFacturacion}
@@ -140,7 +127,6 @@ export default async function SettingsPage() {
       updateCategoriasNotasAction={updateCategoriasNotas}
       updateCategoriasConFotoAction={updateCategoriasConFoto}
       updateMpAccessTokenAction={updateMpAccessToken}
-      updateTwilioSettingsAction={updateTwilioSettings}
       updateActoPreciosAction={updateActoPrecios}
     />
   )

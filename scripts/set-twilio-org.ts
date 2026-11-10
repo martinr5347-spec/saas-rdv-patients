@@ -67,23 +67,25 @@ async function main() {
     process.exit(1)
   }
 
-  const { data: updated, error: updateError } = await supabase
+  // upsert (pas update) : une organisation peut en theorie ne pas encore avoir de ligne
+  // org_settings -- un simple update echouerait alors silencieusement (0 ligne affectee, pas
+  // d'erreur). onConflict sur organization_id (cle primaire de org_settings) : relancer le script
+  // sur la meme organisation remplace les valeurs existantes, jamais de doublon de ligne.
+  const { error: upsertError } = await supabase
     .from('org_settings')
-    .update({
-      twilio_subaccount_sid: subaccountSid,
-      twilio_whatsapp_number: whatsappNumber,
-      twilio_auth_token_encrypted: encrypted,
-      canal_whatsapp_provider: 'twilio',
-    })
-    .eq('organization_id', organizationId)
-    .select('organization_id')
+    .upsert(
+      {
+        organization_id: organizationId,
+        twilio_subaccount_sid: subaccountSid,
+        twilio_whatsapp_number: whatsappNumber,
+        twilio_auth_token_encrypted: encrypted,
+        canal_whatsapp_provider: 'twilio',
+      },
+      { onConflict: 'organization_id' }
+    )
 
-  if (updateError) {
-    console.error(`Erreur lors de l'ecriture en base : ${updateError.message}`)
-    process.exit(1)
-  }
-  if (!updated || updated.length === 0) {
-    console.error(`Aucune ligne org_settings trouvee pour l'organisation ${organizationId} -- rien n'a ete ecrit.`)
+  if (upsertError) {
+    console.error(`Erreur lors de l'ecriture en base : ${upsertError.message}`)
     process.exit(1)
   }
 

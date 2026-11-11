@@ -1,0 +1,3 @@
+# Fixe les fins de ligne une fois pour toutes (evite le bruit CRLF/LF constate le 11/11/2026) --
+# tout fichier texte est normalise en LF dans le depot, quel que soit l'OS qui l'edite.
+* text=auto eol=lf

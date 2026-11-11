@@ -294,19 +294,22 @@ export async function updatePlantillas(formData: FormData) {
     }
   }
 
-  // "control_recall" n'a qu'un canal (email) -- pas de boucle CANALES ici, contrairement aux 5 types ci-dessus.
-  const controlRecallContent = getControlRecallVariantContent(varianteControlRecall, finalLangue)
-  await supabase.from('message_templates').upsert(
-    {
-      organization_id: profile.organization_id,
-      type: 'control_recall',
-      canal: 'email',
-      langue: finalLangue,
-      sujet: controlRecallContent.sujet ?? null,
-      corps: controlRecallContent.corps,
-    },
-    { onConflict: 'organization_id,type,canal,langue' }
-  )
+  // "control_recall" respecte desormais aussi canal_email/canal_whatsapp (lib/cron/patient-recall.ts) --
+  // meme boucle CANALES que les 6 types ci-dessus.
+  for (const canal of CANALES) {
+    const controlRecallContent = getControlRecallVariantContent(varianteControlRecall, canal, finalLangue)
+    await supabase.from('message_templates').upsert(
+      {
+        organization_id: profile.organization_id,
+        type: 'control_recall',
+        canal,
+        langue: finalLangue,
+        sujet: controlRecallContent.sujet ?? null,
+        corps: controlRecallContent.corps,
+      },
+      { onConflict: 'organization_id,type,canal,langue' }
+    )
+  }
 
   revalidatePath('/dashboard', 'layout')
   redirect(`/dashboard/settings?saved=${Date.now()}`)

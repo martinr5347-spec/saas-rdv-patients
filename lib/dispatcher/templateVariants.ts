@@ -610,19 +610,21 @@ export function getPreview(type: NotificationType, variant: VariantId, langue: L
   return PREVIEWS[type][variant][langue]
 }
 
-// "control_recall" reste hors de NotificationType/Catalog volontairement : ce type n'a qu'un canal
-// (email), alors que Catalog impose une variante whatsapp pour chaque type -- inutile ici. Stocké
-// dans sa propre colonne org_settings.variante_control_recall plutôt que dans variantes_mensaje.
+// "control_recall" reste hors de NotificationType/Catalog volontairement (son propre catalogue,
+// sa propre colonne org_settings.variante_control_recall plutot que variantes_mensaje) mais a
+// desormais, comme Catalog, une dimension Canal (email/whatsapp) : le rappel de controle respecte
+// canal_email/canal_whatsapp au meme titre que les 7 autres types (lib/cron/patient-recall.ts).
 export const CONTROL_RECALL_LABEL: Record<Langue, string> = {
   es: 'Recordatorio de control',
   pt: 'Lembrete de retorno',
 }
 
-export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantContent>> = {
+export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Canal, Record<Langue, VariantContent>>> = {
   standard: {
-    es: {
-      sujet: 'Es momento de tu control',
-      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+    email: {
+      es: {
+        sujet: 'Es momento de tu control',
+        corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
     <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128197;</div>
     <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">Es momento de tu control</h1>
@@ -635,10 +637,10 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
   </div>
 </div>`,
-    },
-    pt: {
-      sujet: 'É hora do seu retorno',
-      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+      },
+      pt: {
+        sujet: 'É hora do seu retorno',
+        corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
     <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128197;</div>
     <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">É hora do seu retorno</h1>
@@ -651,14 +653,26 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
   </div>
 </div>`,
+      },
+    },
+    // Meme message que l'email ci-dessus, mot pour mot (titre + paragraphe + texte du bouton),
+    // juste converti en texte brut (balises retirees, lien en clair) -- aucun nouveau texte invente.
+    whatsapp: {
+      es: {
+        corps: `📅 Es momento de tu control\n\nHola {{nom_patient}}, ha llegado el momento de programar tu consulta de control con {{nombre_cabinet}}.\n{{#if reserva_url}}\nReservar mi cita:\n{{reserva_url}}{{/if}}`,
+      },
+      pt: {
+        corps: `📅 É hora do seu retorno\n\nOlá {{nom_patient}}, chegou a hora de agendar sua consulta de retorno com {{nombre_cabinet}}.\n{{#if reserva_url}}\nAgendar minha consulta:\n{{reserva_url}}{{/if}}`,
+      },
     },
   },
   // Même écart de ton que les variantes "cálido" des 5 types existants ci-dessus (emoji discret,
   // formule plus personnelle). Contenu rédigé directement ici -- non issu d'un brouillon externe.
   calido: {
-    es: {
-      sujet: '¡Hora de tu controlcito! 😊',
-      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+    email: {
+      es: {
+        sujet: '¡Hora de tu controlcito! 😊',
+        corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
     <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128204;</div>
     <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">¡Hola {{nom_patient}}! 😊</h1>
@@ -671,10 +685,10 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
   </div>
 </div>`,
-    },
-    pt: {
-      sujet: 'Hora do seu retornozinho! 😊',
-      corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+      },
+      pt: {
+        sujet: 'Hora do seu retornozinho! 😊',
+        corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
     <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128204;</div>
     <h1 style="margin:0;font-size:19px;color:#ffffff;font-weight:700;">Olá {{nom_patient}}! 😊</h1>
@@ -687,12 +701,21 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Langue, VariantCo
     <p style="margin:0;font-size:12px;color:#9ca3af;">{{nombre_cabinet}}</p>
   </div>
 </div>`,
+      },
+    },
+    whatsapp: {
+      es: {
+        corps: `📌 ¡Hola {{nom_patient}}! 😊\n\nHa llegado el momento de tu control con {{nombre_cabinet}}. ¡Nos encantaría verte de nuevo!\n{{#if reserva_url}}\nReservar mi cita:\n{{reserva_url}}{{/if}}`,
+      },
+      pt: {
+        corps: `📌 Olá {{nom_patient}}! 😊\n\nChegou a hora do seu retorno com {{nombre_cabinet}}. Ficaríamos muito felizes em te ver de novo!\n{{#if reserva_url}}\nAgendar minha consulta:\n{{reserva_url}}{{/if}}`,
+      },
     },
   },
 }
 
-export function getControlRecallVariantContent(variant: VariantId, langue: Langue): VariantContent {
-  return CONTROL_RECALL_VARIANTS[variant][langue]
+export function getControlRecallVariantContent(variant: VariantId, canal: Canal, langue: Langue): VariantContent {
+  return CONTROL_RECALL_VARIANTS[variant][canal][langue]
 }
 
 const CONTROL_RECALL_PREVIEWS: Record<VariantId, Record<Langue, string>> = {
@@ -734,4 +757,16 @@ export const TWILIO_CONTENT_SIDS: TwilioContentSidCatalog = {
 
 export function getTwilioContentSid(type: NotificationType, variant: VariantId, langue: Langue): string | null {
   return TWILIO_CONTENT_SIDS[type][variant][langue]
+}
+
+// Meme principe que TWILIO_CONTENT_SIDS ci-dessus, catalogue separe car control_recall n'est pas
+// un NotificationType -- toutes les valeurs a null par defaut, Martin les renseigne manuellement
+// une fois le template Meta soumis et approuve via la Console Twilio.
+export const CONTROL_RECALL_TWILIO_CONTENT_SIDS: Record<VariantId, Record<Langue, string | null>> = {
+  standard: nullPerLangue(),
+  calido: nullPerLangue(),
+}
+
+export function getControlRecallTwilioContentSid(variant: VariantId, langue: Langue): string | null {
+  return CONTROL_RECALL_TWILIO_CONTENT_SIDS[variant][langue]
 }

@@ -7,8 +7,9 @@ import { Database } from '@/types/database'
 import { getDailyLimit, startOfTodayIso, MIN_SECONDS_BETWEEN_MESSAGES } from './warming'
 import { formatDisplayDate, formatDisplayTime } from '@/lib/utils/timezone'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
-import { NotificationType, VariantId, getTwilioContentSid } from './templateVariants'
+import { NotificationType, VariantId, getTwilioContentSid, TWILIO_VARIABLE_ORDER, buildTwilioContentVariables } from './templateVariants'
 import { extraerPrimerNombre } from '@/lib/utils/nombre'
+import { buildReservaUrl } from '@/lib/utils/reservaUrl'
 
 type Appointment = Database['public']['Tables']['appointments']['Row']
 type OrgSettings = Database['public']['Tables']['org_settings']['Row']
@@ -37,6 +38,7 @@ function buildTemplateValues(appt: AppointmentWithRelations): Record<string, str
   const costoTotal = settings?.costo_total
   const hasCostoDesglose = typeof costoTotal === 'number' && costoTotal > montoAcompte
   const restoPagar = hasCostoDesglose ? costoTotal - montoAcompte : null
+  const monnaie = settings?.monnaie ?? 'PEN'
 
   return {
     nom_patient: extraerPrimerNombre(patient?.nom ?? ''),
@@ -44,10 +46,16 @@ function buildTemplateValues(appt: AppointmentWithRelations): Record<string, str
     hora_cita: horaCita,
     link_pago: appt.link_pago ?? '',
     monto_acompte: montoAcompte.toFixed(2),
-    monnaie: settings?.monnaie ?? 'PEN',
+    monnaie,
+    // Valeur composee pour les templates Twilio/Meta (une seule variable numerotee, cf.
+    // TWILIO_VARIABLE_ORDER) -- monto_acompte/monnaie restent par ailleurs inchanges, toujours
+    // utilises individuellement par les templates email/Unipile existants.
+    monto_con_moneda: `${montoAcompte.toFixed(2)} ${monnaie}`,
     nombre_cabinet: org?.nom ?? '',
     direccion: org?.adresse ?? '',
-    calendly_url: settings?.calendly_url ?? '',
+    // anulacion est le seul type a utiliser ce lien (reagendar) -- reservar/[slug] plutot que
+    // calendly_url, meme logique que control_recall (lib/cron/patient-recall.ts).
+    reserva_url: buildReservaUrl(org?.slug ?? null, settings?.calendly_url ?? null),
     costo_total: typeof costoTotal === 'number' ? costoTotal.toFixed(2) : '',
     resto_pagar: restoPagar !== null ? restoPagar.toFixed(2) : '',
     gestion_link: `${process.env.NEXT_PUBLIC_APP_URL}/gestionar/${appt.gestion_token}`,
@@ -66,16 +74,16 @@ function renderTemplate(corps: string, appt: AppointmentWithRelations, extraCond
   const costoTotal = settings?.costo_total
   const hasCostoDesglose = typeof costoTotal === 'number' && costoTotal > montoAcompte
 
+  const values = buildTemplateValues(appt)
+
   // Conditions consommées par {{#if ...}} — jamais interpolées telles quelles.
   const conditions: Record<string, boolean> = {
     direccion: Boolean(org?.adresse),
     costo_desglose: hasCostoDesglose,
-    calendly_url: Boolean(settings?.calendly_url),
+    reserva_url: Boolean(values.reserva_url),
     link_pago: Boolean(appt.link_pago),
     ...extraConditions,
   }
-
-  const values = buildTemplateValues(appt)
 
   // Supporte un {{else}} optionnel -- necessaire pour cambio_praticien ("annule" vs "reprogramme"
   // dans le meme sujet/corps). Les templates existants sans {{else}} continuent de fonctionner
@@ -401,6 +409,9 @@ export async function dispatch(job: NotificationJob) {
           }
 
           const templateValues = buildTemplateValues(typedAppt)
+          // Les templates Meta approuves dans la Console Twilio utilisent des variables numerotees
+          // ({{1}}, {{2}}, ...), pas les noms internes de templateValues -- cf. TWILIO_VARIABLE_ORDER.
+          const contentVariables = buildTwilioContentVariables(TWILIO_VARIABLE_ORDER[job.type as NotificationType][variant], templateValues)
           const statusCallbackUrl = process.env.NEXT_PUBLIC_APP_URL
             ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`
             : undefined
@@ -411,7 +422,7 @@ export async function dispatch(job: NotificationJob) {
             fromNumber,
             phone,
             contentSid,
-            templateValues,
+            contentVariables,
             statusCallbackUrl
           )
           twilioMessageSid = result.sid

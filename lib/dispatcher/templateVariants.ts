@@ -309,8 +309,8 @@ ${dateBox('às')}
             '#b91c1c', '#991b1b', '❌', 'Cita cancelada',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Hola {{nom_patient}}, tu cita con <strong>{{nombre_cabinet}}</strong> ha sido cancelada automáticamente por no recibir el adelanto a tiempo:</p>
 ${dateBoxSimple('a las')}
-    {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Si deseas reagendar, hazlo aquí mismo:</p>
-    <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reagendar cita</a>{{/if}}`
+    {{#if reserva_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Si deseas reagendar, hazlo aquí mismo:</p>
+    <a href="{{reserva_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reagendar cita</a>{{/if}}`
           ),
         },
         pt: {
@@ -319,17 +319,17 @@ ${dateBoxSimple('a las')}
             '#b91c1c', '#991b1b', '❌', 'Consulta cancelada',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Olá {{nom_patient}}, sua consulta com <strong>{{nombre_cabinet}}</strong> foi cancelada automaticamente por não recebermos o sinal a tempo:</p>
 ${dateBoxSimple('às')}
-    {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Se quiser reagendar, faça aqui mesmo:</p>
-    <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reagendar consulta</a>{{/if}}`
+    {{#if reserva_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Se quiser reagendar, faça aqui mesmo:</p>
+    <a href="{{reserva_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Reagendar consulta</a>{{/if}}`
           ),
         },
       },
       whatsapp: {
         es: {
-          corps: `❌ Hola {{nom_patient}}, tu cita del {{fecha_cita}} a las {{hora_cita}} fue cancelada por falta de adelanto.\n{{#if calendly_url}}\nSi deseas reagendar:\n{{calendly_url}}{{/if}}`,
+          corps: `❌ Hola {{nom_patient}}, tu cita del {{fecha_cita}} a las {{hora_cita}} fue cancelada por falta de adelanto.\n{{#if reserva_url}}\nSi deseas reagendar:\n{{reserva_url}}{{/if}}`,
         },
         pt: {
-          corps: `❌ Ola {{nom_patient}}, sua consulta do dia {{fecha_cita}} as {{hora_cita}} foi cancelada por falta de sinal.\n{{#if calendly_url}}\nSe quiser reagendar:\n{{calendly_url}}{{/if}}`,
+          corps: `❌ Ola {{nom_patient}}, sua consulta do dia {{fecha_cita}} as {{hora_cita}} foi cancelada por falta de sinal.\n{{#if reserva_url}}\nSe quiser reagendar:\n{{reserva_url}}{{/if}}`,
         },
       },
     },
@@ -341,8 +341,8 @@ ${dateBoxSimple('às')}
             '#b91c1c', '#991b1b', '🙁', 'No hay problema, {{nom_patient}}',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Como no llegamos a recibir el adelanto a tiempo, tu horario con <strong>{{nombre_cabinet}}</strong> quedó liberado:</p>
 ${dateBoxSimple('a las')}
-    {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Cuando quieras, puedes elegir un nuevo horario aquí:</p>
-    <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Elegir nuevo horario</a>{{/if}}`
+    {{#if reserva_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Cuando quieras, puedes elegir un nuevo horario aquí:</p>
+    <a href="{{reserva_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Elegir nuevo horario</a>{{/if}}`
           ),
         },
         pt: {
@@ -351,17 +351,17 @@ ${dateBoxSimple('a las')}
             '#b91c1c', '#991b1b', '🙁', 'Sem problemas, {{nom_patient}}',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Como não recebemos o sinal a tempo, seu horário com <strong>{{nombre_cabinet}}</strong> foi liberado:</p>
 ${dateBoxSimple('às')}
-    {{#if calendly_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Quando quiser, você pode escolher um novo horário aqui:</p>
-    <a href="{{calendly_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Escolher novo horário</a>{{/if}}`
+    {{#if reserva_url}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Quando quiser, você pode escolher um novo horário aqui:</p>
+    <a href="{{reserva_url}}" style="display:block;text-align:center;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;font-size:15px;font-weight:600;">Escolher novo horário</a>{{/if}}`
           ),
         },
       },
       whatsapp: {
         es: {
-          corps: `🙁 Hola {{nom_patient}}, no hay problema: tu horario del {{fecha_cita}} a las {{hora_cita}} quedo liberado por no llegar el adelanto a tiempo.\n{{#if calendly_url}}\nCuando quieras, elige un nuevo horario aqui:\n{{calendly_url}}{{/if}}`,
+          corps: `🙁 Hola {{nom_patient}}, no hay problema: tu horario del {{fecha_cita}} a las {{hora_cita}} quedo liberado por no llegar el adelanto a tiempo.\n{{#if reserva_url}}\nCuando quieras, elige un nuevo horario aqui:\n{{reserva_url}}{{/if}}`,
         },
         pt: {
-          corps: `🙁 Ola {{nom_patient}}, sem problemas: seu horario do dia {{fecha_cita}} as {{hora_cita}} foi liberado por nao recebermos o sinal a tempo.\n{{#if calendly_url}}\nQuando quiser, escolha um novo horario aqui:\n{{calendly_url}}{{/if}}`,
+          corps: `🙁 Ola {{nom_patient}}, sem problemas: seu horario do dia {{fecha_cita}} as {{hora_cita}} foi liberado por nao recebermos o sinal a tempo.\n{{#if reserva_url}}\nQuando quiser, escolha um novo horario aqui:\n{{reserva_url}}{{/if}}`,
         },
       },
     },
@@ -769,4 +769,64 @@ export const CONTROL_RECALL_TWILIO_CONTENT_SIDS: Record<VariantId, Record<Langue
 
 export function getControlRecallTwilioContentSid(variant: VariantId, langue: Langue): string | null {
   return CONTROL_RECALL_TWILIO_CONTENT_SIDS[variant][langue]
+}
+
+// Les templates Twilio/Meta crees par Martin dans la Console utilisent la syntaxe a variables
+// numerotees ({{1}}, {{2}}, ...), pas les noms de variables internes de l'application -- Twilio
+// attend contentVariables sous la forme {"1": "...", "2": "...", ...}. Cet ordre est l'exact ordre
+// saisi dans la Console pour chacun des templates deja crees (source de verite externe, non
+// deductible du code) : ne pas le modifier sans avoir aussi modifie le template cote Twilio.
+export const TWILIO_VARIABLE_ORDER: Record<NotificationType, Record<VariantId, string[]>> = {
+  confirmation: {
+    standard: ['nom_patient', 'nombre_cabinet', 'fecha_cita', 'hora_cita', 'direccion', 'monto_con_moneda', 'link_pago'],
+    calido: ['nom_patient', 'nombre_cabinet', 'fecha_cita', 'hora_cita', 'direccion', 'monto_con_moneda', 'link_pago'],
+  },
+  pago: {
+    standard: ['nom_patient', 'monto_con_moneda', 'fecha_cita', 'hora_cita', 'nombre_cabinet', 'direccion'],
+    calido: ['nom_patient', 'monto_con_moneda', 'fecha_cita', 'hora_cita', 'nombre_cabinet', 'direccion'],
+  },
+  recordatorio: {
+    standard: ['nom_patient', 'fecha_cita', 'hora_cita', 'direccion'],
+    calido: ['nom_patient', 'fecha_cita', 'hora_cita', 'direccion'],
+  },
+  aviso: {
+    standard: ['nom_patient', 'fecha_cita', 'hora_cita', 'link_pago'],
+    calido: ['nom_patient', 'fecha_cita', 'hora_cita', 'link_pago'],
+  },
+  anulacion: {
+    standard: ['nom_patient', 'fecha_cita', 'hora_cita', 'reserva_url'],
+    calido: ['nom_patient', 'fecha_cita', 'hora_cita', 'reserva_url'],
+  },
+  reprogramacion: {
+    standard: ['nom_patient', 'nombre_cabinet', 'fecha_cita', 'hora_cita'],
+    calido: ['nom_patient', 'nombre_cabinet', 'fecha_cita', 'hora_cita'],
+  },
+  // calido a 3 variables (praticien en plus), different de standard -- pas une faute de frappe.
+  solicitud_resena: {
+    standard: ['nom_patient', 'google_review_link'],
+    calido: ['nom_patient', 'google_review_link', 'praticien'],
+  },
+}
+
+// control_recall n'est pas un NotificationType -- catalogue separe, meme principe que
+// CONTROL_RECALL_TWILIO_CONTENT_SIDS ci-dessus. Seul "standard" a ete cree cote Twilio pour
+// l'instant ; "calido" reprend le meme ordre par defaut, a ajuster si/quand Martin cree ce template.
+export const CONTROL_RECALL_TWILIO_VARIABLE_ORDER: Record<VariantId, string[]> = {
+  standard: ['nom_patient', 'nombre_cabinet', 'reserva_url'],
+  calido: ['nom_patient', 'nombre_cabinet', 'reserva_url'],
+}
+
+// Construit l'objet {"1": ..., "2": ..., ...} attendu par Twilio (contentVariables) a partir de
+// l'ordre de variables ci-dessus et des valeurs internes nommees (buildTemplateValues()/vars).
+// Leve une erreur plutot que d'envoyer silencieusement une variable vide si order/values se
+// desynchronisent (ex. une cle renommee d'un cote sans l'autre).
+export function buildTwilioContentVariables(order: string[], values: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {}
+  order.forEach((key, index) => {
+    if (!(key in values)) {
+      throw new Error(`buildTwilioContentVariables: clé "${key}" absente de values (position ${index + 1})`)
+    }
+    result[String(index + 1)] = values[key]
+  })
+  return result
 }

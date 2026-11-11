@@ -6,7 +6,13 @@ import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 import { subDays, subMonths, format } from 'date-fns'
 import type { Database } from '@/types/database'
 import { extraerPrimerNombre } from '@/lib/utils/nombre'
-import { VariantId, getControlRecallTwilioContentSid } from '@/lib/dispatcher/templateVariants'
+import {
+  VariantId,
+  getControlRecallTwilioContentSid,
+  CONTROL_RECALL_TWILIO_VARIABLE_ORDER,
+  buildTwilioContentVariables,
+} from '@/lib/dispatcher/templateVariants'
+import { buildReservaUrl } from '@/lib/utils/reservaUrl'
 
 type PatientRow = Database['public']['Tables']['patients']['Row']
 type OrganizationRow = Database['public']['Tables']['organizations']['Row']
@@ -44,17 +50,6 @@ function renderControlRecallTemplate(corps: string, vars: Record<string, string>
     out = out.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), val)
   }
   return out
-}
-
-// Partie 5a : pointe vers la reservation native reservar/[slug] (portant la session Control
-// d'origine en parametre, cf. Partie 5b) plutot que vers calendly_url -- fallback sur calendly_url
-// uniquement si l'organisation n'a pas encore de slug de reservation configure.
-function buildReservaUrl(slug: string | null, calendlyUrl: string | null, controlSesionId: string | null): string {
-  if (slug) {
-    const base = `${process.env.NEXT_PUBLIC_APP_URL}/reservar/${slug}`
-    return controlSesionId ? `${base}?controlSesionId=${controlSesionId}` : base
-  }
-  return calendlyUrl ?? ''
 }
 
 async function sendRecallEmail(
@@ -194,7 +189,8 @@ async function sendRecallWhatsApp(
       return false
     }
 
-    await sendWhatsAppTwilio(subaccountSid, authToken, fromNumber, patient.telefono, contentSid, vars)
+    const contentVariables = buildTwilioContentVariables(CONTROL_RECALL_TWILIO_VARIABLE_ORDER[variant], vars)
+    await sendWhatsAppTwilio(subaccountSid, authToken, fromNumber, patient.telefono, contentSid, contentVariables)
   } else {
     const accountId = settings.unipile_account_id
     if (!accountId) {

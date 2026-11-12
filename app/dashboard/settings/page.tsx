@@ -22,7 +22,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('organization_id, nombre_completo, especialidad, foto_url, codigo_seguridad_updated_at')
+    .select('organization_id, nombre_completo, especialidad, numero_colegiatura, foto_url, codigo_seguridad_updated_at')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
@@ -111,6 +111,7 @@ export default async function SettingsPage() {
       organizationEspecialidad={organization?.especialidad ?? null}
       nombreCompleto={profile?.nombre_completo ?? null}
       especialidadTexto={profile?.especialidad ?? null}
+      numeroColegiatura={profile?.numero_colegiatura ?? null}
       fotoUrl={profile?.foto_url ?? null}
       codigoSeguridadUpdatedAt={profile?.codigo_seguridad_updated_at ?? null}
       mpTokenConfigured={mpTokenConfigured}

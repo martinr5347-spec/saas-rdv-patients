@@ -198,6 +198,18 @@ function PhotoIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function PillIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M10.5 20.5L3.5 13.5a4.95 4.95 0 117-7l7 7a4.95 4.95 0 11-7 7z M7.5 9.5l7 7"
+      />
+    </svg>
+  )
+}
+
 function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1883,6 +1895,241 @@ function ActosRealizadosCard({
   )
 }
 
+interface MedicamentoForm {
+  nombre: string
+  dosis: string
+  frecuencia: string
+  duracion: string
+  instrucciones: string
+}
+
+interface PrescripcionHistorial {
+  id: string
+  fecha: string
+  medicamentos: MedicamentoForm[]
+  notasAdicionales: string | null
+  createdAt: string
+}
+
+function emptyMedicamento(): MedicamentoForm {
+  return { nombre: '', dosis: '', frecuencia: '', duracion: '', instrucciones: '' }
+}
+
+// Prescripcion (feuille de prescription simple, imprimable, signee/tamponnee a la main par le
+// praticien -- aucune valeur de signature numerique, cf. lib/pdf/prescripcionPdf.tsx) -- meme
+// pattern que ActosRealizadosCard (donnee non clinique-confidentielle, pas de PIN). Le PDF est
+// genere et stocke une seule fois a la creation (voir route POST) ; le telechargement ne fait
+// jamais que servir le fichier deja stocke.
+function PrescripcionesCard({ patientId }: { patientId: string }) {
+  const t = useTranslations('dashboard.patientDetail')
+  const [loading, setLoading] = useState(true)
+  const [historial, setHistorial] = useState<PrescripcionHistorial[]>([])
+
+  const [showForm, setShowForm] = useState(false)
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  const [medicamentos, setMedicamentos] = useState<MedicamentoForm[]>([emptyMedicamento()])
+  const [notasAdicionales, setNotasAdicionales] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const res = await fetch(`/api/patients/${patientId}/prescripciones`)
+    if (res.ok) {
+      const data = await res.json()
+      setHistorial(data.prescripciones ?? [])
+    }
+    setLoading(false)
+  }, [patientId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const resetForm = () => {
+    setFecha(new Date().toISOString().slice(0, 10))
+    setMedicamentos([emptyMedicamento()])
+    setNotasAdicionales('')
+  }
+
+  const updateMedicamento = (index: number, field: keyof MedicamentoForm, value: string) => {
+    setMedicamentos((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)))
+  }
+
+  const addMedicamentoRow = () => setMedicamentos((prev) => [...prev, emptyMedicamento()])
+  const removeMedicamentoRow = (index: number) =>
+    setMedicamentos((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+
+  const submit = async () => {
+    if (!fecha) {
+      toast.error(t('toastFechaRequerida'))
+      return
+    }
+    const medicamentosValidos = medicamentos.filter((m) => m.nombre.trim())
+    if (medicamentosValidos.length === 0) {
+      toast.error(t('toastMedicamentoRequerido'))
+      return
+    }
+
+    setSaving(true)
+    const res = await fetch(`/api/patients/${patientId}/prescripciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha, medicamentos: medicamentosValidos, notasAdicionales: notasAdicionales.trim() || undefined }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setHistorial((prev) => [data.prescripcion, ...prev])
+      toast.success(t('toastPrescripcionGuardada'))
+      resetForm()
+      setShowForm(false)
+    } else {
+      toast.error(data.error ?? t('toastErrorGuardarPrescripcion'))
+    }
+    setSaving(false)
+  }
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]'
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 text-[#6926D2]">
+            <PillIcon className="h-4 w-4" />
+          </div>
+          <h2 className="font-semibold text-gray-800">{t('recetasAnterioresTitle')}</h2>
+        </div>
+        {!showForm && (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
+          >
+            {t('nuevaPrescripcion')}
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="border-b border-gray-100 bg-gray-50 p-5">
+          <div className="mb-3 max-w-xs">
+            <label className="mb-1 block text-xs font-medium text-gray-600">{t('fechaLabel')}</label>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+          </div>
+
+          <div className="mb-3 space-y-3">
+            {medicamentos.map((m, i) => (
+              <div key={i} className="rounded-lg border border-gray-200 bg-white p-3">
+                <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  <input
+                    placeholder={t('medicamentoNombreLabel')}
+                    value={m.nombre}
+                    onChange={(e) => updateMedicamento(i, 'nombre', e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    placeholder={t('medicamentoDosisLabel')}
+                    value={m.dosis}
+                    onChange={(e) => updateMedicamento(i, 'dosis', e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    placeholder={t('medicamentoFrecuenciaLabel')}
+                    value={m.frecuencia}
+                    onChange={(e) => updateMedicamento(i, 'frecuencia', e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    placeholder={t('medicamentoDuracionLabel')}
+                    value={m.duracion}
+                    onChange={(e) => updateMedicamento(i, 'duracion', e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    placeholder={t('medicamentoInstruccionesLabel')}
+                    value={m.instrucciones}
+                    onChange={(e) => updateMedicamento(i, 'instrucciones', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                {medicamentos.length > 1 && (
+                  <button type="button" onClick={() => removeMedicamentoRow(i)} className="text-xs text-rose-600 hover:underline">
+                    {t('quitarMedicamentoLabel')}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addMedicamentoRow}
+            className="mb-3 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+          >
+            + {t('agregarMedicamentoLabel')}
+          </button>
+
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">{t('notasAdicionalesLabel')}</label>
+            <textarea
+              value={notasAdicionales}
+              onChange={(e) => setNotasAdicionales(e.target.value)}
+              placeholder={t('notasAdicionalesPlaceholder')}
+              rows={3}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false)
+                resetForm()
+              }}
+              className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            >
+              {t('cancelar')}
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={saving}
+              className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+            >
+              {saving ? '...' : t('guardar')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="max-h-96 divide-y divide-gray-50 overflow-y-auto">
+        {loading && <p className="px-5 py-6 text-center text-sm text-gray-400">{t('cargandoEllipsis')}</p>}
+        {!loading && historial.length === 0 && (
+          <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinPrescripcionesRegistradas')}</p>
+        )}
+        {historial.map((p) => (
+          <div key={p.id} className="flex items-center justify-between px-5 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-800">{p.medicamentos.map((m) => m.nombre).join(', ') || '-'}</p>
+              <p className="text-xs text-gray-400">{p.fecha}</p>
+            </div>
+            <a
+              href={`/api/patients/${patientId}/prescripciones/${p.id}/download`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-[#6926D2] hover:underline"
+            >
+              {t('descargarLabel')}
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface AppointmentRow {
   id: string
   fecha_cita: string
@@ -2278,7 +2525,7 @@ function FotosTab({ notesSnapshot, onGoToNotas }: { notesSnapshot: PatientNote[]
   )
 }
 
-type PatientTabId = 'resumen' | 'notas' | 'actos' | 'fotos' | 'historial'
+type PatientTabId = 'resumen' | 'notas' | 'actos' | 'fotos' | 'historial' | 'prescripciones'
 
 function PercentIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -2343,6 +2590,7 @@ export default function PatientDetailView({
     { id: 'actos', label: t('tabActosRealizados') },
     { id: 'fotos', label: t('tabFotos') },
     { id: 'historial', label: t('tabHistorialCitas') },
+    { id: 'prescripciones', label: t('tabPrescripciones') },
   ]
 
   return (
@@ -2441,6 +2689,9 @@ export default function PatientDetailView({
       </div>
       <div className={activeTab === 'historial' ? '' : 'hidden'}>
         <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
+      </div>
+      <div className={activeTab === 'prescripciones' ? '' : 'hidden'}>
+        <PrescripcionesCard patientId={patient.id} />
       </div>
     </div>
   )

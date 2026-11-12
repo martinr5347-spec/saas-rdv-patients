@@ -54,6 +54,7 @@ export interface Database {
           codigo_seguridad_updated_at: string | null
           codigo_intentos_fallidos: number
           codigo_bloqueado_hasta: string | null
+          numero_colegiatura: string | null
           created_at: string
         }
         Insert: {
@@ -70,6 +71,7 @@ export interface Database {
           codigo_seguridad_updated_at?: string | null
           codigo_intentos_fallidos?: number
           codigo_bloqueado_hasta?: string | null
+          numero_colegiatura?: string | null
           created_at?: string
         }
         Update: {
@@ -86,6 +88,7 @@ export interface Database {
           codigo_seguridad_updated_at?: string | null
           codigo_intentos_fallidos?: number
           codigo_bloqueado_hasta?: string | null
+          numero_colegiatura?: string | null
           created_at?: string
         }
         Relationships: [
@@ -469,6 +472,46 @@ export interface Database {
         Relationships: [
           { foreignKeyName: 'patient_note_photos_note_id_fkey'; columns: ['note_id']; isOneToOne: false; referencedRelation: 'patient_notes'; referencedColumns: ['id'] },
           { foreignKeyName: 'patient_note_photos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+        ]
+      }
+      prescripciones: {
+        Row: {
+          id: string
+          patient_id: string
+          organization_id: string
+          created_by: string | null
+          fecha: string
+          medicamentos: Json
+          notas_adicionales: string | null
+          storage_path: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          organization_id: string
+          created_by?: string | null
+          fecha?: string
+          medicamentos?: Json
+          notas_adicionales?: string | null
+          storage_path: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          organization_id?: string
+          created_by?: string | null
+          fecha?: string
+          medicamentos?: Json
+          notas_adicionales?: string | null
+          storage_path?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'prescripciones_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'prescripciones_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'prescripciones_created_by_fkey'; columns: ['created_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }
         ]
       }
       appointments: {

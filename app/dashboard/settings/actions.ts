@@ -44,11 +44,15 @@ export async function updateProfile(formData: FormData) {
   if (user?.id) {
     const nombreCompleto = String(formData.get('nombre_completo') ?? '').trim() || null
     const especialidadTexto = String(formData.get('especialidad_texto') ?? '').trim() || null
+    // Optionnel, jamais obligatoire (cf. prompt prescripciones) -- ne doit jamais bloquer la
+    // sauvegarde du profil, juste manquer a l'affichage du PDF de prescription si non renseigne.
+    const numeroColegiatura = String(formData.get('numero_colegiatura') ?? '').trim() || null
     const fotoFile = formData.get('foto')
 
-    const userUpdate: { nombre_completo: string | null; especialidad: string | null; foto_url?: string } = {
+    const userUpdate: { nombre_completo: string | null; especialidad: string | null; numero_colegiatura: string | null; foto_url?: string } = {
       nombre_completo: nombreCompleto,
       especialidad: especialidadTexto,
+      numero_colegiatura: numeroColegiatura,
     }
 
     if (fotoFile instanceof File && fotoFile.size > 0 && fotoFile.type.startsWith('image/')) {

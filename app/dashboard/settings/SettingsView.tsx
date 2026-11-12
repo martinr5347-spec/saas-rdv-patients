@@ -507,6 +507,7 @@ export default function SettingsView({
   organizationEspecialidad,
   nombreCompleto,
   especialidadTexto,
+  numeroColegiatura,
   fotoUrl,
   codigoSeguridadUpdatedAt,
   mpTokenConfigured,
@@ -532,6 +533,7 @@ export default function SettingsView({
   organizationEspecialidad: string | null
   nombreCompleto: string | null
   especialidadTexto: string | null
+  numeroColegiatura: string | null
   fotoUrl: string | null
   codigoSeguridadUpdatedAt: string | null
   mpTokenConfigured: boolean
@@ -643,6 +645,15 @@ export default function SettingsView({
                 name="especialidad_texto"
                 defaultValue={especialidadTexto ?? ''}
                 placeholder={t('especialidadTextoPlaceholder')}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('numeroColegiatura')}</label>
+              <input
+                name="numero_colegiatura"
+                defaultValue={numeroColegiatura ?? ''}
+                placeholder={t('numeroColegiaturaPlaceholder')}
                 className={inputClass}
               />
             </div>

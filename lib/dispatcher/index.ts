@@ -1,10 +1,8 @@
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { sendEmail } from './channels/email'
-import { sendWhatsApp } from './channels/whatsapp'
 import { sendWhatsAppTwilio } from './channels/whatsappTwilio'
 import { NotificationJob } from './types'
 import { Database } from '@/types/database'
-import { getDailyLimit, startOfTodayIso, MIN_SECONDS_BETWEEN_MESSAGES } from './warming'
 import { formatDisplayDate, formatDisplayTime } from '@/lib/utils/timezone'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 import { NotificationType, VariantId, getTwilioContentSid, TWILIO_VARIABLE_ORDER, buildTwilioContentVariables } from './templateVariants'
@@ -24,7 +22,7 @@ interface AppointmentWithRelations extends Appointment {
 
 // Extrait du corps de renderTemplate() -- reutilise telle quelle par le routage Twilio (les
 // variables d'un template Meta approuve referencent les memes donnees que celles interpolees
-// dans le texte libre Unipile/email), sans dupliquer le calcul.
+// dans le texte libre email), sans dupliquer le calcul.
 function buildTemplateValues(appt: AppointmentWithRelations): Record<string, string> {
   const patient = appt.patients
   const org = appt.organizations
@@ -49,7 +47,7 @@ function buildTemplateValues(appt: AppointmentWithRelations): Record<string, str
     monnaie,
     // Valeur composee pour les templates Twilio/Meta (une seule variable numerotee, cf.
     // TWILIO_VARIABLE_ORDER) -- monto_acompte/monnaie restent par ailleurs inchanges, toujours
-    // utilises individuellement par les templates email/Unipile existants.
+    // utilises individuellement par les templates email existants.
     monto_con_moneda: `${montoAcompte.toFixed(2)} ${monnaie}`,
     nombre_cabinet: org?.nom ?? '',
     direccion: org?.adresse ?? '',
@@ -149,47 +147,6 @@ async function alertAdmin(job: NotificationJob, canal: string, errorMessage: str
   )
 }
 
-async function checkWhatsappWarming(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-  organizationId: string,
-  connectedAt: string | null
-): Promise<{ allowed: true } | { allowed: false; reason: string }> {
-  const limit = getDailyLimit(connectedAt)
-
-  const { count } = await supabase
-    .from('notifications')
-    .select('id, appointments!inner(organization_id)', { count: 'exact', head: true })
-    .eq('canal', 'whatsapp')
-    .eq('statut', 'sent')
-    .eq('appointments.organization_id', organizationId)
-    .gte('sent_at', startOfTodayIso())
-
-  const sentToday = count ?? 0
-  if (sentToday >= limit) {
-    return { allowed: false, reason: `Chauffe WhatsApp : quota journalier atteint (${sentToday}/${limit})` }
-  }
-
-  const { data: lastSent } = await supabase
-    .from('notifications')
-    .select('sent_at, appointments!inner(organization_id)')
-    .eq('canal', 'whatsapp')
-    .eq('statut', 'sent')
-    .eq('appointments.organization_id', organizationId)
-    .order('sent_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (lastSent?.sent_at) {
-    const secondsSinceLast = (Date.now() - new Date(lastSent.sent_at).getTime()) / 1000
-    if (secondsSinceLast < MIN_SECONDS_BETWEEN_MESSAGES) {
-      const wait = Math.ceil(MIN_SECONDS_BETWEEN_MESSAGES - secondsSinceLast)
-      return { allowed: false, reason: `Chauffe WhatsApp : délai minimum entre messages non respecté (${wait}s restants)` }
-    }
-  }
-
-  return { allowed: true }
-}
-
 async function sendPraticienAlert(appt: AppointmentWithRelations, job: NotificationJob) {
   const supabase = createServiceRoleClient()
 
@@ -281,9 +238,6 @@ export async function dispatch(job: NotificationJob) {
 
   const typedAppt = appt as AppointmentWithRelations
   const settings = typedAppt.organizations?.org_settings
-  // Bascule explicite par organisation, jamais automatique -- 'unipile' reste le defaut tant que
-  // Martin n'a pas lui-meme repointe canal_whatsapp_provider en base pour cette organisation.
-  const whatsappProvider: 'unipile' | 'twilio' = settings?.canal_whatsapp_provider === 'twilio' ? 'twilio' : 'unipile'
 
   if (job.type === 'pago_praticien') {
     try {
@@ -315,10 +269,7 @@ export async function dispatch(job: NotificationJob) {
 
   const channels: Array<'email' | 'whatsapp'> = []
   if (settings?.canal_email) channels.push('email')
-  // unipile_account_id n'a de sens que pour le provider unipile -- une organisation en twilio n'en
-  // a jamais besoin (et inversement un compte Twilio ne doit pas etre exige pour rester sur unipile).
-  const hasWhatsappAccountConfigured =
-    whatsappProvider === 'twilio' ? Boolean(settings?.twilio_subaccount_sid) : Boolean(settings?.unipile_account_id)
+  const hasWhatsappAccountConfigured = Boolean(settings?.twilio_subaccount_sid)
   if (settings?.canal_whatsapp && hasWhatsappAccountConfigured) channels.push('whatsapp')
 
   for (const canal of channels) {
@@ -345,28 +296,6 @@ export async function dispatch(job: NotificationJob) {
     const body = renderTemplate(template.corps, typedAppt)
     const subject = template.sujet ? renderTemplate(template.sujet, typedAppt) : job.type
 
-    // La chauffe n'a de sens que pour Unipile (session WhatsApp Web emulee, risque de bannissement) --
-    // l'API officielle Twilio n'a pas ce risque, aucune verification equivalente ne s'applique.
-    if (canal === 'whatsapp' && whatsappProvider === 'unipile') {
-      const warmingCheck = await checkWhatsappWarming(supabase, job.organizationId, settings?.unipile_connected_at ?? null)
-      if (!warmingCheck.allowed) {
-        console.warn(`dispatch whatsapp throttled: ${warmingCheck.reason}`)
-        const warmingRow = {
-          appointment_id: job.appointmentId,
-          canal,
-          type: job.type,
-          statut: 'failed' as const,
-          error_message: warmingCheck.reason,
-          sent_at: null,
-        }
-        // Meme raison que l'upsert plus bas : un essai precedent peut avoir laisse une ligne
-        // 'failed' pour ce (appointment_id,canal,type) -- un .insert() ici la dupliquerait en
-        // violant la contrainte unique et echouerait silencieusement.
-        await supabase.from('notifications').upsert(warmingRow, { onConflict: 'appointment_id,canal,type' })
-        continue
-      }
-    }
-
     let statut: 'sent' | 'failed' = 'failed'
     let errorMessage: string | undefined
     let twilioMessageSid: string | undefined
@@ -381,56 +310,50 @@ export async function dispatch(job: NotificationJob) {
         const phone = typedAppt.patients?.telefono
         if (!phone) throw new Error('Téléfono patient manquant')
 
-        if (whatsappProvider === 'twilio') {
-          const { twilio_subaccount_sid: subaccountSid, twilio_whatsapp_number: fromNumber, twilio_auth_token_encrypted: authTokenEncrypted } =
-            settings ?? {}
-          if (!subaccountSid || !fromNumber || !authTokenEncrypted) {
-            throw new Error('Configuración de Twilio incompleta (subaccount, número o token)')
-          }
-
-          let authToken: string
-          try {
-            authToken = decryptSecret(authTokenEncrypted)
-          } catch (decryptError) {
-            console.error('dispatch: erreur dechiffrement twilio_auth_token_encrypted', decryptError)
-            throw new Error('Token Twilio corrupto o no descifrable')
-          }
-
-          // Variante choisie par l'organisation pour ce type de notification (meme source que les
-          // templates Unipile/email, cf. org_settings.variantes_mensaje ecrit par updateSettings).
-          const variantes = (settings?.variantes_mensaje ?? {}) as Partial<Record<NotificationType, VariantId>>
-          const variant: VariantId = variantes[job.type as NotificationType] === 'calido' ? 'calido' : 'standard'
-          const contentSid = getTwilioContentSid(job.type as NotificationType, variant, langue as 'es' | 'pt')
-
-          if (!contentSid) {
-            // Pas un crash : erreur claire et loggee, le praticien doit configurer son template Meta
-            // avant que ce type de notification puisse partir par Twilio pour son organisation.
-            throw new Error(`Template Twilio no configurado para ${job.type} (${variant}/${langue})`)
-          }
-
-          const templateValues = buildTemplateValues(typedAppt)
-          // Les templates Meta approuves dans la Console Twilio utilisent des variables numerotees
-          // ({{1}}, {{2}}, ...), pas les noms internes de templateValues -- cf. TWILIO_VARIABLE_ORDER.
-          const contentVariables = buildTwilioContentVariables(TWILIO_VARIABLE_ORDER[job.type as NotificationType][variant], templateValues)
-          const statusCallbackUrl = process.env.NEXT_PUBLIC_APP_URL
-            ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`
-            : undefined
-
-          const result = await sendWhatsAppTwilio(
-            subaccountSid,
-            authToken,
-            fromNumber,
-            phone,
-            contentSid,
-            contentVariables,
-            statusCallbackUrl
-          )
-          twilioMessageSid = result.sid
-        } else {
-          const accountId = settings?.unipile_account_id
-          if (!accountId) throw new Error('Compte Unipile manquant')
-          await sendWhatsApp(accountId, phone, body)
+        const { twilio_subaccount_sid: subaccountSid, twilio_whatsapp_number: fromNumber, twilio_auth_token_encrypted: authTokenEncrypted } =
+          settings ?? {}
+        if (!subaccountSid || !fromNumber || !authTokenEncrypted) {
+          throw new Error('Configuración de Twilio incompleta (subaccount, número o token)')
         }
+
+        let authToken: string
+        try {
+          authToken = decryptSecret(authTokenEncrypted)
+        } catch (decryptError) {
+          console.error('dispatch: erreur dechiffrement twilio_auth_token_encrypted', decryptError)
+          throw new Error('Token Twilio corrupto o no descifrable')
+        }
+
+        // Variante choisie par l'organisation pour ce type de notification (meme source que les
+        // templates email, cf. org_settings.variantes_mensaje ecrit par updateSettings).
+        const variantes = (settings?.variantes_mensaje ?? {}) as Partial<Record<NotificationType, VariantId>>
+        const variant: VariantId = variantes[job.type as NotificationType] === 'calido' ? 'calido' : 'standard'
+        const contentSid = getTwilioContentSid(job.type as NotificationType, variant, langue as 'es' | 'pt')
+
+        if (!contentSid) {
+          // Pas un crash : erreur claire et loggee, le praticien doit configurer son template Meta
+          // avant que ce type de notification puisse partir par Twilio pour son organisation.
+          throw new Error(`Template Twilio no configurado para ${job.type} (${variant}/${langue})`)
+        }
+
+        const templateValues = buildTemplateValues(typedAppt)
+        // Les templates Meta approuves dans la Console Twilio utilisent des variables numerotees
+        // ({{1}}, {{2}}, ...), pas les noms internes de templateValues -- cf. TWILIO_VARIABLE_ORDER.
+        const contentVariables = buildTwilioContentVariables(TWILIO_VARIABLE_ORDER[job.type as NotificationType][variant], templateValues)
+        const statusCallbackUrl = process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`
+          : undefined
+
+        const result = await sendWhatsAppTwilio(
+          subaccountSid,
+          authToken,
+          fromNumber,
+          phone,
+          contentSid,
+          contentVariables,
+          statusCallbackUrl
+        )
+        twilioMessageSid = result.sid
       }
       statut = 'sent'
     } catch (e) {

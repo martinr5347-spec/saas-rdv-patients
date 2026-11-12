@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   const { data: settingsRaw } = await supabase
     .from('org_settings')
     .select(
-      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, canal_whatsapp_provider, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
+      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
     )
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
@@ -61,11 +61,9 @@ export default async function SettingsPage() {
         costo_total: settingsRaw.costo_total,
         monnaie: settingsRaw.monnaie,
         calendly_url: settingsRaw.calendly_url,
-        unipile_account_id: settingsRaw.unipile_account_id,
         mp_notification_url: settingsRaw.mp_notification_url,
         canal_email: settingsRaw.canal_email,
         canal_whatsapp: settingsRaw.canal_whatsapp,
-        canal_whatsapp_provider: settingsRaw.canal_whatsapp_provider,
         variantes_mensaje: settingsRaw.variantes_mensaje,
         categorias_notas: settingsRaw.categorias_notas,
         categorias_con_foto: settingsRaw.categorias_con_foto,

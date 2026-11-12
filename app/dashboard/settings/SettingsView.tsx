@@ -29,11 +29,9 @@ export interface OrgSettings {
   costo_total: number | null
   monnaie: string | null
   calendly_url: string | null
-  unipile_account_id: string | null
   mp_notification_url: string | null
   canal_email: boolean | null
   canal_whatsapp: boolean | null
-  canal_whatsapp_provider: string | null
   variantes_mensaje: unknown
   categorias_notas: string[] | null
   categorias_con_foto: string[] | null
@@ -778,10 +776,6 @@ export default function SettingsView({
                 <InfoTooltip text="Enlace de tu página de reservas de Calendly, usado para sincronizar tu disponibilidad." />
               </label>
               <input name="calendly_url" type="url" defaultValue={settings?.calendly_url ?? ''} className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('unipileAccountId')}</label>
-              <input name="unipile_account_id" defaultValue={settings?.unipile_account_id ?? ''} className={inputClass} />
             </div>
             <div>
               <MercadoPagoTokenField

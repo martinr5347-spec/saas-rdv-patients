@@ -79,7 +79,6 @@ async function main() {
         twilio_subaccount_sid: subaccountSid,
         twilio_whatsapp_number: whatsappNumber,
         twilio_auth_token_encrypted: encrypted,
-        canal_whatsapp_provider: 'twilio',
       },
       { onConflict: 'organization_id' }
     )
@@ -90,10 +89,9 @@ async function main() {
   }
 
   console.log(`Twilio configure pour l'organisation "${org.nom}" (${organizationId}).`)
-  console.log(`  subaccount_sid          : ${subaccountSid}`)
-  console.log(`  whatsapp_number         : ${whatsappNumber}`)
-  console.log(`  auth_token              : chiffre en base (${encrypted.length} caracteres), jamais affiche en clair`)
-  console.log(`  canal_whatsapp_provider : twilio`)
+  console.log(`  subaccount_sid  : ${subaccountSid}`)
+  console.log(`  whatsapp_number : ${whatsappNumber}`)
+  console.log(`  auth_token      : chiffre en base (${encrypted.length} caracteres), jamais affiche en clair`)
 }
 
 main().catch((e) => {

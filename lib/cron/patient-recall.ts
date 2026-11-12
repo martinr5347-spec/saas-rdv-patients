@@ -1,6 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/dispatcher/channels/email'
-import { sendWhatsApp } from '@/lib/dispatcher/channels/whatsapp'
 import { sendWhatsAppTwilio } from '@/lib/dispatcher/channels/whatsappTwilio'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 import { subDays, subMonths, format } from 'date-fns'
@@ -28,11 +27,9 @@ interface PatientWithOrg extends PatientRow {
           | 'variante_control_recall'
           | 'canal_email'
           | 'canal_whatsapp'
-          | 'canal_whatsapp_provider'
           | 'twilio_subaccount_sid'
           | 'twilio_whatsapp_number'
           | 'twilio_auth_token_encrypted'
-          | 'unipile_account_id'
         > | null
       })
     | null
@@ -163,43 +160,29 @@ async function sendRecallWhatsApp(
     ),
   }
 
-  // Meme bascule explicite par organisation que dispatch() (lib/dispatcher/index.ts) -- 'unipile'
-  // reste le defaut tant que canal_whatsapp_provider n'est pas 'twilio'.
-  const whatsappProvider: 'unipile' | 'twilio' = settings.canal_whatsapp_provider === 'twilio' ? 'twilio' : 'unipile'
-
-  if (whatsappProvider === 'twilio') {
-    const { twilio_subaccount_sid: subaccountSid, twilio_whatsapp_number: fromNumber, twilio_auth_token_encrypted: authTokenEncrypted } = settings
-    if (!subaccountSid || !fromNumber || !authTokenEncrypted) {
-      console.error(`patient-recall: configuración de Twilio incompleta para la organización ${patient.organization_id}`)
-      return false
-    }
-
-    let authToken: string
-    try {
-      authToken = decryptSecret(authTokenEncrypted)
-    } catch (decryptError) {
-      console.error('patient-recall: erreur dechiffrement twilio_auth_token_encrypted', decryptError)
-      return false
-    }
-
-    const variant: VariantId = settings.variante_control_recall === 'calido' ? 'calido' : 'standard'
-    const contentSid = getControlRecallTwilioContentSid(variant, langue)
-    if (!contentSid) {
-      console.warn(`patient-recall: template Twilio no configurado para control_recall (${variant}/${langue})`)
-      return false
-    }
-
-    const contentVariables = buildTwilioContentVariables(CONTROL_RECALL_TWILIO_VARIABLE_ORDER[variant], vars)
-    await sendWhatsAppTwilio(subaccountSid, authToken, fromNumber, patient.telefono, contentSid, contentVariables)
-  } else {
-    const accountId = settings.unipile_account_id
-    if (!accountId) {
-      console.error(`patient-recall: cuenta Unipile faltante para la organización ${patient.organization_id}`)
-      return false
-    }
-    const body = renderControlRecallTemplate(template.corps, vars)
-    await sendWhatsApp(accountId, patient.telefono, body)
+  const { twilio_subaccount_sid: subaccountSid, twilio_whatsapp_number: fromNumber, twilio_auth_token_encrypted: authTokenEncrypted } = settings
+  if (!subaccountSid || !fromNumber || !authTokenEncrypted) {
+    console.error(`patient-recall: configuración de Twilio incompleta para la organización ${patient.organization_id}`)
+    return false
   }
+
+  let authToken: string
+  try {
+    authToken = decryptSecret(authTokenEncrypted)
+  } catch (decryptError) {
+    console.error('patient-recall: erreur dechiffrement twilio_auth_token_encrypted', decryptError)
+    return false
+  }
+
+  const variant: VariantId = settings.variante_control_recall === 'calido' ? 'calido' : 'standard'
+  const contentSid = getControlRecallTwilioContentSid(variant, langue)
+  if (!contentSid) {
+    console.warn(`patient-recall: template Twilio no configurado para control_recall (${variant}/${langue})`)
+    return false
+  }
+
+  const contentVariables = buildTwilioContentVariables(CONTROL_RECALL_TWILIO_VARIABLE_ORDER[variant], vars)
+  await sendWhatsAppTwilio(subaccountSid, authToken, fromNumber, patient.telefono, contentSid, contentVariables)
 
   return true
 }
@@ -251,7 +234,7 @@ export async function handlePatientRecalls() {
   const { data: candidatos, error: errorCandidatos } = await supabase
     .from('patients')
     .select(
-      'id, nom, email, telefono, organization_id, proximo_control_fecha, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias, variante_control_recall, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, unipile_account_id))'
+      'id, nom, email, telefono, organization_id, proximo_control_fecha, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias, variante_control_recall, canal_email, canal_whatsapp, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted))'
     )
     .eq('proximo_control_enviado', false)
     .not('proximo_control_fecha', 'is', null)
@@ -286,7 +269,7 @@ export async function handlePatientRecalls() {
   const { data: patientsARelancer, error: errorRelancer } = await supabase
     .from('patients')
     .select(
-      'id, nom, email, telefono, organization_id, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias, variante_control_recall, canal_email, canal_whatsapp, canal_whatsapp_provider, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted, unipile_account_id))'
+      'id, nom, email, telefono, organization_id, proximo_control_sesion_id, organizations(nom, langue, slug, org_settings(calendly_url, control_recall_anticipacion_dias, variante_control_recall, canal_email, canal_whatsapp, twilio_subaccount_sid, twilio_whatsapp_number, twilio_auth_token_encrypted))'
     )
     .eq('proximo_control_enviado', true)
     .eq('proximo_control_relanzado', false)

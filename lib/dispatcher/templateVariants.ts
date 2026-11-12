@@ -737,8 +737,7 @@ export function getControlRecallPreview(variant: VariantId, langue: Langue): str
 // toutes a null par defaut. Ce n'est pas a Devin de decider du texte des templates ni d'inventer
 // un SID : Martin les renseigne manuellement ici une fois chaque template soumis et approuve par
 // Meta via la Console Twilio. Catalogue separe de MESSAGE_VARIANTS (pas de dimension Canal : ces
-// SID ne concernent que whatsapp) pour ne pas toucher la structure existante utilisee par email et
-// par Unipile.
+// SID ne concernent que whatsapp) pour ne pas toucher la structure existante utilisee par email.
 type TwilioContentSidCatalog = Record<NotificationType, Record<VariantId, Record<Langue, string | null>>>
 
 function nullPerLangue(): Record<Langue, string | null> {

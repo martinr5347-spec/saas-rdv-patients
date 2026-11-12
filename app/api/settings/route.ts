@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 import { validateMercadoPagoToken } from '@/lib/payments/mercadopago'
 import { encryptSecret, decryptSecret } from '@/lib/crypto/settingsEncryption'
 import type { Database } from '@/types/database'
@@ -10,7 +9,7 @@ type OrgSettingsUpdate = Database['public']['Tables']['org_settings']['Update']
 // Colonnes non sensibles explicites -- jamais select('*') sur org_settings ici, mp_access_token
 // ne doit jamais apparaitre brut dans une reponse JSON de cette route.
 const SAFE_COLUMNS =
-  'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, unipile_account_id, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias'
+  'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias'
 
 function toSafeResponse<T extends { mp_access_token?: string | null }>(row: T) {
   const { mp_access_token, ...rest } = row
@@ -80,18 +79,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'No tienes permiso para modificar la integración de pagos' }, { status: 403 })
   }
 
-  const { data: current } = await supabase
-    .from('org_settings')
-    .select('unipile_account_id, unipile_connected_at')
-    .eq('organization_id', profile.organization_id)
-    .maybeSingle()
-
-  const unipileConnectedAt = resolveUnipileConnectedAt(
-    current?.unipile_account_id ?? null,
-    body.unipile_account_id,
-    current?.unipile_connected_at ?? null
-  )
-
   // Un nouveau token (non vide) declenche une validation live contre l'API MercadoPago avant
   // d'etre chiffre et stocke -- un champ vide ne touche pas a la valeur deja enregistree (jamais
   // d'ecrasement silencieux). Un token invalide rejette toute la sauvegarde plutot que
@@ -116,8 +103,6 @@ export async function PATCH(req: Request) {
     delai_rappel_h: body.delai_rappel_h,
     monto_acompte: body.monto_acompte,
     calendly_url: body.calendly_url,
-    unipile_account_id: body.unipile_account_id,
-    unipile_connected_at: unipileConnectedAt,
     mp_notification_url: body.mp_notification_url,
     canal_email: body.canal_email,
     canal_whatsapp: body.canal_whatsapp,

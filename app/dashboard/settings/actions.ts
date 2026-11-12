@@ -3,7 +3,6 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { resolveUnipileConnectedAt } from '@/lib/dispatcher/warming'
 import { getStripe } from '@/lib/payments/stripe'
 import { validateMercadoPagoToken } from '@/lib/payments/mercadopago'
 import { encryptSecret } from '@/lib/crypto/settingsEncryption'
@@ -141,7 +140,7 @@ export async function updateFacturacion(formData: FormData) {
   redirect(`/dashboard/settings?saved=${Date.now()}`)
 }
 
-// Carte "Integraciones" : direccion, Calendly, Unipile, webhook MercadoPago + section "Solicitud
+// Carte "Integraciones" : direccion, Calendly, webhook MercadoPago + section "Solicitud
 // de reseña en Google" (lien/delai/toggle) -- cette derniere n'a pas d'action serveur dediee
 // propre (contrairement a updateMpAccessToken/updateTwilioSettings), elle reste donc ici.
 export async function updateIntegraciones(formData: FormData) {
@@ -161,16 +160,9 @@ export async function updateIntegraciones(formData: FormData) {
 
   const { data: current } = await supabase
     .from('org_settings')
-    .select('unipile_account_id, unipile_connected_at, mp_notification_url')
+    .select('mp_notification_url')
     .eq('organization_id', profile.organization_id)
     .maybeSingle()
-
-  const unipileAccountId = String(formData.get('unipile_account_id') ?? '')
-  const unipileConnectedAt = resolveUnipileConnectedAt(
-    current?.unipile_account_id ?? null,
-    unipileAccountId,
-    current?.unipile_connected_at ?? null
-  )
 
   // mp_notification_url touche a l'integration de paiement -- seuls praticien/admin peuvent la
   // modifier (pas seulement l'appartenance a l'organisation). mp_access_token lui-meme n'est plus
@@ -191,8 +183,6 @@ export async function updateIntegraciones(formData: FormData) {
     .from('org_settings')
     .update({
       calendly_url: String(formData.get('calendly_url') ?? ''),
-      unipile_account_id: unipileAccountId,
-      unipile_connected_at: unipileConnectedAt,
       mp_notification_url: mpNotificationUrl,
       google_review_link: googleReviewLink,
       solicitud_resena_activa: solicitudResenaActiva,

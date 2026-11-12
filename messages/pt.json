@@ -520,7 +520,6 @@
       "clinicAddress": "Endereço do consultório",
       "clinicAddressPlaceholder": "Av. Brasil 2730, Pueblo Libre, Lima",
       "calendlyUrl": "URL do Calendly",
-      "unipileAccountId": "ID da conta Unipile",
       "mpToken": "Token do MercadoPago",
       "mpDevPanelLink": "Recuperar meu token em {domain}",
       "mpWebhookUrl": "URL do webhook do MercadoPago",

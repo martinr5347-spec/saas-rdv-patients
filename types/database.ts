@@ -142,8 +142,6 @@ export interface Database {
           delai_rappel_h: number
           monto_acompte: number
           calendly_url: string | null
-          unipile_account_id: string | null
-          unipile_connected_at: string | null
           mp_access_token: string | null
           mp_notification_url: string | null
           canal_email: boolean
@@ -159,7 +157,6 @@ export interface Database {
           buffer_min: number
           anticipacion_min_horas: number
           anticipacion_max_dias: number
-          canal_whatsapp_provider: 'unipile' | 'twilio'
           twilio_subaccount_sid: string | null
           twilio_whatsapp_number: string | null
           twilio_auth_token_encrypted: string | null
@@ -175,8 +172,6 @@ export interface Database {
           delai_rappel_h?: number
           monto_acompte?: number
           calendly_url?: string | null
-          unipile_account_id?: string | null
-          unipile_connected_at?: string | null
           mp_access_token?: string | null
           mp_notification_url?: string | null
           canal_email?: boolean
@@ -192,7 +187,6 @@ export interface Database {
           buffer_min?: number
           anticipacion_min_horas?: number
           anticipacion_max_dias?: number
-          canal_whatsapp_provider?: 'unipile' | 'twilio'
           twilio_subaccount_sid?: string | null
           twilio_whatsapp_number?: string | null
           twilio_auth_token_encrypted?: string | null
@@ -208,8 +202,6 @@ export interface Database {
           delai_rappel_h?: number
           monto_acompte?: number
           calendly_url?: string | null
-          unipile_account_id?: string | null
-          unipile_connected_at?: string | null
           mp_access_token?: string | null
           mp_notification_url?: string | null
           canal_email?: boolean
@@ -225,7 +217,6 @@ export interface Database {
           buffer_min?: number
           anticipacion_min_horas?: number
           anticipacion_max_dias?: number
-          canal_whatsapp_provider?: 'unipile' | 'twilio'
           twilio_subaccount_sid?: string | null
           twilio_whatsapp_number?: string | null
           twilio_auth_token_encrypted?: string | null

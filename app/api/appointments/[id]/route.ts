@@ -30,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const updateData: Pick<
     AppointmentUpdate,
-    'statut' | 'presente' | 'montant_consultation' | 'concepto_consultation' | 'hora_fin'
+    'statut' | 'presente' | 'montant_consultation' | 'concepto_consultation' | 'hora_fin' | 'monto_acompte'
   > = {}
 
   if (body.statut !== undefined) {
@@ -39,6 +39,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Statut invalide' }, { status: 400 })
     }
     updateData.statut = body.statut
+    // 'confirmado' ("Libre" affiche, cf. messages/*.json) veut dire "aucun paiement en ligne du" --
+    // ne doit jamais coexister avec un acompte non nul, meme si le statut est change manuellement
+    // via ce menu deroulant (contrairement a la creation, qui ne choisit ce statut que lorsque
+    // monto_acompte vaut deja 0 -- cf. app/api/public/reservar/[slug]/route.ts).
+    if (body.statut === 'confirmado') {
+      updateData.monto_acompte = 0
+    }
   }
 
   if (body.presente !== undefined) {

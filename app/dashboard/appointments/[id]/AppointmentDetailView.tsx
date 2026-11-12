@@ -12,7 +12,7 @@ const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-
 
 const STATUS_BADGE = {
   pendiente: 'warning',
-  confirmado: 'success',
+  confirmado: 'info',
   pagado: 'success',
   anulado: 'error',
 } as const

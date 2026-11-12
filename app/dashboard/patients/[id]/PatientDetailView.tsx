@@ -1557,7 +1557,7 @@ function NotasClinicasCard({
 
 const STATUS_BADGE = {
   pendiente: 'warning',
-  confirmado: 'success',
+  confirmado: 'info',
   en_curso: 'brand',
   pagado: 'success',
   anulado: 'error',
@@ -1577,7 +1577,9 @@ const STATUS_LABEL_KEY: Record<string, string> = {
 // sauf la premiere -- sans !important elle ecrase silencieusement border-l-*-400 ici.
 const STATUS_BORDER = {
   pendiente: '!border-l-warning-400',
-  confirmado: '!border-l-success-400',
+  // Pas de token "info-400" dans le design system -- bleu Tailwind brut, meme principe que
+  // Badge.tsx (info: 'bg-blue-50 text-blue-700'), pour rester coherent avec le badge ci-dessus.
+  confirmado: '!border-l-blue-400',
   en_curso: '!border-l-brand-400',
   pagado: '!border-l-success-400',
   anulado: '!border-l-error-400',

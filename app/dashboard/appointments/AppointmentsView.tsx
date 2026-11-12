@@ -11,7 +11,7 @@ import { computeParetoInsight, type ActoRealizadoRow } from '@/lib/analytics/par
 
 const STATUS_BADGE = {
   pendiente: 'warning',
-  confirmado: 'success',
+  confirmado: 'info',
   pagado: 'success',
   anulado: 'error',
 } as const

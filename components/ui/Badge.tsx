@@ -1,6 +1,6 @@
 import React from 'react'
 
-type BadgeColor = 'brand' | 'success' | 'error' | 'warning' | 'gray'
+type BadgeColor = 'brand' | 'success' | 'error' | 'warning' | 'gray' | 'info'
 
 const COLOR_CLASSES: Record<BadgeColor, string> = {
   brand: 'bg-brand-50 text-brand-600',
@@ -8,6 +8,7 @@ const COLOR_CLASSES: Record<BadgeColor, string> = {
   error: 'bg-error-50 text-error-700',
   warning: 'bg-warning-50 text-warning-700',
   gray: 'bg-gray-100 text-gray-700',
+  info: 'bg-blue-50 text-blue-700',
 }
 
 export default function Badge({ color = 'gray', children }: { color?: BadgeColor; children: React.ReactNode }) {

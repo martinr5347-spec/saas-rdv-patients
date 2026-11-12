@@ -271,6 +271,11 @@
       "colName": "Nome",
       "colEmail": "E-mail",
       "colPhone": "Telefone",
+      "colUltimoRdv": "Última consulta",
+      "colUltimoMonto": "Último valor",
+      "colMontoAcumulado": "Valor acumulado",
+      "searchPlaceholder": "Buscar por nome...",
+      "sinResultadosBusqueda": "Nenhum paciente corresponde à busca.",
       "importButton": "Importar pacientes",
       "newPatientButton": "+ Novo paciente",
       "nuevo": {

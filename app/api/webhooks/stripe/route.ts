@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getStripe, Stripe } from '@/lib/payments/stripe'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
+import { alertAdminEmail } from '@/lib/dispatcher'
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -57,22 +58,70 @@ export async function POST(req: Request) {
             periode_debut: new Date().toISOString(),
           })
         }
+
+        try {
+          const { data: org } = await supabase.from('organizations').select('nom, pays').eq('id', organizationId).maybeSingle()
+          await alertAdminEmail(
+            'Nueva cliente Núcleo',
+            `<p>Nueva cliente: <strong>${org?.nom ?? organizationId}</strong></p><p>País: ${org?.pays ?? '-'}</p>`
+          )
+        } catch (e) {
+          console.error('alertAdminEmail (checkout.session.completed) error:', e)
+        }
         break
       }
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('organization_id')
+          .eq('stripe_customer_id', invoice.customer as string)
+          .maybeSingle()
+
         await supabase
           .from('subscriptions')
           .update({ statut: 'past_due' })
           .eq('stripe_customer_id', invoice.customer as string)
+
+        if (sub?.organization_id) {
+          try {
+            const { data: org } = await supabase.from('organizations').select('nom').eq('id', sub.organization_id).maybeSingle()
+            const nombreCabinet = org?.nom ?? sub.organization_id
+            await alertAdminEmail(
+              `Pago fallido — ${nombreCabinet}`,
+              `<p>El pago de <strong>${nombreCabinet}</strong> ha fallado en Stripe.</p>`
+            )
+          } catch (e) {
+            console.error('alertAdminEmail (invoice.payment_failed) error:', e)
+          }
+        }
         break
       }
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('organization_id')
+          .eq('stripe_sub_id', subscription.id)
+          .maybeSingle()
+
         await supabase
           .from('subscriptions')
           .update({ statut: 'canceled' })
           .eq('stripe_sub_id', subscription.id)
+
+        if (sub?.organization_id) {
+          try {
+            const { data: org } = await supabase.from('organizations').select('nom').eq('id', sub.organization_id).maybeSingle()
+            const nombreCabinet = org?.nom ?? sub.organization_id
+            await alertAdminEmail(
+              `Abonnement résilié — ${nombreCabinet}`,
+              `<p>La suscripción de <strong>${nombreCabinet}</strong> ha sido cancelada en Stripe.</p>`
+            )
+          } catch (e) {
+            console.error('alertAdminEmail (customer.subscription.deleted) error:', e)
+          }
+        }
         break
       }
       default:

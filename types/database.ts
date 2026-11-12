@@ -788,6 +788,7 @@ export interface Database {
           fecha: string
           appointment_id: string | null
           created_by: string | null
+          metodo_pago: 'efectivo' | 'transferencia' | 'otro' | null
           created_at: string
         }
         Insert: {
@@ -800,6 +801,7 @@ export interface Database {
           fecha: string
           appointment_id?: string | null
           created_by?: string | null
+          metodo_pago?: 'efectivo' | 'transferencia' | 'otro' | null
           created_at?: string
         }
         Update: {
@@ -812,6 +814,7 @@ export interface Database {
           fecha?: string
           appointment_id?: string | null
           created_by?: string | null
+          metodo_pago?: 'efectivo' | 'transferencia' | 'otro' | null
           created_at?: string
         }
         Relationships: [

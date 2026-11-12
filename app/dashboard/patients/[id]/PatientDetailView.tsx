@@ -1600,6 +1600,11 @@ interface ActoHistorial {
   fecha: string
   appointmentId: string | null
   nombre: string
+  // null pour les lignes origen === 'mercadopago' (paiement automatique, jamais saisi a la main).
+  metodoPago: 'efectivo' | 'transferencia' | 'otro' | null
+  // 'mercadopago' = fusionne depuis appointments.statut='pagado' (voir GET /api/patients/[id]/actos) --
+  // jamais editable/supprimable, contrairement aux lignes 'acto' saisies via ce formulaire.
+  origen: 'acto' | 'mercadopago'
 }
 
 // Donnee de facturation (base du Pareto 80/20 dans Analisis), volontairement separee des Notas
@@ -1616,6 +1621,9 @@ function ActosRealizadosCard({
   autoOpenFormNonce?: number
 }) {
   const t = useTranslations('dashboard.patientDetail')
+  // Reutilise les libelles deja traduits de la carte Ingresos (medios de pago + badge
+  // "MercadoPago") plutot que de dupliquer la traduction, cf. prompt fusion ingresos/fiche patient.
+  const tIngresos = useTranslations('dashboard.ingresos')
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [catalogo, setCatalogo] = useState<ActoCatalogo[]>([])
@@ -1627,6 +1635,7 @@ function ActosRealizadosCard({
   const [nombreLibre, setNombreLibre] = useState('')
   const [monto, setMonto] = useState('')
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'otro'>('efectivo')
   const [saving, setSaving] = useState(false)
 
   const appointmentIdParam = searchParams.get('appointmentId')
@@ -1634,8 +1643,11 @@ function ActosRealizadosCard({
 
   // Transmet au parent (PatientDetailView) l'historique des actes réalisés -- consommé par Historial
   // de citas (Partie 4) pour afficher les actes de la session dans la modale de détail d'un RDV.
+  // Uniquement les actes saisis a la main (origen 'acto') : les paiements MercadoPago fusionnes
+  // dans cette carte n'ont pas leur place sous "Actos realizados" de la modale d'un RDV, feature
+  // distincte jamais demandee par ce prompt.
   useEffect(() => {
-    onHistorialChange?.(historial)
+    onHistorialChange?.(historial.filter((h) => h.origen === 'acto'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historial])
 
@@ -1679,6 +1691,7 @@ function ActosRealizadosCard({
     setNombreLibre('')
     setMonto('')
     setFecha(new Date().toISOString().slice(0, 10))
+    setMetodoPago('efectivo')
   }
 
   const submit = async () => {
@@ -1710,6 +1723,7 @@ function ActosRealizadosCard({
         nombre: mode !== 'catalogo' ? nombreLibre.trim() : undefined,
         monto: montoNum,
         fecha,
+        metodoPago,
         appointmentId: appointmentIdPrefill ?? undefined,
       }),
     })
@@ -1852,6 +1866,19 @@ function ActosRealizadosCard({
             </div>
           </div>
 
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">{tIngresos('fieldMetodo')}</label>
+            <select
+              value={metodoPago}
+              onChange={(e) => setMetodoPago(e.target.value as 'efectivo' | 'transferencia' | 'otro')}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            >
+              <option value="efectivo">{tIngresos('metodoEfectivo')}</option>
+              <option value="transferencia">{tIngresos('metodoTransferencia')}</option>
+              <option value="otro">{tIngresos('metodoOtro')}</option>
+            </select>
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -1881,15 +1908,31 @@ function ActosRealizadosCard({
         {!loading && historial.length === 0 && (
           <p className="px-5 py-6 text-center text-sm text-gray-400">{t('sinActosRegistrados')}</p>
         )}
-        {historial.map((h) => (
-          <div key={h.id} className="flex items-center justify-between px-5 py-3">
-            <div>
-              <p className="text-sm font-medium text-gray-800">{h.nombre}</p>
-              <p className="text-xs text-gray-400">{h.fecha}</p>
+        {historial.map((h) => {
+          // Reutilise les libelles/couleurs deja definis pour /dashboard/ingresos (meme sens :
+          // mercadopago = succes/automatique, les 3 moyens manuels = brand) plutot que d'en
+          // recreer une variante ici.
+          const metodoLabel =
+            h.origen === 'mercadopago'
+              ? tIngresos('metodoMercadopago')
+              : h.metodoPago === 'efectivo'
+                ? tIngresos('metodoEfectivo')
+                : h.metodoPago === 'transferencia'
+                  ? tIngresos('metodoTransferencia')
+                  : tIngresos('metodoOtro')
+          return (
+            <div key={`${h.origen}-${h.id}`} className="flex items-center justify-between px-5 py-3">
+              <div>
+                <p className="text-sm font-medium text-gray-800">{h.nombre || '-'}</p>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <p className="text-xs text-gray-400">{h.fecha}</p>
+                  <Badge color={h.origen === 'mercadopago' ? 'success' : 'brand'}>{metodoLabel}</Badge>
+                </div>
+              </div>
+              <p className="text-sm font-semibold text-gray-800">{h.monto.toFixed(2)}</p>
             </div>
-            <p className="text-sm font-semibold text-gray-800">{h.monto.toFixed(2)}</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -46,17 +46,43 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const { data: historial } = await supabase
     .from('actos_realizados')
-    .select('id, monto, fecha, acto_texto_libre, appointment_id, actos(nombre)')
+    .select('id, monto, fecha, acto_texto_libre, appointment_id, metodo_pago, actos(nombre)')
     .eq('patient_id', params.id)
     .order('fecha', { ascending: false })
 
-  const historialResuelto = (historial ?? []).map((h) => ({
-    id: h.id,
-    monto: Number(h.monto),
-    fecha: h.fecha,
-    appointmentId: h.appointment_id,
-    nombre: (h.actos as unknown as { nombre: string } | null)?.nombre ?? h.acto_texto_libre ?? '',
-  }))
+  // Fusion avec les paiements MercadoPago du patient (appointments.statut = 'pagado') -- meme
+  // logique que /dashboard/ingresos (app/dashboard/ingresos/page.tsx), a l'echelle d'un seul
+  // patient. origen distingue les lignes non editables/supprimables (mercadopago, automatique)
+  // des actes saisis a la main. ingresos_manuales et montant_consultation (ancien systeme retire)
+  // restent volontairement hors de cette fusion -- cf. prompt.
+  const { data: pagosMp } = await supabase
+    .from('appointments')
+    .select('id, monto_acompte, fecha_pago, notas')
+    .eq('patient_id', params.id)
+    .eq('organization_id', auth.organizationId)
+    .eq('statut', 'pagado')
+    .order('fecha_pago', { ascending: false })
+
+  const historialResuelto = [
+    ...(historial ?? []).map((h) => ({
+      id: h.id,
+      monto: Number(h.monto),
+      fecha: h.fecha,
+      appointmentId: h.appointment_id,
+      nombre: (h.actos as unknown as { nombre: string } | null)?.nombre ?? h.acto_texto_libre ?? '',
+      metodoPago: h.metodo_pago as 'efectivo' | 'transferencia' | 'otro' | null,
+      origen: 'acto' as const,
+    })),
+    ...(pagosMp ?? []).map((p) => ({
+      id: p.id,
+      monto: Number(p.monto_acompte),
+      fecha: p.fecha_pago ? p.fecha_pago.slice(0, 10) : '',
+      appointmentId: p.id,
+      nombre: p.notas ?? '',
+      metodoPago: null,
+      origen: 'mercadopago' as const,
+    })),
+  ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
 
   return NextResponse.json({ catalogo: catalogoResuelto, historial: historialResuelto })
 }
@@ -87,6 +113,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const monto = Number(body.monto)
   const fecha = body.fecha as string | undefined
   const appointmentId = typeof body.appointmentId === 'string' ? body.appointmentId : null
+  const metodoPago = body.metodoPago as string | undefined
 
   if (!['catalogo', 'nuevo', 'libre'].includes(mode ?? '')) {
     return NextResponse.json({ error: 'Modo inválido' }, { status: 400 })
@@ -96,6 +123,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
   if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return NextResponse.json({ error: 'Fecha inválida' }, { status: 400 })
+  }
+  // Requis -- MercadoPago reste le seul moyen automatique, jamais une option saisie ici.
+  if (!['efectivo', 'transferencia', 'otro'].includes(metodoPago ?? '')) {
+    return NextResponse.json({ error: 'Selecciona un medio de pago' }, { status: 400 })
   }
 
   let actoId: string | null = null
@@ -147,8 +178,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       fecha,
       appointment_id: appointmentId,
       created_by: auth.userId,
+      metodo_pago: metodoPago as 'efectivo' | 'transferencia' | 'otro',
     })
-    .select('id, monto, fecha, appointment_id')
+    .select('id, monto, fecha, appointment_id, metodo_pago')
     .single()
 
   if (realizadoError || !realizado) {
@@ -162,6 +194,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       fecha: realizado.fecha,
       appointmentId: realizado.appointment_id,
       nombre: nombreParaRespuesta,
+      metodoPago: realizado.metodo_pago as 'efectivo' | 'transferencia' | 'otro',
+      origen: 'acto' as const,
     },
     nuevoEnCatalogo: mode === 'nuevo' ? { id: actoId, nombre: nombreParaRespuesta, precioDefault: null } : null,
   })

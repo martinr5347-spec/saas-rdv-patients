@@ -13,9 +13,18 @@ export default async function PatientsPage() {
   const { data: appointments } = await supabase.from('appointments').select('patient_id, fecha_cita')
 
   // actos_realizados (migration 038) est la vraie source de verite pour "ce que le praticien a
-  // facture/touche pour ce patient" -- pas appointments.monto_acompte (acompte de reservation
-  // seulement) ni ingresos_manuales (pas de patient_id fiable, texte libre paciente_nombre).
+  // facture/touche a la main pour ce patient" -- pas ingresos_manuales (pas de patient_id fiable,
+  // texte libre paciente_nombre).
   const { data: actosRealizados } = await supabase.from('actos_realizados').select('patient_id, monto, fecha')
+
+  // Paiements MercadoPago du patient (automatiques, distincts des actos_realizados saisis a la
+  // main) -- meme fusion que ActosRealizadosCard (app/api/patients/[id]/actos/route.ts) et
+  // /dashboard/ingresos, a l'echelle de la liste. statut='pagado' uniquement : un acompte non
+  // paye n'est pas de l'argent reellement recu.
+  const { data: pagosMp } = await supabase
+    .from('appointments')
+    .select('patient_id, monto_acompte, fecha_pago')
+    .eq('statut', 'pagado')
 
   const { data: orgSettings } = await supabase.from('org_settings').select('monnaie').maybeSingle()
 
@@ -29,14 +38,22 @@ export default async function PatientsPage() {
 
   const ultimoMontoByPatient = new Map<string, { monto: number; fecha: string }>()
   const montoCumuladoByPatient = new Map<string, number>()
-  for (const acto of actosRealizados ?? []) {
-    const monto = Number(acto.monto)
-    montoCumuladoByPatient.set(acto.patient_id, (montoCumuladoByPatient.get(acto.patient_id) ?? 0) + monto)
 
-    const current = ultimoMontoByPatient.get(acto.patient_id)
-    if (!current || acto.fecha > current.fecha) {
-      ultimoMontoByPatient.set(acto.patient_id, { monto, fecha: acto.fecha })
+  function registrarPago(patientId: string, monto: number, fecha: string) {
+    montoCumuladoByPatient.set(patientId, (montoCumuladoByPatient.get(patientId) ?? 0) + monto)
+    const current = ultimoMontoByPatient.get(patientId)
+    if (!current || fecha > current.fecha) {
+      ultimoMontoByPatient.set(patientId, { monto, fecha })
     }
+  }
+
+  for (const acto of actosRealizados ?? []) {
+    registrarPago(acto.patient_id, Number(acto.monto), acto.fecha)
+  }
+  for (const pago of pagosMp ?? []) {
+    // fecha_pago est un timestamptz -- tronque a la date pour rester comparable a actos.fecha
+    // (colonne date) dans le meme Map "le plus recent par date".
+    registrarPago(pago.patient_id, Number(pago.monto_acompte), (pago.fecha_pago ?? '').slice(0, 10))
   }
 
   const patientsConDatos = (patients ?? []).map((p) => ({

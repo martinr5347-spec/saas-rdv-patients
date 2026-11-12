@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import StatCard from '@/components/ui/StatCard'
@@ -110,7 +111,6 @@ export default function IngresosView({
   pagosConsulta,
   actosRealizados,
   editingEntry,
-  createAction,
   updateAction,
   deleteAction,
 }: {
@@ -122,7 +122,6 @@ export default function IngresosView({
   pagosConsulta: ConsultaPayment[]
   actosRealizados: ActoRealizadoPayment[]
   editingEntry: ManualEntry | null
-  createAction: (formData: FormData) => void
   updateAction: (formData: FormData) => void
   deleteAction: (formData: FormData) => void
 }) {
@@ -225,81 +224,92 @@ export default function IngresosView({
         <StatCard label={`${t('totalManual')} (${monnaie})`} value={totalManual.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
       </div>
 
-      <Card>
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">
-          {editingEntry ? t('formTitleEdit') : t('formTitleCreate')}
-        </h2>
-        <form action={editingEntry ? updateAction : createAction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {editingEntry && <input type="hidden" name="id" value={editingEntry.id} />}
-          <input type="hidden" name="desde" value={desde} />
-          <input type="hidden" name="hasta" value={hasta} />
-          <div>
-            <label className="block text-sm font-medium text-gray-700">{t('fieldFecha')}</label>
-            <input
-              name="fecha"
-              type="date"
-              required
-              defaultValue={editingEntry?.fecha ?? new Date().toISOString().slice(0, 10)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">{t('fieldMonto')}</label>
-            <input
-              name="monto"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              defaultValue={editingEntry?.monto ?? ''}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">{t('fieldMetodo')}</label>
-            <select
-              name="metodo_pago"
-              required
-              defaultValue={editingEntry?.metodo_pago ?? 'efectivo'}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            >
-              <option value="efectivo">{t('metodoEfectivo')}</option>
-              <option value="transferencia">{t('metodoTransferencia')}</option>
-              <option value="otro">{t('metodoOtro')}</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">{t('fieldPaciente')}</label>
-            <input
-              name="paciente_nombre"
-              defaultValue={editingEntry?.paciente_nombre ?? ''}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">{t('fieldConcepto')}</label>
-            <input
-              name="concepto"
-              placeholder={t('conceptoPlaceholder')}
-              defaultValue={editingEntry?.concepto ?? ''}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            />
-          </div>
-          <div className="sm:col-span-2 flex gap-3">
-            <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-              {editingEntry ? t('submitEdit') : t('submitCreate')}
-            </button>
-            {editingEntry && (
+      {editingEntry ? (
+        <Card>
+          <h2 className="text-sm font-semibold text-gray-800 mb-3">{t('formTitleEdit')}</h2>
+          <form action={updateAction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="hidden" name="id" value={editingEntry.id} />
+            <input type="hidden" name="desde" value={desde} />
+            <input type="hidden" name="hasta" value={hasta} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('fieldFecha')}</label>
+              <input
+                name="fecha"
+                type="date"
+                required
+                defaultValue={editingEntry.fecha}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('fieldMonto')}</label>
+              <input
+                name="monto"
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                defaultValue={editingEntry.monto}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('fieldMetodo')}</label>
+              <select
+                name="metodo_pago"
+                required
+                defaultValue={editingEntry.metodo_pago}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              >
+                <option value="efectivo">{t('metodoEfectivo')}</option>
+                <option value="transferencia">{t('metodoTransferencia')}</option>
+                <option value="otro">{t('metodoOtro')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('fieldPaciente')}</label>
+              <input
+                name="paciente_nombre"
+                defaultValue={editingEntry.paciente_nombre ?? ''}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">{t('fieldConcepto')}</label>
+              <input
+                name="concepto"
+                placeholder={t('conceptoPlaceholder')}
+                defaultValue={editingEntry.concepto ?? ''}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              />
+            </div>
+            <div className="sm:col-span-2 flex gap-3">
+              <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+                {t('submitEdit')}
+              </button>
               <a
                 href={`/dashboard/ingresos?desde=${desde}&hasta=${hasta}`}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 {t('cancelEdit')}
               </a>
-            )}
-          </div>
-        </form>
-      </Card>
+            </div>
+          </form>
+        </Card>
+      ) : (
+        // Creation retiree d'ici -- fusionnee dans "Agregar acto" de la fiche patient pour que
+        // l'argent soit toujours rattache a un vrai patient_id (cf. prompt fusion ingresos/fiche
+        // patient). updateAction/deleteAction restent plus bas : l'historique existant reste
+        // modifiable/supprimable ici.
+        <Card>
+          <p className="text-sm text-gray-600">
+            {t('createMovedMessage')}{' '}
+            <Link href="/dashboard/patients" className="font-medium text-brand-600 hover:underline">
+              {t('createMovedLink')}
+            </Link>
+          </p>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">

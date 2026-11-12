@@ -16,24 +16,10 @@ async function getOrganizationId() {
   return { supabase, userId: user?.id ?? null, organizationId: profile?.organization_id ?? null }
 }
 
-async function createIngreso(formData: FormData) {
-  'use server'
-  const { supabase, userId, organizationId } = await getOrganizationId()
-  if (!organizationId) return
-
-  await supabase.from('ingresos_manuales').insert({
-    organization_id: organizationId,
-    fecha: String(formData.get('fecha')),
-    monto: Number(formData.get('monto')),
-    metodo_pago: String(formData.get('metodo_pago')) as 'efectivo' | 'transferencia' | 'otro',
-    paciente_nombre: String(formData.get('paciente_nombre') ?? '').trim() || null,
-    concepto: String(formData.get('concepto') ?? '').trim() || null,
-    created_by: userId,
-  })
-
-  redirect(`/dashboard/ingresos?desde=${formData.get('desde')}&hasta=${formData.get('hasta')}`)
-}
-
+// La creation d'un ingreso_manual a ete retiree d'ici -- fusionnee dans "Agregar acto" de la
+// fiche patient (ActosRealizadosCard, app/dashboard/patients/[id]/PatientDetailView.tsx) pour que
+// l'argent soit toujours rattache a un vrai patient_id. updateIngreso/deleteIngreso restent en
+// place : l'historique deja en base reste lisible et corrigible ici.
 async function updateIngreso(formData: FormData) {
   'use server'
   const { supabase, organizationId } = await getOrganizationId()
@@ -154,7 +140,6 @@ export default async function IngresosPage({
         nombre: (a.actos as unknown as { nombre: string } | null)?.nombre ?? a.acto_texto_libre ?? '',
       }))}
       editingEntry={editingEntry}
-      createAction={createIngreso}
       updateAction={updateIngreso}
       deleteAction={deleteIngreso}
     />

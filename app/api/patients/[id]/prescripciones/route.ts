@@ -134,7 +134,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       clinicName: org?.nom ?? '',
       praticienNombre: praticien?.nom ?? '',
       numeroColegiatura: praticien?.numero_colegiatura ?? null,
-      clinicAdresse: org?.adresse ?? null,
+      // org.adresse est enregistre comme '' (jamais null) quand le champ est laisse vide dans
+      // Configuracion (app/dashboard/settings/actions.ts) -- '' && <Text> s'evalue a '' en JSX,
+      // ce qui plante renderToBuffer (texte brut hors balise <Text>, interdit par react-pdf).
+      // Normaliser ici, pas dans le JSX, pour rester coherent avec numeroColegiatura ci-dessus.
+      clinicAdresse: org?.adresse?.trim() || null,
       patientNombre: patientRow.nom,
       fecha,
       medicamentos,

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
@@ -90,7 +89,6 @@ function BoltIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function RegisterPage() {
   const { locale, setLocale } = useLocale()
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nom, setNom] = useState('')
@@ -126,8 +124,11 @@ export default function RegisterPage() {
       return
     }
 
-    router.refresh()
-    router.push('/dashboard')
+    // Navigation complete (pas router.push) : meme raison que login/page.tsx -- evite que le
+    // dashboard reutilise le rendu en cache du layout racine resolu AVANT l'inscription (bouton de
+    // langue de cette page, qui peut differer du pays choisi, cf. prompt
+    // langue-verrouillee-sur-pais) au lieu de la langue reellement derivee du pays du compte.
+    window.location.href = '/dashboard'
   }
 
   return (

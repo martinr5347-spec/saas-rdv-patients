@@ -39,3 +39,10 @@ export const MONEDA_POR_PAIS: Record<string, string> = {
 export function monedaParaPais(pais: string): string {
   return MONEDA_POR_PAIS[pais] ?? 'PEN'
 }
+
+// Seul le Bresil est lusophone dans la liste ci-dessus -- tous les autres pays sont hispanophones.
+// Meme principe que MONEDA_POR_PAIS : le pays est la source unique de verite, jamais un choix
+// independant du praticien au moment de l'inscription.
+export function idiomaParaPais(pais: string): 'es' | 'pt' {
+  return pais === 'BR' ? 'pt' : 'es'
+}

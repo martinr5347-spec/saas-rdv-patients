@@ -11,34 +11,36 @@ function isSupported(value: string | undefined): value is SupportedLocale {
 
 // Routing next-intl "sans prefixe d'URL" (pas de segment [locale]) -- la locale est resolue par
 // requete, jamais dans le chemin. Ordre de resolution :
-// 1. Cookie NEXT_LOCALE (choix explicite du visiteur/praticien, pose par setLocaleCookie côté client)
-// 2. Compte authentifie : users.idioma (es/pt uniquement, jamais 'fr' -- ce champ pilote aussi
-//    organizations.langue/les templates patients, qui n'existent qu'en es/pt) -- preserve a
-//    l'identique le comportement actuel d'un praticien deja en ES/PT tant qu'il n'a jamais
-//    choisi explicitement une autre langue d'interface via le cookie.
+// 1. Compte authentifie : users.idioma (es/pt uniquement, jamais 'fr') prime TOUJOURS, jamais le
+//    cookie -- le pays du cabinet est la seule source de verite (cf. prompt
+//    langue-verrouillee-sur-pais) : un cookie NEXT_LOCALE herite d'une autre session dans le meme
+//    navigateur ne doit jamais pouvoir ecraser la langue du compte.
+// 2. Visiteur non authentifie (pages publiques : accueil, login, register) : cookie NEXT_LOCALE,
+//    choix explicite pose par setLocaleCookie cote client -- seul cas ou il s'applique encore,
+//    faute de compte dont deriver la langue.
 // 3. Defaut 'es' (meme defaut que l'ancien hook lib/hooks/useLocale.ts).
 export default getRequestConfig(async () => {
-  const cookieLocale = cookies().get('NEXT_LOCALE')?.value
+  let bootstrapLocale: SupportedLocale | null = null
+  try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('users').select('idioma').eq('id', user.id).maybeSingle()
+      if (profile?.idioma === 'pt') bootstrapLocale = 'pt'
+      else if (profile?.idioma === 'es') bootstrapLocale = 'es'
+    }
+  } catch {
+    // Pages publiques sans session, ou erreur reseau.
+  }
 
   let locale: SupportedLocale
-  if (isSupported(cookieLocale)) {
-    locale = cookieLocale
+  if (bootstrapLocale) {
+    locale = bootstrapLocale
   } else {
-    let bootstrapLocale: SupportedLocale | null = null
-    try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase.from('users').select('idioma').eq('id', user.id).maybeSingle()
-        if (profile?.idioma === 'pt') bootstrapLocale = 'pt'
-        else if (profile?.idioma === 'es') bootstrapLocale = 'es'
-      }
-    } catch {
-      // Pages publiques sans session, ou erreur reseau -- retombe sur le defaut ci-dessous.
-    }
-    locale = bootstrapLocale ?? 'es'
+    const cookieLocale = cookies().get('NEXT_LOCALE')?.value
+    locale = isSupported(cookieLocale) ? cookieLocale : 'es'
   }
 
   const messages = (await import(`../messages/${locale}.json`)).default

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
@@ -15,7 +14,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -34,8 +32,12 @@ export default function LoginPage() {
       return
     }
 
-    router.refresh()
-    router.push('/dashboard')
+    // Navigation complete (pas router.push) : une navigation cote client reutilise le rendu deja
+    // en cache du layout racine partage avec /login, qui a resolu la locale AVANT la connexion --
+    // le dashboard afficherait alors une langue perimee (ex. cookie NEXT_LOCALE d'une session
+    // precedente) au lieu de celle du compte qui vient de se connecter (cf. prompt
+    // langue-verrouillee-sur-pais). Une vraie requete force un rendu serveur frais du layout.
+    window.location.href = '/dashboard'
   }
 
   return (

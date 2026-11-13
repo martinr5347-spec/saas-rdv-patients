@@ -5,7 +5,7 @@ import { telefonosCoinciden, telefonoTieneLongitudMinima } from '@/lib/patients/
 
 export async function POST(req: Request) {
   const supabase = createClient()
-  const m = getRouteMessages().dashboard.patients.nuevo
+  const m = (await getRouteMessages()).dashboard.patients.nuevo
   const {
     data: { user },
   } = await supabase.auth.getUser()

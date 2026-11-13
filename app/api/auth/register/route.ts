@@ -3,20 +3,29 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { meetsMinimumPasswordRule } from '@/lib/utils/passwordStrength'
 import { seedActosIfEmpty } from '@/lib/patients/actosCatalog'
-import { PAISES_LATAM, monedaParaPais } from '@/lib/constants/paisesLatam'
+import { PAISES_LATAM, monedaParaPais, idiomaParaPais } from '@/lib/constants/paisesLatam'
 import esMessages from '@/messages/es.json'
 import ptMessages from '@/messages/pt.json'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, nom, idioma, especialidad, pais } = body
+    // idioma recu du bouton de langue clique sur la page publique -- accepte pour ne pas casser
+    // l'appel existant du frontend, mais volontairement ignore : la langue du compte est
+    // desormais toujours derivee du pays (cf. userIdioma ci-dessous).
+    const { email, password, nom, especialidad, pais } = body
 
     if (!email || !password || !nom) {
       return NextResponse.json({ error: 'Email, mot de passe et nom sont requis' }, { status: 400 })
     }
 
-    const userIdioma = idioma === 'pt' ? 'pt' : 'es'
+    // Pays choisi a l'inscription -- fallback propre vers PE (meme defaut que la colonne SQL,
+    // cf. migration 001) si absent ou hors liste, jamais bloquant pour l'inscription.
+    const orgPais = PAISES_LATAM.some((p) => p.pais === pais) ? (pais as string) : 'PE'
+    // Langue derivee uniquement du pays du cabinet, jamais du bouton de langue clique sur la page
+    // publique (idioma recu ci-dessus, desormais ignore pour cette valeur) -- meme principe que
+    // monedaParaPais : le pays est la seule source de verite.
+    const userIdioma = idiomaParaPais(orgPais)
 
     // Meme regle que le formulaire (lib/utils/passwordStrength.ts) -- revalidee ici pour ne pas
     // etre contournable en appelant cette route directement sans passer par l'UI.
@@ -26,9 +35,6 @@ export async function POST(req: Request) {
     }
     const orgEspecialidad =
       especialidad === 'estetica_dermato' || especialidad === 'clinica_medica' ? especialidad : null
-    // Pays choisi a l'inscription -- fallback propre vers PE (meme defaut que la colonne SQL,
-    // cf. migration 001) si absent ou hors liste, jamais bloquant pour l'inscription.
-    const orgPais = PAISES_LATAM.some((p) => p.pais === pais) ? (pais as string) : 'PE'
     // Devise de depart deduite du pays reel (et non plus de la langue, qui ne couvrait pas
     // AR/CL/CO/MX/UY) -- modifiable ensuite independamment dans Configuracion.
     const defaultMonnaie = monedaParaPais(orgPais)

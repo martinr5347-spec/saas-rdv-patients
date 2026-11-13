@@ -13,7 +13,7 @@ import {
   getControlRecallVariantContent,
 } from '@/lib/dispatcher/templateVariants'
 import { seedActosIfEmpty, type Especialidad } from '@/lib/patients/actosCatalog'
-import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
+import { PAISES_LATAM, idiomaParaPais } from '@/lib/constants/paisesLatam'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CANALES = ['email', 'whatsapp'] as const
@@ -92,11 +92,17 @@ export async function updateProfile(formData: FormData) {
   // volontairement pour une autre raison).
   const paisInput = String(formData.get('organizacion_pais') ?? '')
   const nuevoPais = PAISES_LATAM.some((p) => p.pais === paisInput) ? paisInput : 'PE'
+  // A la difference de la monnaie ci-dessus, la langue n'est jamais un choix independant
+  // plausible -- elle doit toujours suivre le pays, meme a posteriori (cf. prompt
+  // langue-verrouillee-sur-pais).
+  const nouvelleLangue = idiomaParaPais(nuevoPais)
 
   await supabase
     .from('organizations')
-    .update({ especialidad: nuevaEspecialidad, pays: nuevoPais })
+    .update({ especialidad: nuevaEspecialidad, pays: nuevoPais, langue: nouvelleLangue })
     .eq('id', profile.organization_id)
+
+  await supabase.from('users').update({ idioma: nouvelleLangue }).eq('organization_id', profile.organization_id).eq('role', 'praticien')
 
   // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty
   // ne fait de toute facon rien si la liste de l'organisation n'est plus vide (jamais d'ecrasement

@@ -807,7 +807,7 @@ function NotasClinicasCard({
 
   function allowsPhoto(categoria: string | null) {
     if (!categoria) return false
-    return categoria === CATEGORIA_CONTROL || categoriasConFoto.includes(categoria)
+    return categoriasConFoto.includes(categoria)
   }
 
   // Catégories déjà utilisées aujourd'hui -- bornage "une entrée par catégorie par jour" (pas de 10 000 entrées).

@@ -359,6 +359,78 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     return NextResponse.json({ error: 'No se pudo crear la cita' }, { status: 500 })
   }
 
+  // Partie 6 : photo de reference automatique sur le RDV de controle -- uniquement si cette
+  // reservation vient bien du lien de relance d'un controle (origenControlSesionId non null,
+  // revalide ci-dessus contre CE patient). N'affecte jamais la creation du RDV elle-meme :
+  // enveloppe dans son propre try/catch, meme pattern que le lien MercadoPago et le dispatch de
+  // confirmation ci-dessous.
+  if (origenControlSesionId) {
+    try {
+      const { data: patientRow } = await supabase
+        .from('patients')
+        .select('proximo_control_photo_note_id')
+        .eq('id', patientId)
+        .maybeSingle()
+
+      const photoNoteId = patientRow?.proximo_control_photo_note_id ?? null
+      if (photoNoteId) {
+        const { data: notaOrigen } = await supabase
+          .from('patient_notes')
+          .select('created_at, patient_note_photos(storage_path)')
+          .eq('id', photoNoteId)
+          .maybeSingle()
+
+        const photosOrigen = (notaOrigen?.patient_note_photos as { storage_path: string }[] | null) ?? []
+
+        if (notaOrigen && photosOrigen.length > 0) {
+          const { data: nuevaSesion } = await supabase
+            .from('patient_note_sesiones')
+            .insert({ patient_id: patientId, organization_id: org.id, appointment_id: appointment.id })
+            .select('id')
+            .single()
+
+          if (nuevaSesion) {
+            const fechaOriginal = notaOrigen.created_at.slice(0, 10)
+            const { data: nuevaNota } = await supabase
+              .from('patient_notes')
+              .insert({
+                patient_id: patientId,
+                organization_id: org.id,
+                sesion_id: nuevaSesion.id,
+                categoria: 'Diagnóstico',
+                contenido: `Foto de referencia — diagnóstico inicial del ${fechaOriginal}`,
+              })
+              .select('id')
+              .single()
+
+            if (nuevaNota) {
+              for (const photo of photosOrigen) {
+                // Toujours une vraie copie, jamais un storage_path partage -- la suppression ou
+                // modification d'une session ne doit jamais affecter l'autre (meme principe que
+                // le reste du projet, cf. prescripciones/actos : jamais de fichier partage entre
+                // deux lignes).
+                const ext = photo.storage_path.split('.').pop() || 'jpg'
+                const nuevoPath = `${org.id}/${nuevaNota.id}/${crypto.randomUUID()}.${ext}`
+                const { error: copyError } = await supabase.storage.from('clinical-photos').copy(photo.storage_path, nuevoPath)
+                if (copyError) {
+                  console.error('Reserva pública: erreur copie photo de référence contrôle', copyError)
+                  continue
+                }
+                await supabase.from('patient_note_photos').insert({
+                  note_id: nuevaNota.id,
+                  organization_id: org.id,
+                  storage_path: nuevoPath,
+                })
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Reserva pública: erreur création note de référence contrôle', e)
+    }
+  }
+
   let linkPago: string | null = null
   if (montoAcompte > 0) {
     try {

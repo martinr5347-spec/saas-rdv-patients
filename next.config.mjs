@@ -8,6 +8,10 @@ const nextConfig = {
     staleTimes: {
       dynamic: 0,
     },
+    outputFileTracingIncludes: {
+      '/api/patients/[id]/prescripciones': ['./node_modules/pdfkit/js/standard-fonts/**'],
+      '/api/ingresos/export-pdf': ['./node_modules/pdfkit/js/standard-fonts/**'],
+    },
   },
 };
 

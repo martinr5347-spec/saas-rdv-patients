@@ -32,31 +32,110 @@ export interface AppointmentRow {
   patients: { nom: string } | null
 }
 
+type PeriodoTop = 'mes' | 'trimestre' | 'semestre' | 'anio'
+
+const PERIODOS_TOP: { value: PeriodoTop; labelKey: string }[] = [
+  { value: 'mes', labelKey: 'periodoMes' },
+  { value: 'trimestre', labelKey: 'periodoTrimestre' },
+  { value: 'semestre', labelKey: 'periodoSemestre' },
+  { value: 'anio', labelKey: 'periodoAnio' },
+]
+
+// Or/argent/bronze avec les teintes Tailwind standard deja en place dans le projet (pas de
+// palette custom) -- hauteur de pastille degressive (pt-*) pour l'effet podium classique, bas
+// aligne via items-end sur le conteneur flex.
+const PODIUM_RANK_STYLES: Record<1 | 2 | 3, { badge: string; card: string; padding: string }> = {
+  1: { badge: 'bg-amber-400 text-white', card: 'border-amber-200 bg-amber-50', padding: 'pt-7 pb-4' },
+  2: { badge: 'bg-gray-400 text-white', card: 'border-gray-200 bg-gray-50', padding: 'pt-4 pb-4' },
+  3: { badge: 'bg-amber-700 text-white', card: 'border-amber-100 bg-orange-50', padding: 'pt-2 pb-4' },
+}
+
 // Mini-resume "top traitements" (esprit Pareto de analisis/AnalisisView.tsx, sans le detail
-// complet) -- seulement le TOP 3 par chiffre d'affaires, rien si aucun acte ce mois-ci.
-function TopTratamientosCard({ actosDelMes }: { actosDelMes: ActoRealizadoRow[] }) {
+// complet) -- seulement le TOP 3 par chiffre d'affaires, rien si aucun acte sur la periode choisie.
+function TopTratamientosCard({
+  actosDelPeriodo,
+  periodoTop,
+  statut,
+  depuis,
+  jusquau,
+}: {
+  actosDelPeriodo: ActoRealizadoRow[]
+  periodoTop: PeriodoTop
+  statut: string
+  depuis: string
+  jusquau: string
+}) {
   const t = useTranslations('dashboard.appointments')
-  const { porMonto } = computeParetoInsight(actosDelMes)
+  const { porMonto, totalMonto } = computeParetoInsight(actosDelPeriodo)
 
   if (porMonto.length === 0) return null
 
   const top3 = porMonto.slice(0, 3)
+  // Ordre visuel classique (2e a gauche, 1er au centre et plus haut, 3e a droite) -- seulement
+  // les positions reellement occupees, pour ne pas casser le rendu avec 1 ou 2 traitements.
+  const slots = (
+    [
+      top3[1] ? { rank: 2 as const, group: top3[1] } : null,
+      top3[0] ? { rank: 1 as const, group: top3[0] } : null,
+      top3[2] ? { rank: 3 as const, group: top3[2] } : null,
+    ] as const
+  ).filter((s): s is { rank: 1 | 2 | 3; group: (typeof top3)[number] } => s !== null)
+
+  // periodoTop est une fenetre independante du filtre statut/depuis/jusquau du tableau de RDV
+  // (celui-la reste inchange) -- on le preserve dans l'URL pour ne pas le reinitialiser au clic.
+  const hrefPeriodo = (p: PeriodoTop) => {
+    const params = new URLSearchParams()
+    if (statut) params.set('statut', statut)
+    if (depuis) params.set('depuis', depuis)
+    if (jusquau) params.set('jusquau', jusquau)
+    params.set('periodoTop', p)
+    return `/dashboard/appointments?${params.toString()}`
+  }
 
   return (
     <Card>
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-800">{t('topTratamientosTitle')}</h2>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">{t('topTratamientosTitle')}</h2>
+          <p className="text-xs text-gray-400">{t('topTratamientosSubtitle')}</p>
+        </div>
         <Link href="/dashboard/analisis" className="text-xs font-medium text-brand-600 hover:text-brand-700">
           {t('verAnalisisCompleto')}
         </Link>
       </div>
-      <div className="mt-3 space-y-1.5">
-        {top3.map((g) => (
-          <div key={g.nombre} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
-            <span className="text-gray-700">{g.nombre}</span>
-            <span className="font-medium text-gray-800">{g.monto.toFixed(2)}</span>
-          </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {PERIODOS_TOP.map((p) => (
+          <Link
+            key={p.value}
+            href={hrefPeriodo(p.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              periodoTop === p.value ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {t(p.labelKey)}
+          </Link>
         ))}
+      </div>
+
+      <div className="mt-4 flex items-end justify-center gap-3">
+        {slots.map(({ rank, group }) => {
+          const pct = totalMonto > 0 ? Math.round((group.monto / totalMonto) * 100) : 0
+          const style = PODIUM_RANK_STYLES[rank]
+          return (
+            <div
+              key={group.nombre}
+              className={`flex w-28 flex-col items-center rounded-xl border px-2 ${style.card} ${style.padding}`}
+            >
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${style.badge}`}>
+                {rank}
+              </span>
+              <p className="mt-2 line-clamp-2 text-center text-xs font-medium text-gray-700">{group.nombre}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">{group.monto.toFixed(2)}</p>
+              <p className="text-[11px] text-gray-500">{pct}%</p>
+            </div>
+          )
+        })}
       </div>
     </Card>
   )
@@ -65,7 +144,8 @@ function TopTratamientosCard({ actosDelMes }: { actosDelMes: ActoRealizadoRow[] 
 export default function AppointmentsView({
   appointments,
   paidAppointments,
-  actosDelMes,
+  actosDelPeriodo,
+  periodoTop,
   error,
   statut,
   depuis,
@@ -73,7 +153,8 @@ export default function AppointmentsView({
 }: {
   appointments: AppointmentRow[]
   paidAppointments: PaidAppointment[]
-  actosDelMes: ActoRealizadoRow[]
+  actosDelPeriodo: ActoRealizadoRow[]
+  periodoTop: PeriodoTop
   error: string | null
   statut: string
   depuis: string
@@ -131,7 +212,7 @@ export default function AppointmentsView({
             </form>
           </Card>
 
-          <TopTratamientosCard actosDelMes={actosDelMes} />
+          <TopTratamientosCard actosDelPeriodo={actosDelPeriodo} periodoTop={periodoTop} statut={statut} depuis={depuis} jusquau={jusquau} />
 
           {error && <p className="text-error-600 text-sm">{error}</p>}
 

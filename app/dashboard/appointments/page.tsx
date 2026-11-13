@@ -2,10 +2,34 @@ import { createClient } from '@/lib/supabase/server'
 import { ahoraEnFuseau } from '@/lib/utils/timezone'
 import AppointmentsView from './AppointmentsView'
 
+const PERIODOS_TOP = ['mes', 'trimestre', 'semestre', 'anio'] as const
+type PeriodoTop = (typeof PERIODOS_TOP)[number]
+
+// Date de debut de la fenetre, dans le fuseau du praticien (meme pattern que debutMois existant --
+// jamais un calcul en UTC pur, sinon un acte tard le soir en debut/fin de periode peut etre
+// inclus/exclu a tort selon le fuseau). "hoy" est deja une chaine 'YYYY-MM-DD' (ahoraEnFuseau).
+function debutPeriodoTop(periodo: PeriodoTop, hoy: string): string {
+  const anio = hoy.slice(0, 4)
+  const mes = Number(hoy.slice(5, 7))
+  switch (periodo) {
+    case 'trimestre': {
+      const mesTrimestre = Math.floor((mes - 1) / 3) * 3 + 1
+      return `${anio}-${String(mesTrimestre).padStart(2, '0')}-01`
+    }
+    case 'semestre':
+      return `${anio}-${mes <= 6 ? '01' : '07'}-01`
+    case 'anio':
+      return `${anio}-01-01`
+    case 'mes':
+    default:
+      return `${hoy.slice(0, 7)}-01`
+  }
+}
+
 export default async function AppointmentsPage({
   searchParams,
 }: {
-  searchParams: { statut?: string; depuis?: string; jusquau?: string }
+  searchParams: { statut?: string; depuis?: string; jusquau?: string; periodoTop?: string }
 }) {
   const supabase = createClient()
 
@@ -49,19 +73,20 @@ export default async function AppointmentsPage({
     .limit(500)
 
   // Widget compact "top 3 traitements" (voir AppointmentsView) -- meme requete que
-  // analisis/page.tsx mais limitee au mois en cours. "1er du mois" calcule dans le fuseau reel
-  // de l'organisation (pas en UTC pur) -- sinon un acte tard le soir en debut/fin de mois peut
-  // etre inclus/exclu a tort selon le fuseau. Filtre organization_id explicite par coherence
-  // de defense en profondeur avec analisis/page.tsx, meme si la RLS (tenant_isolation,
-  // migration 038) protege deja contre une fuite reelle.
-  const debutMois = `${ahoraEnFuseau(fuseau).fecha.slice(0, 7)}-01`
+  // analisis/page.tsx mais limitee a la fenetre choisie (periodoTop). Filtre organization_id
+  // explicite par coherence de defense en profondeur avec analisis/page.tsx, meme si la RLS
+  // (tenant_isolation, migration 038) protege deja contre une fuite reelle.
+  const periodoTop: PeriodoTop = PERIODOS_TOP.includes(searchParams.periodoTop as PeriodoTop)
+    ? (searchParams.periodoTop as PeriodoTop)
+    : 'mes'
+  const debutPeriodo = debutPeriodoTop(periodoTop, ahoraEnFuseau(fuseau).fecha)
   const { data: actosRealizadosRaw } = await supabase
     .from('actos_realizados')
     .select('monto, fecha, acto_texto_libre, actos(nombre)')
     .eq('organization_id', organizationId ?? '')
-    .gte('fecha', debutMois)
+    .gte('fecha', debutPeriodo)
 
-  const actosDelMes = (actosRealizadosRaw ?? []).map((a) => ({
+  const actosDelPeriodo = (actosRealizadosRaw ?? []).map((a) => ({
     monto: Number(a.monto),
     fecha: a.fecha,
     nombre: (a.actos as unknown as { nombre: string } | null)?.nombre ?? a.acto_texto_libre ?? '',
@@ -77,7 +102,8 @@ export default async function AppointmentsPage({
         ...a,
         patients: a.patients as { nom: string } | null,
       }))}
-      actosDelMes={actosDelMes}
+      actosDelPeriodo={actosDelPeriodo}
+      periodoTop={periodoTop}
       error={error?.message ?? null}
       statut={searchParams.statut ?? ''}
       depuis={searchParams.depuis ?? ''}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 import Card from '@/components/ui/Card'
@@ -551,6 +552,18 @@ export default function SettingsView({
   updateActoPreciosAction: (precios: { id: string; precio: number | null }[]) => Promise<{ ok: boolean; error?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  // Les 5 server actions (updateProfile, updateFacturacion, updateIntegraciones, updateCanales,
+  // updatePlantillas) redirigent vers ?saved=<timestamp> apres sauvegarde -- on lit ce parametre
+  // ici pour afficher le meme toast vert que les volets client-side (PIN, tarifas, categorias),
+  // puis on nettoie l'URL pour que le toast ne se redeclenche pas sur un refresh/retour arriere.
+  useEffect(() => {
+    if (searchParams.get('saved')) {
+      toast.success(t('toastGuardadoOk'))
+      router.replace('/dashboard/settings', { scroll: false })
+    }
+  }, [searchParams, router, t])
   const patientLangue: 'es' | 'pt' = organizationLangue === 'pt' ? 'pt' : 'es'
   const [fotoPreview, setFotoPreview] = useState<string | null>(fotoUrl)
   const [previewName, setPreviewName] = useState(nombreCompleto ?? '')

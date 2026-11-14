@@ -592,6 +592,7 @@
       "toastCategoriasSaved": "Categorias salvas",
       "toastCategoriasError": "Erro ao salvar as categorias",
       "toastGenericError": "Erro ao salvar",
+      "toastGuardadoOk": "Alterações salvas",
       "tarifasTitle": "Tarifas",
       "tarifasDesc": "Defina um valor de referência por procedimento do seu catálogo. Será usado para preencher o campo ao adicioná-lo na ficha do paciente — você sempre poderá alterá-lo para uma consulta específica.",
       "tarifasEmpty": "Nenhum procedimento no seu catálogo ainda.",

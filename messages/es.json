@@ -592,6 +592,7 @@
       "toastCategoriasSaved": "Categorías guardadas",
       "toastCategoriasError": "Error al guardar las categorías",
       "toastGenericError": "Error al guardar",
+      "toastGuardadoOk": "Cambios guardados",
       "tarifasTitle": "Tarificación",
       "tarifasDesc": "Define un monto de referencia por acto de tu catálogo. Se usará para prellenar el campo al agregarlo en la ficha del paciente — siempre podrás modificarlo para una cita en particular.",
       "tarifasEmpty": "Sin actos en tu catálogo todavía.",

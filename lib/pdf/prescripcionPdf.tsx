@@ -309,12 +309,12 @@ function renderMinimalista(p: RenderParams) {
 
 // --- Modele "moderno" : bande laterale verticale pleine couleur a gauche (nom du cabinet/
 // praticien/specialite/colegiatura empiles en blanc), contenu principal a droite.
-const SIDEBAR_WIDTH = 85
+const SIDEBAR_WIDTH = 120
 
 const modernoStyles = StyleSheet.create({
   page: { paddingBottom: 90, fontSize: 10, color: '#1a1a1a', fontFamily: 'Helvetica' },
   sidebar: { position: 'absolute', top: 0, left: 0, bottom: 0, width: SIDEBAR_WIDTH, backgroundColor: COLORS.violet, padding: 16 },
-  sidebarTitle: { fontSize: 10, fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', marginBottom: 14 },
+  sidebarTitle: { fontSize: 13, fontWeight: 700, color: '#ffffff', marginBottom: 14 },
   sidebarClinic: { fontSize: 11, fontWeight: 700, color: '#ffffff', marginBottom: 8 },
   sidebarInfo: { fontSize: 8, color: COLORS.cream, marginBottom: 6, lineHeight: 1.3 },
   body: { paddingLeft: SIDEBAR_WIDTH + 24, paddingRight: 32, paddingTop: 32 },

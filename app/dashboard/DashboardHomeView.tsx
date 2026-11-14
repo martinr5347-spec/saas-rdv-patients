@@ -184,7 +184,7 @@ function OnboardingView({
       key: 'appointmentDone',
       label: t('stepAppointmentLabel'),
       description: t('stepAppointmentDesc'),
-      href: '/dashboard/appointments',
+      href: '/dashboard/disponibilidad',
       icon: <CalendarIcon className="h-5 w-5" />,
     },
   ]

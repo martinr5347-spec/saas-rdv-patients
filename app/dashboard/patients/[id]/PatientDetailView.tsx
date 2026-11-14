@@ -1953,6 +1953,7 @@ interface PrescripcionHistorial {
   fecha: string
   medicamentos: MedicamentoForm[]
   notasAdicionales: string | null
+  esBorrador: boolean
   createdAt: string
 }
 
@@ -1962,19 +1963,24 @@ function emptyMedicamento(): MedicamentoForm {
 
 // Prescripcion (feuille de prescription simple, imprimable, signee/tamponnee a la main par le
 // praticien -- aucune valeur de signature numerique, cf. lib/pdf/prescripcionPdf.tsx) -- meme
-// pattern que ActosRealizadosCard (donnee non clinique-confidentielle, pas de PIN). Le PDF est
-// genere et stocke une seule fois a la creation (voir route POST) ; le telechargement ne fait
-// jamais que servir le fichier deja stocke.
+// pattern que ActosRealizadosCard (donnee non clinique-confidentielle, pas de PIN). "Guardar
+// borrador" cree/met a jour une ligne modifiable (storage_path null) ; "Generar PDF" la fige
+// (storage_path renseigne, immuable, cf. route generar) -- le telechargement ne fait jamais que
+// servir le fichier deja stocke, cf. prompt prescripciones-borrador.
 function PrescripcionesCard({ patientId }: { patientId: string }) {
   const t = useTranslations('dashboard.patientDetail')
   const [loading, setLoading] = useState(true)
   const [historial, setHistorial] = useState<PrescripcionHistorial[]>([])
 
   const [showForm, setShowForm] = useState(false)
+  // null = pas encore sauvegarde une seule fois (le prochain "Guardar borrador" fera un POST) ;
+  // une fois un id obtenu, les sauvegardes suivantes font un PUT sur ce brouillon.
+  const [draftId, setDraftId] = useState<string | null>(null)
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
   const [medicamentos, setMedicamentos] = useState<MedicamentoForm[]>([emptyMedicamento()])
   const [notasAdicionales, setNotasAdicionales] = useState('')
   const [saving, setSaving] = useState(false)
+  const [generando, setGenerando] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1991,9 +1997,18 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
   }, [load])
 
   const resetForm = () => {
+    setDraftId(null)
     setFecha(new Date().toISOString().slice(0, 10))
     setMedicamentos([emptyMedicamento()])
     setNotasAdicionales('')
+  }
+
+  const startEdit = (p: PrescripcionHistorial) => {
+    setDraftId(p.id)
+    setFecha(p.fecha)
+    setMedicamentos(p.medicamentos.length > 0 ? p.medicamentos : [emptyMedicamento()])
+    setNotasAdicionales(p.notasAdicionales ?? '')
+    setShowForm(true)
   }
 
   const updateMedicamento = (index: number, field: keyof MedicamentoForm, value: string) => {
@@ -2004,7 +2019,7 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
   const removeMedicamentoRow = (index: number) =>
     setMedicamentos((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
 
-  const submit = async () => {
+  const guardarBorrador = async () => {
     if (!fecha) {
       toast.error(t('toastFechaRequerida'))
       return
@@ -2016,21 +2031,56 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
     }
 
     setSaving(true)
-    const res = await fetch(`/api/patients/${patientId}/prescripciones`, {
-      method: 'POST',
+    const res = await fetch(`/api/patients/${patientId}/prescripciones${draftId ? `/${draftId}` : ''}`, {
+      method: draftId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fecha, medicamentos: medicamentosValidos, notasAdicionales: notasAdicionales.trim() || undefined }),
     })
     const data = await res.json()
     if (res.ok) {
-      setHistorial((prev) => [data.prescripcion, ...prev])
+      setDraftId(data.prescripcion.id)
+      setHistorial((prev) =>
+        draftId ? prev.map((p) => (p.id === data.prescripcion.id ? data.prescripcion : p)) : [data.prescripcion, ...prev]
+      )
       toast.success(t('toastPrescripcionGuardada'))
-      resetForm()
-      setShowForm(false)
+      // Le formulaire reste ouvert (pas de fermeture automatique) : un brouillon reste modifiable,
+      // seul "Generar PDF" ferme le formulaire -- cf. prompt prescripciones-borrador.
     } else {
       toast.error(data.error ?? t('toastErrorGuardarPrescripcion'))
     }
     setSaving(false)
+  }
+
+  const generarPdf = async () => {
+    if (!draftId) return
+    setGenerando(true)
+    const res = await fetch(`/api/patients/${patientId}/prescripciones/${draftId}/generar`, { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) {
+      setHistorial((prev) => prev.map((p) => (p.id === data.prescripcion.id ? data.prescripcion : p)))
+      toast.success(t('toastPdfGenerado'))
+      resetForm()
+      setShowForm(false)
+    } else {
+      toast.error(data.error ?? t('toastErrorGenerarPdf'))
+    }
+    setGenerando(false)
+  }
+
+  const eliminarPrescripcion = async (id: string) => {
+    if (!confirm(t('eliminarPrescripcionConfirm'))) return
+    const res = await fetch(`/api/patients/${patientId}/prescripciones/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setHistorial((prev) => prev.filter((p) => p.id !== id))
+      if (draftId === id) {
+        resetForm()
+        setShowForm(false)
+      }
+      toast.success(t('toastPrescripcionEliminada'))
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? t('toastErrorEliminarPrescripcion'))
+    }
   }
 
   const inputClass =
@@ -2139,11 +2189,19 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
             </button>
             <button
               type="button"
-              onClick={submit}
-              disabled={saving}
+              onClick={guardarBorrador}
+              disabled={saving || generando}
+              className="flex-1 rounded-lg border border-[#6926D2] py-2 text-sm font-medium text-[#6926D2] hover:bg-violet-50 disabled:opacity-50"
+            >
+              {saving ? '...' : t('guardarBorrador')}
+            </button>
+            <button
+              type="button"
+              onClick={generarPdf}
+              disabled={!draftId || saving || generando}
               className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
             >
-              {saving ? '...' : t('guardar')}
+              {generando ? '...' : t('generarPdf')}
             </button>
           </div>
         </div>
@@ -2157,17 +2215,36 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
         {historial.map((p) => (
           <div key={p.id} className="flex items-center justify-between px-5 py-3">
             <div>
-              <p className="text-sm font-medium text-gray-800">{p.medicamentos.map((m) => m.nombre).join(', ') || '-'}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-800">{p.medicamentos.map((m) => m.nombre).join(', ') || '-'}</p>
+                {p.esBorrador && <Badge color="warning">{t('borradorBadge')}</Badge>}
+              </div>
               <p className="text-xs text-gray-400">{p.fecha}</p>
             </div>
-            <a
-              href={`/api/patients/${patientId}/prescripciones/${p.id}/download`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-[#6926D2] hover:underline"
-            >
-              {t('descargarLabel')}
-            </a>
+            <div className="flex items-center gap-3">
+              {p.esBorrador ? (
+                <button type="button" onClick={() => startEdit(p)} className="text-sm font-medium text-[#6926D2] hover:underline">
+                  {t('editarPrescripcionLabel')}
+                </button>
+              ) : (
+                <a
+                  href={`/api/patients/${patientId}/prescripciones/${p.id}/download`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-[#6926D2] hover:underline"
+                >
+                  {t('descargarLabel')}
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => eliminarPrescripcion(p.id)}
+                aria-label={t('eliminarPrescripcionLabel')}
+                className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-red-600"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>

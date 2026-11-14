@@ -498,7 +498,17 @@
       "descargarLabel": "Baixar",
       "toastPrescripcionGuardada": "Prescrição salva",
       "toastErrorGuardarPrescripcion": "Erro ao salvar a prescrição",
-      "toastMedicamentoRequerido": "Adicione ao menos um medicamento com nome"
+      "toastMedicamentoRequerido": "Adicione ao menos um medicamento com nome",
+      "guardarBorrador": "Salvar rascunho",
+      "generarPdf": "Gerar PDF",
+      "borradorBadge": "Rascunho",
+      "editarPrescripcionLabel": "Editar",
+      "eliminarPrescripcionLabel": "Excluir prescrição",
+      "eliminarPrescripcionConfirm": "Excluir esta prescrição? Esta ação não pode ser desfeita.",
+      "toastPrescripcionEliminada": "Prescrição excluída",
+      "toastErrorEliminarPrescripcion": "Erro ao excluir a prescrição",
+      "toastPdfGenerado": "PDF gerado",
+      "toastErrorGenerarPdf": "Erro ao gerar o PDF"
     },
     "settings": {
       "title": "Configurações do consultório",

@@ -498,7 +498,17 @@
       "descargarLabel": "Descargar",
       "toastPrescripcionGuardada": "Prescripción guardada",
       "toastErrorGuardarPrescripcion": "Error al guardar la prescripción",
-      "toastMedicamentoRequerido": "Agrega al menos un medicamento con nombre"
+      "toastMedicamentoRequerido": "Agrega al menos un medicamento con nombre",
+      "guardarBorrador": "Guardar borrador",
+      "generarPdf": "Generar PDF",
+      "borradorBadge": "Borrador",
+      "editarPrescripcionLabel": "Editar",
+      "eliminarPrescripcionLabel": "Eliminar prescripción",
+      "eliminarPrescripcionConfirm": "¿Eliminar esta prescripción? Esta acción no se puede deshacer.",
+      "toastPrescripcionEliminada": "Prescripción eliminada",
+      "toastErrorEliminarPrescripcion": "Error al eliminar la prescripción",
+      "toastPdfGenerado": "PDF generado",
+      "toastErrorGenerarPdf": "Error al generar el PDF"
     },
     "settings": {
       "title": "Configuración del consultorio",

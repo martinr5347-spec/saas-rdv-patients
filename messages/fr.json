@@ -498,7 +498,17 @@
       "descargarLabel": "Télécharger",
       "toastPrescripcionGuardada": "Prescription enregistrée",
       "toastErrorGuardarPrescripcion": "Erreur lors de l'enregistrement de la prescription",
-      "toastMedicamentoRequerido": "Ajoute au moins un médicament avec un nom"
+      "toastMedicamentoRequerido": "Ajoute au moins un médicament avec un nom",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "generarPdf": "Générer le PDF",
+      "borradorBadge": "Brouillon",
+      "editarPrescripcionLabel": "Modifier",
+      "eliminarPrescripcionLabel": "Supprimer la prescription",
+      "eliminarPrescripcionConfirm": "Supprimer cette prescription ? Cette action est irréversible.",
+      "toastPrescripcionEliminada": "Prescription supprimée",
+      "toastErrorEliminarPrescripcion": "Erreur lors de la suppression de la prescription",
+      "toastPdfGenerado": "PDF généré",
+      "toastErrorGenerarPdf": "Erreur lors de la génération du PDF"
     },
     "settings": {
       "title": "Paramètres du cabinet",

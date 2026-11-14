@@ -28,6 +28,11 @@ export async function GET(req: Request, { params }: { params: { id: string; pres
   if (!prescripcionRow) {
     return NextResponse.json({ error: 'Prescripción no encontrada' }, { status: 404 })
   }
+  // storage_path devient nullable depuis le brouillon editable (migration 052) -- un brouillon n'a
+  // encore aucun fichier a servir, cf. prompt prescripciones-borrador.
+  if (!prescripcionRow.storage_path) {
+    return NextResponse.json({ error: 'Esta prescripción todavía no fue generada' }, { status: 409 })
+  }
 
   const filename = prescripcionRow.storage_path.split('/').pop() ?? 'prescripcion.pdf'
 

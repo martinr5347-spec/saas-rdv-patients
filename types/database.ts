@@ -483,7 +483,7 @@ export interface Database {
           fecha: string
           medicamentos: Json
           notas_adicionales: string | null
-          storage_path: string
+          storage_path: string | null
           created_at: string
         }
         Insert: {
@@ -494,7 +494,7 @@ export interface Database {
           fecha?: string
           medicamentos?: Json
           notas_adicionales?: string | null
-          storage_path: string
+          storage_path?: string | null
           created_at?: string
         }
         Update: {
@@ -505,7 +505,7 @@ export interface Database {
           fecha?: string
           medicamentos?: Json
           notas_adicionales?: string | null
-          storage_path?: string
+          storage_path?: string | null
           created_at?: string
         }
         Relationships: [

@@ -133,7 +133,7 @@ ${dateBox('às')}
         es: {
           sujet: 'Ya tenemos tu cita agendada',
           corps: card(
-            '#2563eb', '#1d4ed8', '💙', '¡Qué alegría, {{nom_patient}}!',
+            '#2563eb', '#1d4ed8', '💙', '¡Qué bien, {{nom_patient}}!',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Quedó todo listo para tu cita con <strong>{{nombre_cabinet}}</strong>. Este es el detalle:</p>
 ${dateBox('a las')}
     {{#if link_pago}}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1f2937;">Solo falta confirmar tu lugar con un adelanto de <strong>{{monto_acompte}} {{monnaie}}</strong>:</p>{{/if}}
@@ -157,7 +157,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `💙 ¡Qué alegría, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}Solo falta confirmar tu lugar con un adelanto de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
+          corps: `💙 ¡Qué bien, {{nom_patient}}!\n\nQuedó todo listo para tu cita con {{nombre_cabinet}}:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}Solo falta confirmar tu lugar con un adelanto de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Costo total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} en el consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
         },
         pt: {
           corps: `💙 Que alegria, {{nom_patient}}!\n\nFicou tudo certo para sua consulta com {{nombre_cabinet}}:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}\n{{#if link_pago}}So falta confirmar seu horario com um sinal de {{monto_acompte}} {{monnaie}}:\n{{/if}}{{#if costo_desglose}}(Valor total: {{costo_total}} {{monnaie}}, resto {{resto_pagar}} {{monnaie}} no consultorio)\n{{/if}}{{#if link_pago}}{{link_pago}}{{/if}}`,
@@ -204,7 +204,7 @@ ${dateBox('às')}
         es: {
           sujet: 'No te olvides de tu adelanto',
           corps: card(
-            '#b45309', '#92400e', '🙂', 'Un empujoncito más, {{nom_patient}}',
+            '#b45309', '#92400e', '🙂', 'Hola de nuevo, {{nom_patient}}',
             `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Vimos que todavía no llega el adelanto para tu cita con <strong>{{nombre_cabinet}}</strong>. ¡No pasa nada, todavía estás a tiempo!</p>
 ${dateBox('a las')}
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1f2937;">Si prefieres mantener tu horario, complétalo aquí antes de que se libere:</p>
@@ -224,7 +224,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `🙂 Hola {{nom_patient}}, un empujoncito mas: todavia no llega el adelanto de tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi prefieres mantener tu horario, completalo aqui antes de que se libere:\n{{link_pago}}`,
+          corps: `🙂 Hola de nuevo {{nom_patient}}: todavia no llega el adelanto de tu cita del {{fecha_cita}} a las {{hora_cita}}.\n\nSi prefieres mantener tu horario, completalo aqui antes de que se libere:\n{{link_pago}}`,
         },
         pt: {
           corps: `🙂 Ola {{nom_patient}}, so falta um passinho: o sinal da sua consulta do dia {{fecha_cita}} as {{hora_cita}} ainda nao chegou.\n\nPara manter seu horario, conclua por aqui antes que ele seja liberado:\n{{link_pago}}`,
@@ -404,7 +404,7 @@ ${dateBox('às')}
           sujet: '¡Nos vemos prontito!',
           corps: card(
             '#0891b2', '#0e7490', '😊', '¡Te esperamos, {{nom_patient}}!',
-            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Solo un recordatorio cariñoso de tu cita con <strong>{{nombre_cabinet}}</strong>:</p>
+            `    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f2937;">Solo un recordatorio de tu cita con <strong>{{nombre_cabinet}}</strong>:</p>
 ${dateBox('a las')}
     {{#if costo_desglose}}<p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#6b7280;">No olvides traer <strong>{{resto_pagar}} {{monnaie}}</strong>.</p>{{/if}}`
           ),
@@ -421,7 +421,7 @@ ${dateBox('às')}
       },
       whatsapp: {
         es: {
-          corps: `😊 Hola {{nom_patient}}, un recordatorio carinoso de tu cita:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}No olvides traer {{resto_pagar}} {{monnaie}}.\n{{/if}}Te esperamos!`,
+          corps: `😊 Hola {{nom_patient}}, un recordatorio de tu cita:\n{{fecha_cita}} a las {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}No olvides traer {{resto_pagar}} {{monnaie}}.\n{{/if}}Te esperamos!`,
         },
         pt: {
           corps: `😊 Ola {{nom_patient}}, um lembrete carinhoso da sua consulta:\n{{fecha_cita}} as {{hora_cita}}\n{{#if direccion}}📍 {{direccion}}\n{{/if}}{{#if costo_desglose}}Nao esqueca de trazer {{resto_pagar}} {{monnaie}}.\n{{/if}}Te esperamos!`,
@@ -540,7 +540,7 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
       pt: 'Olá [Nome], sua consulta com [Clínica] está agendada para [Data] às [Hora]. Para confirmá-la, realize o sinal de [Valor] PEN.',
     },
     calido: {
-      es: '¡Qué alegría, [Nombre]!\nQuedó todo listo para tu cita con [Clínica]. Este es el detalle: [Fecha] a las [Hora].\nSolo falta confirmar tu lugar con un adelanto de [Valor] PEN.',
+      es: '¡Qué bien, [Nombre]!\nQuedó todo listo para tu cita con [Clínica]. Este es el detalle: [Fecha] a las [Hora].\nSolo falta confirmar tu lugar con un adelanto de [Valor] PEN.',
       pt: 'Que alegria, [Nome]! Tudo pronto para sua consulta com [Clínica]. Detalhe: [Data] às [Hora]. Só falta confirmar seu lugar com um sinal de [Valor] PEN.',
     },
   },
@@ -550,7 +550,7 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
       pt: 'Falta seu sinal. Olá [Nome], ainda não recebemos o sinal para sua consulta com [Clínica]. Se não pagar em breve, a consulta será cancelada automaticamente.',
     },
     calido: {
-      es: 'Un empujoncito más, [Nombre]\nVimos que todavía no llega el adelanto para tu cita con [Clínica]. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
+      es: 'Hola de nuevo, [Nombre]\nVimos que todavía no llega el adelanto para tu cita con [Clínica]. ¡No pasa nada, todavía estás a tiempo!\nSi prefieres mantener tu horario, complétalo aquí antes de que se libere.',
       pt: 'Um empurrãozinho, [Nome]! Vimos que o sinal para sua consulta com [Clínica] ainda não chegou. Sem problema, você ainda está a tempo! Se quiser manter seu horário, complete aqui antes que seja liberado.',
     },
   },
@@ -580,7 +580,7 @@ const PREVIEWS: Record<NotificationType, Record<VariantId, Record<Langue, string
       pt: 'Te esperamos! Olá [Nome], lembramos sua consulta com [Clínica]: [Data] às [Hora].',
     },
     calido: {
-      es: '¡Te esperamos, [Nombre]!\nSolo un recordatorio cariñoso de tu cita con [Clínica]: [Fecha] a las [Hora].',
+      es: '¡Te esperamos, [Nombre]!\nSolo un recordatorio de tu cita con [Clínica]: [Fecha] a las [Hora].',
       pt: 'Te esperamos, [Nome]! Só um lembrete carinhoso da sua consulta com [Clínica]: [Data] às [Hora].',
     },
   },
@@ -671,7 +671,7 @@ export const CONTROL_RECALL_VARIANTS: Record<VariantId, Record<Canal, Record<Lan
   calido: {
     email: {
       es: {
-        sujet: '¡Hora de tu controlcito! 😊',
+        sujet: '¡Es hora de tu control! 😊',
         corps: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:linear-gradient(135deg,#6926D2,#4c1d95);padding:32px 24px;text-align:center;">
     <div style="font-size:36px;line-height:1;margin:0 0 8px;">&#128204;</div>
@@ -724,7 +724,7 @@ const CONTROL_RECALL_PREVIEWS: Record<VariantId, Record<Langue, string>> = {
     pt: 'É hora do seu retorno. Olá [Nome], chegou a hora de agendar sua consulta de retorno com [Clínica].',
   },
   calido: {
-    es: '¡Hora de tu controlcito! 😊\n¡Hola [Nombre]! Ha llegado el momento de tu control con [Clínica]. ¡Nos encantaría verte de nuevo!',
+    es: '¡Es hora de tu control! 😊\n¡Hola [Nombre]! Ha llegado el momento de tu control con [Clínica]. ¡Nos encantaría verte de nuevo!',
     pt: 'Hora do seu retornozinho! 😊 Olá [Nome]! Chegou a hora do seu retorno com [Clínica]. Ficaríamos muito felizes em te ver de novo!',
   },
 }

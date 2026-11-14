@@ -47,12 +47,22 @@ export async function updateProfile(formData: FormData) {
     // Optionnel, jamais obligatoire (cf. prompt prescripciones) -- ne doit jamais bloquer la
     // sauvegarde du profil, juste manquer a l'affichage du PDF de prescription si non renseigne.
     const numeroColegiatura = String(formData.get('numero_colegiatura') ?? '').trim() || null
+    // Optionnel, jamais de validation stricte de format (cf. prompt prescripcion-plantillas) --
+    // affiche dans le pied de page du PDF de prescription uniquement si renseigne.
+    const instagram = String(formData.get('instagram') ?? '').trim() || null
     const fotoFile = formData.get('foto')
 
-    const userUpdate: { nombre_completo: string | null; especialidad: string | null; numero_colegiatura: string | null; foto_url?: string } = {
+    const userUpdate: {
+      nombre_completo: string | null
+      especialidad: string | null
+      numero_colegiatura: string | null
+      instagram: string | null
+      foto_url?: string
+    } = {
       nombre_completo: nombreCompleto,
       especialidad: especialidadTexto,
       numero_colegiatura: numeroColegiatura,
+      instagram,
     }
 
     if (fotoFile instanceof File && fotoFile.size > 0 && fotoFile.type.startsWith('image/')) {
@@ -103,6 +113,11 @@ export async function updateProfile(formData: FormData) {
     .eq('id', profile.organization_id)
 
   await supabase.from('users').update({ idioma: nouvelleLangue }).eq('organization_id', profile.organization_id).eq('role', 'praticien')
+
+  const plantillaInput = String(formData.get('plantilla_prescripcion') ?? '')
+  const plantillaPrescripcion: 'clasico' | 'minimalista' | 'moderno' =
+    plantillaInput === 'minimalista' || plantillaInput === 'moderno' ? plantillaInput : 'clasico'
+  await supabase.from('org_settings').update({ plantilla_prescripcion: plantillaPrescripcion }).eq('organization_id', profile.organization_id)
 
   // Reseed la liste d'actes uniquement si l'especialidad a reellement change -- seedActosIfEmpty
   // ne fait de toute facon rien si la liste de l'organisation n'est plus vide (jamais d'ecrasement

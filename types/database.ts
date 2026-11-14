@@ -55,6 +55,7 @@ export interface Database {
           codigo_intentos_fallidos: number
           codigo_bloqueado_hasta: string | null
           numero_colegiatura: string | null
+          instagram: string | null
           created_at: string
         }
         Insert: {
@@ -72,6 +73,7 @@ export interface Database {
           codigo_intentos_fallidos?: number
           codigo_bloqueado_hasta?: string | null
           numero_colegiatura?: string | null
+          instagram?: string | null
           created_at?: string
         }
         Update: {
@@ -89,6 +91,7 @@ export interface Database {
           codigo_intentos_fallidos?: number
           codigo_bloqueado_hasta?: string | null
           numero_colegiatura?: string | null
+          instagram?: string | null
           created_at?: string
         }
         Relationships: [
@@ -166,6 +169,7 @@ export interface Database {
           google_review_link: string | null
           solicitud_resena_activa: boolean
           solicitud_resena_delay_dias: number
+          plantilla_prescripcion: 'clasico' | 'minimalista' | 'moderno'
           updated_at: string
         }
         Insert: {
@@ -196,6 +200,7 @@ export interface Database {
           google_review_link?: string | null
           solicitud_resena_activa?: boolean
           solicitud_resena_delay_dias?: number
+          plantilla_prescripcion?: 'clasico' | 'minimalista' | 'moderno'
           updated_at?: string
         }
         Update: {
@@ -226,6 +231,7 @@ export interface Database {
           google_review_link?: string | null
           solicitud_resena_activa?: boolean
           solicitud_resena_delay_dias?: number
+          plantilla_prescripcion?: 'clasico' | 'minimalista' | 'moderno'
           updated_at?: string
         }
         Relationships: [

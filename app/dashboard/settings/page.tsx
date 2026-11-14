@@ -22,7 +22,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('organization_id, nombre_completo, especialidad, numero_colegiatura, foto_url, codigo_seguridad_updated_at')
+    .select('organization_id, nombre_completo, especialidad, numero_colegiatura, instagram, foto_url, codigo_seguridad_updated_at')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   const { data: settingsRaw } = await supabase
     .from('org_settings')
     .select(
-      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias'
+      'delai_paiement_h, delai_aviso_h, delai_rappel_h, monto_acompte, costo_total, monnaie, calendly_url, mp_access_token, mp_notification_url, canal_email, canal_whatsapp, variantes_mensaje, categorias_notas, categorias_con_foto, variante_control_recall, control_recall_anticipacion_dias, google_review_link, solicitud_resena_activa, solicitud_resena_delay_dias, plantilla_prescripcion'
     )
     .eq('organization_id', profile?.organization_id ?? '')
     .maybeSingle()
@@ -72,6 +72,7 @@ export default async function SettingsPage() {
         google_review_link: settingsRaw.google_review_link,
         solicitud_resena_activa: settingsRaw.solicitud_resena_activa,
         solicitud_resena_delay_dias: settingsRaw.solicitud_resena_delay_dias,
+        plantilla_prescripcion: settingsRaw.plantilla_prescripcion,
       }
     : null
 
@@ -112,6 +113,7 @@ export default async function SettingsPage() {
       nombreCompleto={profile?.nombre_completo ?? null}
       especialidadTexto={profile?.especialidad ?? null}
       numeroColegiatura={profile?.numero_colegiatura ?? null}
+      instagram={profile?.instagram ?? null}
       fotoUrl={profile?.foto_url ?? null}
       codigoSeguridadUpdatedAt={profile?.codigo_seguridad_updated_at ?? null}
       mpTokenConfigured={mpTokenConfigured}

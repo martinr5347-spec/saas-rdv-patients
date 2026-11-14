@@ -50,14 +50,19 @@ export async function POST(req: Request, { params }: { params: { id: string; pre
   const notasAdicionales = prescripcionRow.notas_adicionales
 
   const { data: org } = await supabase.from('organizations').select('nom, adresse, langue').eq('id', profile.organization_id).maybeSingle()
-  // Organisation mono-praticien (pas d'equipe) -- le nom/colegiatura affiches sur le document sont
-  // ceux du praticien de l'organisation, pas forcement de l'utilisateur connecte (le staff peut
-  // saisir la prescription pour le praticien).
+  // Organisation mono-praticien (pas d'equipe) -- le nom/colegiatura/especialidad/instagram
+  // affiches sur le document sont ceux du praticien de l'organisation, pas forcement de
+  // l'utilisateur connecte (le staff peut saisir la prescription pour le praticien).
   const { data: praticien } = await supabase
     .from('users')
-    .select('nom, numero_colegiatura')
+    .select('nom, numero_colegiatura, especialidad, instagram')
     .eq('organization_id', profile.organization_id)
     .eq('role', 'praticien')
+    .maybeSingle()
+  const { data: orgSettings } = await supabase
+    .from('org_settings')
+    .select('plantilla_prescripcion')
+    .eq('organization_id', profile.organization_id)
     .maybeSingle()
 
   const locale: 'es' | 'pt' = org?.langue === 'pt' ? 'pt' : 'es'
@@ -88,6 +93,11 @@ export async function POST(req: Request, { params }: { params: { id: string; pre
       clinicName: org?.nom ?? '',
       praticienNombre: praticien?.nom ?? '',
       numeroColegiatura: praticien?.numero_colegiatura ?? null,
+      // Meme garde que numeroColegiatura/clinicAdresse ci-dessous -- especialidad/instagram sont
+      // optionnels, jamais une chaine vide '' non normalisee en null a la source (cf. crash deja
+      // corrige sur clinicAdresse : '' && <Text> s'evalue a '' en JSX, ce qui plante renderToBuffer).
+      especialidad: praticien?.especialidad?.trim() || null,
+      instagram: praticien?.instagram?.trim() || null,
       // org.adresse est enregistre comme '' (jamais null) quand le champ est laisse vide dans
       // Configuracion (app/dashboard/settings/actions.ts) -- '' && <Text> s'evalue a '' en JSX,
       // ce qui plante renderToBuffer (texte brut hors balise <Text>, interdit par react-pdf).
@@ -97,6 +107,7 @@ export async function POST(req: Request, { params }: { params: { id: string; pre
       fecha,
       medicamentos,
       notasAdicionales,
+      plantilla: orgSettings?.plantilla_prescripcion ?? 'clasico',
     })
   } catch (e) {
     console.error('Erreur génération PDF prescripción:', e)

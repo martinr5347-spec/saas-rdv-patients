@@ -41,6 +41,7 @@ export interface OrgSettings {
   google_review_link: string | null
   solicitud_resena_activa: boolean | null
   solicitud_resena_delay_dias: number | null
+  plantilla_prescripcion: 'clasico' | 'minimalista' | 'moderno' | null
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -572,6 +573,7 @@ export default function SettingsView({
   nombreCompleto,
   especialidadTexto,
   numeroColegiatura,
+  instagram,
   fotoUrl,
   codigoSeguridadUpdatedAt,
   mpTokenConfigured,
@@ -598,6 +600,7 @@ export default function SettingsView({
   nombreCompleto: string | null
   especialidadTexto: string | null
   numeroColegiatura: string | null
+  instagram: string | null
   fotoUrl: string | null
   codigoSeguridadUpdatedAt: string | null
   mpTokenConfigured: boolean
@@ -732,6 +735,10 @@ export default function SettingsView({
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">{t('instagramLabel')}</label>
+              <input name="instagram" defaultValue={instagram ?? ''} placeholder={t('instagramPlaceholder')} className={inputClass} />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">{t('numeroColegiatura')}</label>
               <input
                 name="numero_colegiatura"
@@ -769,6 +776,31 @@ export default function SettingsView({
               </select>
             </div>
           </div>
+
+          <fieldset className="mt-4">
+            <legend className="mb-2 block text-sm font-medium text-gray-700">{t('plantillaPrescripcionLabel')}</legend>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {(['clasico', 'minimalista', 'moderno'] as const).map((plantillaId) => (
+                <label
+                  key={plantillaId}
+                  className="block rounded-lg border border-gray-200 p-3 text-sm cursor-pointer hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+                >
+                  <span className="flex items-center gap-2 font-medium text-gray-800">
+                    <input
+                      type="radio"
+                      name="plantilla_prescripcion"
+                      value={plantillaId}
+                      defaultChecked={(settings?.plantilla_prescripcion ?? 'clasico') === plantillaId}
+                      className="accent-brand-600"
+                    />
+                    {t(`plantillaPrescripcion_${plantillaId}_nombre`)}
+                  </span>
+                  <p className="mt-2 text-xs text-gray-500">{t(`plantillaPrescripcion_${plantillaId}_desc`)}</p>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <button
             type="submit"
             className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-700 active:scale-[0.98]"

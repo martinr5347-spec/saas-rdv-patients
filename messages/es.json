@@ -502,6 +502,7 @@
     },
     "settings": {
       "title": "Configuración del consultorio",
+      "avisoFiabilidadDatos": "Asegúrate de que estos datos sean correctos y estén actualizados: se usan directamente para redactar los mensajes automáticos que reciben tus pacientes.",
       "subscription": "Suscripción",
       "statusLabel": "Estado",
       "manageSubscription": "Gestionar mi suscripción",

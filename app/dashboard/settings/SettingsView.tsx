@@ -18,6 +18,7 @@ import {
 } from '@/lib/dispatcher/templateVariants'
 import { getMercadoPagoDevPanelUrl } from '@/lib/payments/mercadopagoDomains'
 import { PAISES_LATAM } from '@/lib/constants/paisesLatam'
+import { WarningIcon } from '@/components/layout/icons'
 
 const NOTIFICATION_TYPES: NotificationType[] = ['confirmation', 'aviso', 'pago', 'anulacion', 'recordatorio', 'reprogramacion']
 const CURRENCIES = ['PEN', 'BRL', 'MXN', 'COP', 'CLP', 'ARS', 'UYU', 'BOB', 'PYG', 'USD'] as const
@@ -590,6 +591,10 @@ export default function SettingsView({
   return (
     <div className="max-w-6xl space-y-6">
       <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+      <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+        <WarningIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        <p>{t('avisoFiabilidadDatos')}</p>
+      </div>
       {hasStripeCustomer && (
         <Card>
           <div className="flex items-center justify-between">

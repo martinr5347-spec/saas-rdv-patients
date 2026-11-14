@@ -502,6 +502,7 @@
     },
     "settings": {
       "title": "Configurações do consultório",
+      "avisoFiabilidadDatos": "Certifique-se de que estes dados estejam corretos e atualizados: são usados diretamente para redigir as mensagens automáticas que seus pacientes recebem.",
       "subscription": "Assinatura",
       "statusLabel": "Status",
       "manageSubscription": "Gerenciar minha assinatura",

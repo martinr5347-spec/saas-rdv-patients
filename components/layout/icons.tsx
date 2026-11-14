@@ -72,6 +72,16 @@ export function ShieldIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+export function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5 3 19.5h18L12 4.5Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.75h.01" />
+    </svg>
+  )
+}
+
 export function MenuIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>

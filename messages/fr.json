@@ -502,6 +502,7 @@
     },
     "settings": {
       "title": "Paramètres du cabinet",
+      "avisoFiabilidadDatos": "Assurez-vous que ces informations sont exactes et à jour : elles servent directement à rédiger les messages automatiques reçus par vos patients.",
       "subscription": "Abonnement",
       "statusLabel": "Statut",
       "manageSubscription": "Gérer mon abonnement",

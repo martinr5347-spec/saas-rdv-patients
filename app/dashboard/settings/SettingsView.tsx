@@ -29,7 +29,6 @@ export interface OrgSettings {
   monto_acompte: number | null
   costo_total: number | null
   monnaie: string | null
-  calendly_url: string | null
   mp_notification_url: string | null
   canal_email: boolean | null
   canal_whatsapp: boolean | null
@@ -795,13 +794,6 @@ export default function SettingsView({
               <input name="adresse" defaultValue={organizationAdresse ?? ''} placeholder={t('clinicAddressPlaceholder')} className={inputClass} />
             </div>
             <div>
-              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                {t('calendlyUrl')}
-                <InfoTooltip text="Enlace de tu página de reservas de Calendly, usado para sincronizar tu disponibilidad." />
-              </label>
-              <input name="calendly_url" type="url" defaultValue={settings?.calendly_url ?? ''} className={inputClass} />
-            </div>
-            <div>
               <MercadoPagoTokenField
                 mpTokenConfigured={mpTokenConfigured}
                 mpTokenLast4={mpTokenLast4}
@@ -966,7 +958,7 @@ export default function SettingsView({
               <label className="text-sm font-medium text-gray-700" htmlFor="control_recall_anticipacion_dias">
                 Anticipación del recordatorio de control (días)
               </label>
-              <InfoTooltip text="Cuántos días antes de la fecha de control se envía la invitación. Cuanto más largo este plazo, más lejos debes mantener abierta tu disponibilidad de Calendly — si no, la invitación llega sin horarios disponibles." />
+              <InfoTooltip text="Cuántos días antes de la fecha de control se envía la invitación. Cuanto más largo este plazo, más lejos debes mantener abierta tu disponibilidad — si no, la invitación llega sin horarios disponibles." />
             </div>
             <input
               id="control_recall_anticipacion_dias"

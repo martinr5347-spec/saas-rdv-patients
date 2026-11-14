@@ -192,7 +192,6 @@ export async function updateIntegraciones(formData: FormData) {
   await supabase
     .from('org_settings')
     .update({
-      calendly_url: String(formData.get('calendly_url') ?? ''),
       mp_notification_url: mpNotificationUrl,
       google_review_link: googleReviewLink,
       solicitud_resena_activa: solicitudResenaActiva,

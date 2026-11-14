@@ -548,7 +548,6 @@
       "languageOptionPt": "Portugués",
       "clinicAddress": "Dirección del consultorio",
       "clinicAddressPlaceholder": "Av. Brasil 2730, Pueblo Libre, Lima",
-      "calendlyUrl": "URL de Calendly",
       "mpToken": "Token de MercadoPago",
       "mpDevPanelLink": "Recuperar mi token en {domain}",
       "mpWebhookUrl": "URL webhook de MercadoPago",

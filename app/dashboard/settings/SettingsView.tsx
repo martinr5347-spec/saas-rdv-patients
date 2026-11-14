@@ -298,29 +298,61 @@ interface ActoCatalogoSettings {
 }
 
 // Tarif de reference par acte du catalogue -- jamais obligatoire, pre-remplit seulement le champ
-// montant a la selection de l'acte en fiche patient (ActosRealizadosCard, PatientDetailView.tsx),
-// aucune creation d'acte possible ici (seul le flux "nuevo acto" en fiche patient en cree).
+// montant a la selection de l'acte en fiche patient (ActosRealizadosCard, PatientDetailView.tsx).
+// Permet aussi de renommer, desactiver (bouton "x" -- jamais un vrai DELETE, cf. updateActosCatalogo)
+// et creer un acte directement depuis Configuracion, sans passer par la fiche d'un patient.
+type ActoRow = { id: string; nombre: string; precio: string; isNew: boolean }
+
 function TarifasActosCard({
   actos,
-  updateActoPreciosAction,
+  updateActosCatalogoAction,
 }: {
   actos: ActoCatalogoSettings[]
-  updateActoPreciosAction: (precios: { id: string; precio: number | null }[]) => Promise<{ ok: boolean; error?: string }>
+  updateActosCatalogoAction: (
+    actuales: { id: string; nombre: string; precio: number | null }[],
+    nuevos: { nombre: string; precio: number | null }[]
+  ) => Promise<{ ok: boolean; error?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
-  const [precios, setPrecios] = useState<Record<string, string>>(
-    Object.fromEntries(actos.map((a) => [a.id, a.precioDefault !== null ? String(a.precioDefault) : '']))
+  const [rows, setRows] = useState<ActoRow[]>(
+    actos.map((a) => ({ id: a.id, nombre: a.nombre, precio: a.precioDefault !== null ? String(a.precioDefault) : '', isNew: false }))
   )
+  const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const addActo = () => {
+    const nombre = draft.trim()
+    if (!nombre) return
+    if (rows.some((r) => r.nombre.trim().toLowerCase() === nombre.toLowerCase())) {
+      toast.error(t('toastActoExists'))
+      return
+    }
+    const tempId = `nuevo-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    setRows((prev) => [...prev, { id: tempId, nombre, precio: '', isNew: true }])
+    setDraft('')
+  }
+
+  const removeActo = (id: string) => {
+    setRows((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  const updateRow = (id: string, patch: Partial<Pick<ActoRow, 'nombre' | 'precio'>>) => {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
+
   const save = async () => {
+    const toNum = (raw: string) => {
+      const trimmed = raw.trim()
+      const num = trimmed === '' ? null : Number(trimmed)
+      return num !== null && Number.isFinite(num) ? num : null
+    }
+    const actuales = rows.filter((r) => !r.isNew).map((r) => ({ id: r.id, nombre: r.nombre, precio: toNum(r.precio) }))
+    const nuevos = rows
+      .filter((r) => r.isNew && r.nombre.trim())
+      .map((r) => ({ nombre: r.nombre, precio: toNum(r.precio) }))
+
     setSaving(true)
-    const payload = actos.map((a) => {
-      const raw = (precios[a.id] ?? '').trim()
-      const num = raw === '' ? null : Number(raw)
-      return { id: a.id, precio: num !== null && Number.isFinite(num) ? num : null }
-    })
-    const res = await updateActoPreciosAction(payload)
+    const res = await updateActosCatalogoAction(actuales, nuevos)
     if (res.ok) {
       toast.success(t('toastTarifasSaved'))
     } else {
@@ -333,36 +365,67 @@ function TarifasActosCard({
     <Card>
       <h2 className="text-sm font-semibold text-gray-800">{t('tarifasTitle')}</h2>
       <p className="mb-3 mt-1 text-xs text-gray-500">{t('tarifasDesc')}</p>
-      {actos.length === 0 ? (
-        <p className="text-xs text-gray-400">{t('tarifasEmpty')}</p>
-      ) : (
-        <>
-          <div className="mb-3 space-y-1.5">
-            {actos.map((a) => (
-              <div key={a.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-1.5">
-                <span className="text-xs font-medium text-gray-700">{a.nombre}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={precios[a.id] ?? ''}
-                  onChange={(e) => setPrecios((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                  placeholder={t('precioPlaceholder')}
-                  className="w-28 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-                />
-              </div>
-            ))}
+      <div className="mb-3 space-y-1.5">
+        {rows.map((r) => (
+          <div key={r.id} className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
+            <input
+              type="text"
+              value={r.nombre}
+              onChange={(e) => updateRow(r.id, { nombre: e.target.value })}
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={r.precio}
+              onChange={(e) => updateRow(r.id, { precio: e.target.value })}
+              placeholder={t('precioPlaceholder')}
+              className="w-28 shrink-0 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+            />
+            <button
+              type="button"
+              onClick={() => removeActo(r.id)}
+              aria-label={t('removeActoLabel', { acto: r.nombre })}
+              className="shrink-0 text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
-          >
-            {saving ? '...' : t('save')}
-          </button>
-        </>
-      )}
+        ))}
+        {rows.length === 0 && <p className="text-xs text-gray-400">{t('tarifasEmpty')}</p>}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addActo()
+            }
+          }}
+          placeholder={t('nuevoActoPlaceholder')}
+          className="w-48 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+        />
+        <button
+          type="button"
+          onClick={addActo}
+          disabled={!draft.trim()}
+          className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-[#6926D2] hover:text-[#6926D2] active:scale-[0.98] disabled:opacity-50"
+        >
+          {t('agregar')}
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="ml-auto rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
+        >
+          {saving ? '...' : t('save')}
+        </button>
+      </div>
     </Card>
   )
 }
@@ -523,7 +586,7 @@ export default function SettingsView({
   updateCategoriasNotasAction,
   updateCategoriasConFotoAction,
   updateMpAccessTokenAction,
-  updateActoPreciosAction,
+  updateActosCatalogoAction,
 }: {
   settings: OrgSettings | null
   subscriptionStatut: string | null
@@ -549,7 +612,10 @@ export default function SettingsView({
   updateCategoriasNotasAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateCategoriasConFotoAction: (categorias: string[]) => Promise<{ ok: boolean; error?: string; categorias?: string[] }>
   updateMpAccessTokenAction: (token: string) => Promise<{ ok: boolean; error?: string; nickname?: string; email?: string; last4?: string }>
-  updateActoPreciosAction: (precios: { id: string; precio: number | null }[]) => Promise<{ ok: boolean; error?: string }>
+  updateActosCatalogoAction: (
+    actuales: { id: string; nombre: string; precio: number | null }[],
+    nuevos: { nombre: string; precio: number | null }[]
+  ) => Promise<{ ok: boolean; error?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
   const searchParams = useSearchParams()
@@ -993,7 +1059,7 @@ export default function SettingsView({
         updateCategoriasConFotoAction={updateCategoriasConFotoAction}
       />
 
-      <TarifasActosCard actos={actos} updateActoPreciosAction={updateActoPreciosAction} />
+      <TarifasActosCard actos={actos} updateActosCatalogoAction={updateActosCatalogoAction} />
     </div>
   )
 }

@@ -424,11 +424,15 @@ export async function updateCategoriasConFoto(categorias: string[]) {
   return { ok: true, categorias: cleaned }
 }
 
-// Tarifs par defaut du catalogue d'actes (Configuracion) -- pre-remplissent (sans contraindre) le
-// montant a la selection d'un acte en fiche patient, voir ActosRealizadosCard. N'ajoute jamais de
-// nouvel acte : seul le flux "nuevo acto" en fiche patient cree des entrees dans `actos`.
-export async function updateActoPrecios(
-  precios: { id: string; precio: number | null }[]
+// Catalogue d'actes (Configuracion) -- renombrar, cambiar precio por defecto, desactivar (jamais
+// un vrai DELETE : actos_realizados.acto_id reference actos(id) on delete set null, et l'historique
+// d'un patient affiche actos(nombre) -- un hard delete casserait ce nom sur des lignes passees,
+// cf. supabase/migrations/038_actos.sql) et creer un nouvel acte, tout en un seul envoi. Le flux
+// "nuevo acto" en fiche patient (app/api/patients/[id]/actos/route.ts, mode 'nuevo') reste la
+// seconde facon de creer un acte, independante de celle-ci.
+export async function updateActosCatalogo(
+  actuales: { id: string; nombre: string; precio: number | null }[],
+  nuevos: { nombre: string; precio: number | null }[]
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
   const {
@@ -444,23 +448,51 @@ export async function updateActoPrecios(
   if (!profile?.organization_id) return { ok: false, error: 'No autorizado' }
   const organizationId = profile.organization_id
 
-  for (const { precio } of precios) {
+  for (const { precio } of [...actuales, ...nuevos]) {
     if (precio !== null && (!Number.isFinite(precio) || precio < 0)) {
       return { ok: false, error: 'Precio inválido' }
     }
   }
-  if (precios.length === 0) return { ok: true }
+  if (actuales.some((a) => !a.nombre.trim())) {
+    return { ok: false, error: 'El nombre del acto no puede estar vacío' }
+  }
 
-  // Un update par acte (scope par .eq('organization_id', ...) -- empeche qu'un id manipule cote
-  // client touche l'acte d'une autre organisation), mais tous lances en parallele plutot
-  // qu'en sequence : un catalogue d'une dizaine d'actes rendait la sauvegarde perceptiblement
-  // lente (~2.5s) en attendant chaque aller-retour l'un apres l'autre.
-  const resultats = await Promise.all(
-    precios.map(({ id, precio }) =>
-      supabase.from('actos').update({ precio_default: precio }).eq('id', id).eq('organization_id', organizationId)
-    )
+  const nuevosConNombre = nuevos.map((n) => ({ nombre: n.nombre.trim(), precio: n.precio })).filter((n) => n.nombre)
+
+  // Doublon insensible a la casse, tous actes confondus (renommes + nouveaux) -- meme principe que
+  // CategoriasNotasCard/toastCategoriaExists.
+  const todosNombres = [...actuales.map((a) => a.nombre.trim()), ...nuevosConNombre.map((n) => n.nombre)].map((n) =>
+    n.toLowerCase()
   )
-  const echec = resultats.find((r) => r.error)
+  if (new Set(todosNombres).size !== todosNombres.length) {
+    return { ok: false, error: 'Ya existe un acto con ese nombre' }
+  }
+
+  // Desactivation douce : tout acte actif de l'organisation absent de `actuales` a ete retire cote
+  // client (bouton "x") -- jamais de DELETE, cf. commentaire ci-dessus.
+  const { data: activos } = await supabase.from('actos').select('id').eq('organization_id', organizationId).eq('activo', true)
+  const idsConservados = new Set(actuales.map((a) => a.id))
+  const idsADesactivar = (activos ?? []).map((a) => a.id).filter((id) => !idsConservados.has(id))
+
+  // Un appel par acte (scope par .eq('organization_id', ...) -- empeche qu'un id manipule cote
+  // client touche l'acte d'une autre organisation), mais tous lances en parallele plutot
+  // qu'en sequence, meme raison que l'ancienne updateActoPrecios (~2.5s de latence perceptible sinon).
+  const [resultadosUpdate, resultadosDesactivar, resultadosInsert] = await Promise.all([
+    Promise.all(
+      actuales.map(({ id, nombre, precio }) =>
+        supabase.from('actos').update({ nombre: nombre.trim(), precio_default: precio }).eq('id', id).eq('organization_id', organizationId)
+      )
+    ),
+    Promise.all(
+      idsADesactivar.map((id) => supabase.from('actos').update({ activo: false }).eq('id', id).eq('organization_id', organizationId))
+    ),
+    Promise.all(
+      nuevosConNombre.map(({ nombre, precio }) =>
+        supabase.from('actos').insert({ organization_id: organizationId, nombre, precio_default: precio, especialidad_origen: null })
+      )
+    ),
+  ])
+  const echec = [...resultadosUpdate, ...resultadosDesactivar, ...resultadosInsert].find((r) => r.error)
   if (echec?.error) return { ok: false, error: echec.error.message }
 
   // Pas de revalidatePath sur /dashboard/patients : ActosRealizadosCard (PatientDetailView.tsx)

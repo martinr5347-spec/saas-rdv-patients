@@ -10,7 +10,7 @@ import {
   updateCategoriasNotas,
   updateCategoriasConFoto,
   updateMpAccessToken,
-  updateActoPrecios,
+  updateActosCatalogo,
 } from './actions'
 import { decryptSecret } from '@/lib/crypto/settingsEncryption'
 
@@ -126,7 +126,7 @@ export default async function SettingsPage() {
       updateCategoriasNotasAction={updateCategoriasNotas}
       updateCategoriasConFotoAction={updateCategoriasConFoto}
       updateMpAccessTokenAction={updateMpAccessToken}
-      updateActoPreciosAction={updateActoPrecios}
+      updateActosCatalogoAction={updateActosCatalogo}
     />
   )
 }

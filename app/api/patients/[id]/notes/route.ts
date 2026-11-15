@@ -137,10 +137,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 
   const entradas = entradasRaw.map((e: unknown) => {
-    const entry = e as { contenido?: unknown; categoria?: unknown }
+    const entry = e as { contenido?: unknown; categoria?: unknown; photoIds?: unknown }
     return {
       contenido: typeof entry?.contenido === 'string' ? entry.contenido.trim() : '',
       categoria: typeof entry?.categoria === 'string' && entry.categoria.trim() ? entry.categoria.trim() : null,
+      // Photos deja envoyees depuis le telephone (QR, cf. prompt notas-foto-transfer-qr) et donc
+      // deja en base avec note_id null -- a rattacher ci-dessous apres creation des notes, jamais
+      // re-uploadees. Validees contre ce patient avant tout UPDATE (jamais un id fourni par le
+      // client sans verification d'appartenance).
+      photoIds: Array.isArray(entry?.photoIds) ? entry.photoIds.filter((id): id is string => typeof id === 'string') : [],
     }
   })
 
@@ -375,6 +380,24 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       await supabase.from('patient_note_sesiones').delete().eq('id', sesion.id)
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Rattache les photos envoyees depuis le telephone (QR) a la note correspondante -- meme ordre
+  // que l'insert ci-dessus (une ligne de patient_notes par entree de entradas, dans le meme ordre).
+  // .eq('patient_id', ...) + .eq('organization_id', ...) + .is('note_id', null) : jamais un id
+  // fourni par le client sans verifier son appartenance, et jamais un rattachement en double si
+  // la meme requete etait rejouee.
+  for (let i = 0; i < entradas.length; i++) {
+    const photoIds = entradas[i].photoIds
+    const noteId = newNotes?.[i]?.id
+    if (photoIds.length === 0 || !noteId) continue
+    await supabase
+      .from('patient_note_photos')
+      .update({ note_id: noteId })
+      .in('id', photoIds)
+      .eq('patient_id', params.id)
+      .eq('organization_id', patientRow.organization_id)
+      .is('note_id', null)
   }
 
   return NextResponse.json({

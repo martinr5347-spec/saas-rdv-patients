@@ -453,7 +453,8 @@ export interface Database {
       patient_note_photos: {
         Row: {
           id: string
-          note_id: string
+          note_id: string | null
+          patient_id: string | null
           organization_id: string
           storage_path: string
           created_at: string
@@ -461,7 +462,8 @@ export interface Database {
         }
         Insert: {
           id?: string
-          note_id: string
+          note_id?: string | null
+          patient_id?: string | null
           organization_id: string
           storage_path: string
           created_at?: string
@@ -469,7 +471,8 @@ export interface Database {
         }
         Update: {
           id?: string
-          note_id?: string
+          note_id?: string | null
+          patient_id?: string | null
           organization_id?: string
           storage_path?: string
           created_at?: string
@@ -477,7 +480,45 @@ export interface Database {
         }
         Relationships: [
           { foreignKeyName: 'patient_note_photos_note_id_fkey'; columns: ['note_id']; isOneToOne: false; referencedRelation: 'patient_notes'; referencedColumns: ['id'] },
-          { foreignKeyName: 'patient_note_photos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] }
+          { foreignKeyName: 'patient_note_photos_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'patient_note_photos_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] }
+        ]
+      }
+      photo_transfer_tokens: {
+        Row: {
+          id: string
+          token: string
+          organization_id: string
+          patient_id: string
+          created_by: string
+          status: 'pending' | 'expired' | 'cancelled'
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          token: string
+          organization_id: string
+          patient_id: string
+          created_by: string
+          status?: 'pending' | 'expired' | 'cancelled'
+          expires_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          organization_id?: string
+          patient_id?: string
+          created_by?: string
+          status?: 'pending' | 'expired' | 'cancelled'
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'photo_transfer_tokens_organization_id_fkey'; columns: ['organization_id']; isOneToOne: false; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'photo_transfer_tokens_patient_id_fkey'; columns: ['patient_id']; isOneToOne: false; referencedRelation: 'patients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'photo_transfer_tokens_created_by_fkey'; columns: ['created_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }
         ]
       }
       prescripciones: {

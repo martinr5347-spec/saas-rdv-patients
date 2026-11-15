@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 import Badge from '@/components/ui/Badge'
 import { CashIcon } from '@/components/layout/icons'
+import { MAX_PHOTOS_PER_NOTE } from '@/lib/patients/notePhotoValidation'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -45,13 +46,24 @@ function findUltimoResumen(notes: PatientNote[] | null): PatientNote | null {
   return notes.find((n) => n.categoria && RESUMEN_CATEGORIAS.includes(n.categoria)) ?? null
 }
 
+// Une photo en attente dans le composeur -- deux provenances possibles : selection locale (file
+// present, jamais encore uploadee) ou telephone via QR (photoId present, deja en base avec
+// note_id null, jamais re-uploadee -- juste rattachee au moment de "Guardar sesión", cf. prompt
+// notas-foto-transfer-qr). localId sert uniquement de clef React stable, jamais envoye au serveur.
+interface DraftPhoto {
+  localId: string
+  file: File | null
+  previewUrl: string
+  momento: 'antes' | 'despues' | null
+  photoId?: string
+  createdAt?: string
+}
+
 // Un brouillon local tant que la session n'est pas enregistrée -- rien n'est écrit en base ici.
 interface DraftSessionEntry {
   categoria: string | null // null = "sin categoría"
   contenido: string
-  photoFile: File | null
-  photoPreviewUrl: string | null
-  photoMomento?: 'antes' | 'despues' | null
+  photos: DraftPhoto[]
   programarRecordatorio?: boolean // uniquement pertinent pour categoria === CATEGORIA_CONTROL
   controlMeses?: number | ''
 }
@@ -65,7 +77,6 @@ interface ProximoControl {
   photoThumbUrl: string | null
 }
 
-const MAX_PHOTOS_PER_NOTE = 2
 const CATEGORIA_CONTROL = 'Control' // catégorie réservée, jamais dans categorias_notas
 // Verrouillage par inactivité réelle (absence de mouvement souris/clavier/clic) des notas clínicas --
 // pas de valeur par organisation pour l'instant, constante nommée pour pouvoir l'ajuster facilement.
@@ -218,6 +229,17 @@ function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function QrCodeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="3.5" y="3.5" width="6" height="6" rx="1" />
+      <rect x="14.5" y="3.5" width="6" height="6" rx="1" />
+      <rect x="3.5" y="14.5" width="6" height="6" rx="1" />
+      <path strokeLinecap="round" d="M14.5 14.5h3v3h-3v3h6v-6h-3" />
+    </svg>
+  )
+}
+
 function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -295,14 +317,23 @@ function NotasClinicasCard({
   const [draftEntries, setDraftEntries] = useState<DraftSessionEntry[]>([])
   const [openCategoria, setOpenCategoria] = useState<string | null | 'none'>('none') // 'none' = aucune chip ouverte
   const [openContenido, setOpenContenido] = useState('')
-  const [openPhotoFile, setOpenPhotoFile] = useState<File | null>(null)
-  const [openPhotoPreview, setOpenPhotoPreview] = useState<string | null>(null)
-  const [openPhotoMomento, setOpenPhotoMomento] = useState<'antes' | 'despues' | null>(null)
+  const [openPhotos, setOpenPhotos] = useState<DraftPhoto[]>([])
   const [openProgramarRecordatorio, setOpenProgramarRecordatorio] = useState(false)
   const [openControlMeses, setOpenControlMeses] = useState<number | ''>('')
   const [comentarioFinal, setComentarioFinal] = useState('') // libre, optionnel, couvre toute la session
   const [savingSession, setSavingSession] = useState(false)
   const draftFileInputRef = useRef<HTMLInputElement>(null)
+  // "Enviar desde el celular" (QR, cf. prompt notas-foto-transfer-qr) -- jeton rattache a l'entree
+  // en cours de composition (openCategoria), jamais persiste au-dela d'un changement de categorie.
+  const [qrPanelOpen, setQrPanelOpen] = useState(false)
+  const [qrToken, setQrToken] = useState<string | null>(null)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [qrExpiresAt, setQrExpiresAt] = useState<string | null>(null)
+  const [qrStatus, setQrStatus] = useState<'pending' | 'expired' | 'cancelled' | null>(null)
+  const [qrCreating, setQrCreating] = useState(false)
+  const qrPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const qrSinceRef = useRef<string | null>(null)
   // Bouton "Editar" sur une case déjà sauvegardée (même sans RDV ni "même jour") -- le composer
   // (déjà toujours affiché) sert alors à AJOUTER de nouvelles entrées à cette session existante,
   // jamais à corriger le texte des notes déjà écrites. null = prochaine sauvegarde crée une
@@ -384,13 +415,20 @@ function NotasClinicasCard({
     setDraftEntries([])
     setOpenCategoria('none')
     setOpenContenido('')
-    setOpenPhotoFile(null)
-    setOpenPhotoPreview(null)
-    setOpenPhotoMomento(null)
+    setOpenPhotos([])
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
     setComentarioFinal('')
     setAppointmentIdPrefill(null)
+    setEditingSesionId(null)
+    stopQrPolling()
+    setQrPanelOpen(false)
+    setQrToken(null)
+    setQrUrl(null)
+    setQrDataUrl(null)
+    setQrExpiresAt(null)
+    setQrStatus(null)
+    qrSinceRef.current = null
   }, [])
 
   // Verrouillage par inactivité réelle (pas sur un simple changement d'onglet) : réinitialise un
@@ -452,6 +490,32 @@ function NotasClinicasCard({
 
   // Ouvre l'éditeur inline d'une chip (catégorie réelle, Control, ou null = "Sin categoría").
   // Recharge le contenu déjà présent dans le brouillon si cette catégorie y est déjà (édition).
+  // Arrete le polling et reinitialise le panneau QR -- jamais d'annulation serveur automatique ici
+  // (le jeton reste valide 10 min meme sans consommateur, cf. prompt notas-foto-transfer-qr) :
+  // seul le bouton "Cancelar" du panneau annule vraiment le jeton.
+  const stopQrPolling = () => {
+    if (qrPollIntervalRef.current) {
+      clearInterval(qrPollIntervalRef.current)
+      qrPollIntervalRef.current = null
+    }
+  }
+  const resetQrState = () => {
+    stopQrPolling()
+    setQrPanelOpen(false)
+    setQrToken(null)
+    setQrUrl(null)
+    setQrDataUrl(null)
+    setQrExpiresAt(null)
+    setQrStatus(null)
+    qrSinceRef.current = null
+  }
+
+  const revokeLocalPreviews = (photos: DraftPhoto[]) => {
+    for (const p of photos) {
+      if (p.file) URL.revokeObjectURL(p.previewUrl)
+    }
+  }
+
   const openChip = (categoria: string | null) => {
     if (openCategoria === categoria) {
       // Même perte silencieuse que ci-dessous si on reclique la même chip pour la refermer --
@@ -467,9 +531,7 @@ function NotasClinicasCard({
     const existing = draftEntries.find((e) => e.categoria === categoria)
     setOpenCategoria(categoria)
     setOpenContenido(existing?.contenido ?? '')
-    setOpenPhotoFile(existing?.photoFile ?? null)
-    setOpenPhotoPreview(existing?.photoPreviewUrl ?? null)
-    setOpenPhotoMomento(existing?.photoMomento ?? null)
+    setOpenPhotos(existing?.photos ?? [])
     setOpenProgramarRecordatorio(existing?.programarRecordatorio ?? false)
     setOpenControlMeses(existing?.controlMeses ?? '')
   }
@@ -477,11 +539,10 @@ function NotasClinicasCard({
   const closeChip = () => {
     setOpenCategoria('none')
     setOpenContenido('')
-    setOpenPhotoFile(null)
-    setOpenPhotoPreview(null)
-    setOpenPhotoMomento(null)
+    setOpenPhotos([])
     setOpenProgramarRecordatorio(false)
     setOpenControlMeses('')
+    resetQrState()
   }
 
   // Valide l'entrée en cours d'édition et l'ajoute (ou la remplace) dans le brouillon de session --
@@ -494,9 +555,7 @@ function NotasClinicasCard({
       {
         categoria,
         contenido: openContenido.trim(),
-        photoFile: openPhotoFile,
-        photoPreviewUrl: openPhotoPreview,
-        photoMomento: openPhotoMomento,
+        photos: openPhotos,
         programarRecordatorio: categoria === CATEGORIA_CONTROL ? openProgramarRecordatorio : undefined,
         controlMeses: categoria === CATEGORIA_CONTROL ? openControlMeses : undefined,
       },
@@ -507,7 +566,7 @@ function NotasClinicasCard({
   const removeEntry = (categoria: string | null) => {
     setDraftEntries((prev) => {
       const entry = prev.find((e) => e.categoria === categoria)
-      if (entry?.photoPreviewUrl) URL.revokeObjectURL(entry.photoPreviewUrl)
+      if (entry) revokeLocalPreviews(entry.photos)
       return prev.filter((e) => e.categoria !== categoria)
     })
     if (openCategoria === categoria) closeChip()
@@ -516,18 +575,121 @@ function NotasClinicasCard({
   const handleDraftFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file) return
-    if (openPhotoPreview) URL.revokeObjectURL(openPhotoPreview)
-    setOpenPhotoFile(file)
-    setOpenPhotoPreview(URL.createObjectURL(file))
+    if (!file || openPhotos.length >= MAX_PHOTOS_PER_NOTE) return
+    setOpenPhotos((prev) => [
+      ...prev,
+      { localId: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, file, previewUrl: URL.createObjectURL(file), momento: null },
+    ])
   }
 
-  const removeOpenPhoto = () => {
-    if (openPhotoPreview) URL.revokeObjectURL(openPhotoPreview)
-    setOpenPhotoFile(null)
-    setOpenPhotoPreview(null)
-    setOpenPhotoMomento(null)
+  const removeOpenPhoto = (localId: string) => {
+    setOpenPhotos((prev) => {
+      const photo = prev.find((p) => p.localId === localId)
+      if (photo?.file) URL.revokeObjectURL(photo.previewUrl)
+      return prev.filter((p) => p.localId !== localId)
+    })
   }
+
+  const setOpenPhotoMomento = (localId: string, momento: 'antes' | 'despues' | null) => {
+    setOpenPhotos((prev) => prev.map((p) => (p.localId === localId ? { ...p, momento } : p)))
+  }
+
+  // "Enviar desde el celular" (cf. prompt notas-foto-transfer-qr) -- cree un jeton valide 10 min,
+  // puis demarre le polling qui ajoute chaque nouvelle photo recue a openPhotos au fur et a mesure.
+  const startQrTransfer = async () => {
+    if (!codigo) return
+    setQrCreating(true)
+    const res = await fetch(`/api/patients/${patientId}/photo-transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo }),
+    })
+    const data = await res.json()
+    setQrCreating(false)
+    if (!res.ok) {
+      toast.error(data.error ?? t('toastErrorCrearQr'))
+      return
+    }
+    setQrToken(data.token)
+    setQrUrl(data.url)
+    setQrExpiresAt(data.expiresAt)
+    setQrStatus('pending')
+    setQrPanelOpen(true)
+    qrSinceRef.current = null
+  }
+
+  const cancelQrTransfer = async () => {
+    if (qrToken && codigo) {
+      await fetch(`/api/patients/${patientId}/photo-transfer/${qrToken}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo }),
+      }).catch(() => {})
+    }
+    resetQrState()
+  }
+
+  // Polling ~2s tant que le jeton reste 'pending' -- cherche toutes les photos du patient apparues
+  // depuis l'ouverture du QR non encore affichees (jamais "la" photo du jeton, plusieurs photos
+  // peuvent arriver a la suite sans rescanner, cf. prompt). S'arrete seul une fois le plafond
+  // atteint ou le jeton expire/annule.
+  useEffect(() => {
+    if (!qrToken || qrStatus !== 'pending' || !codigo) return
+    const poll = async () => {
+      const url = new URL(`/api/patients/${patientId}/photo-transfer/${qrToken}`, window.location.origin)
+      if (qrSinceRef.current) url.searchParams.set('since', qrSinceRef.current)
+      const res = await fetch(url.toString(), { headers: { 'x-codigo': codigo } })
+      if (!res.ok) return
+      const data = await res.json()
+      setQrStatus(data.status)
+      if (data.photos?.length) {
+        qrSinceRef.current = data.photos[data.photos.length - 1].createdAt
+        setOpenPhotos((prev) => {
+          const existingIds = new Set(prev.map((p) => p.photoId).filter(Boolean))
+          const nuevas: DraftPhoto[] = data.photos
+            .filter((p: { id: string }) => !existingIds.has(p.id))
+            .map((p: { id: string; url: string | null; createdAt: string; momento: 'antes' | 'despues' | null }) => ({
+              localId: `remote-${p.id}`,
+              file: null,
+              previewUrl: p.url ?? '',
+              momento: p.momento,
+              photoId: p.id,
+              createdAt: p.createdAt,
+            }))
+          const combined = [...prev, ...nuevas].slice(0, MAX_PHOTOS_PER_NOTE)
+          return combined
+        })
+      }
+    }
+    poll()
+    qrPollIntervalRef.current = setInterval(poll, 2000)
+    return () => {
+      if (qrPollIntervalRef.current) clearInterval(qrPollIntervalRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrToken, qrStatus])
+
+  // Arrete le polling une fois le plafond atteint -- plus rien a recevoir pour cette entree.
+  useEffect(() => {
+    if (openPhotos.length >= MAX_PHOTOS_PER_NOTE) stopQrPolling()
+  }, [openPhotos.length])
+
+  // Genere l'image QR cote client (data URL) a partir de l'URL publique -- jamais de service tiers.
+  useEffect(() => {
+    if (!qrUrl) {
+      setQrDataUrl(null)
+      return
+    }
+    let cancelled = false
+    import('qrcode').then((QRCode) => {
+      QRCode.toDataURL(qrUrl, { width: 220, margin: 1 }).then((dataUrl) => {
+        if (!cancelled) setQrDataUrl(dataUrl)
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [qrUrl])
 
   // Enregistre toute la session de saisie en une fois : un seul POST pour le lot de notes
   // (sesion_id partagé généré côté serveur), puis upload des photos associées note par note en
@@ -547,7 +709,13 @@ function NotasClinicasCard({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         codigo,
-        entradas: draftEntries.map((e) => ({ contenido: e.contenido, categoria: e.categoria })),
+        entradas: draftEntries.map((e) => ({
+          contenido: e.contenido,
+          categoria: e.categoria,
+          // Photos deja envoyees depuis le telephone (QR) et deja en base avec note_id null --
+          // rattachees cote serveur dans ce meme PUT, jamais re-uploadees ici.
+          photoIds: e.photos.filter((p) => p.photoId).map((p) => p.photoId),
+        })),
         comentarioFinal: comentarioFinal.trim() || null,
         appointmentId: appointmentIdPrefill ?? undefined,
         sesionId: editingSesionId ?? undefined,
@@ -583,24 +751,39 @@ function NotasClinicasCard({
     const photoErrorCategorias: string[] = []
     for (let i = 0; i < draftEntries.length; i++) {
       const entry = draftEntries[i]
-      if (!entry.photoFile) continue
       const noteId = createdNotes[i]?.id
-      if (!noteId) continue
-      const formData = new FormData()
-      formData.append('codigo', codigo)
-      formData.append('file', entry.photoFile)
-      if (entry.photoMomento) formData.append('momento', entry.photoMomento)
-      const photoRes = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
-        method: 'POST',
-        body: formData,
-      })
-      if (photoRes.ok) {
-        const photoData = await photoRes.json()
-        createdNotes[i].photos = [photoData.photo]
-      } else {
-        photoErrorCategorias.push(entry.categoria ?? t('sinCategoria'))
+      if (!noteId || entry.photos.length === 0) continue
+      const resolvedPhotos: PatientNotePhoto[] = []
+      for (const photo of entry.photos) {
+        if (photo.file) {
+          // Selection locale depuis l'ordinateur -- chemin existant inchange.
+          const formData = new FormData()
+          formData.append('codigo', codigo)
+          formData.append('file', photo.file)
+          if (photo.momento) formData.append('momento', photo.momento)
+          const photoRes = await fetch(`/api/patients/${patientId}/notes/${noteId}/photos`, {
+            method: 'POST',
+            body: formData,
+          })
+          if (photoRes.ok) {
+            const photoData = await photoRes.json()
+            resolvedPhotos.push(photoData.photo)
+          } else {
+            photoErrorCategorias.push(entry.categoria ?? t('sinCategoria'))
+          }
+          URL.revokeObjectURL(photo.previewUrl)
+        } else if (photo.photoId) {
+          // Deja en base (telephone, QR) et deja rattachee par le PUT ci-dessus -- juste refleter
+          // l'etat local, jamais de nouvel upload.
+          resolvedPhotos.push({
+            id: photo.photoId,
+            url: photo.previewUrl,
+            created_at: photo.createdAt ?? new Date().toISOString(),
+            momento: photo.momento,
+          })
+        }
       }
-      if (entry.photoPreviewUrl) URL.revokeObjectURL(entry.photoPreviewUrl)
+      createdNotes[i].photos = resolvedPhotos
     }
 
     setNotes((prev) => [...createdNotes, ...prev])
@@ -1498,44 +1681,105 @@ function NotasClinicasCard({
           />
 
           {allowsPhoto(openCategoria) && (
-            <div className="mt-2 flex items-center gap-2">
-              {openPhotoPreview ? (
-                <>
-                  <div className="group/photo relative h-14 w-14 flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={openPhotoPreview}
-                      alt={t('fotoClinicaAlt')}
-                      className="h-full w-full rounded-lg border border-gray-200 object-cover"
-                    />
+            <div className="mt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {openPhotos.map((photo) => (
+                  <div key={photo.localId} className="flex flex-col items-center gap-1">
+                    <div className="group/photo relative h-14 w-14 flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.previewUrl}
+                        alt={t('fotoClinicaAlt')}
+                        className="h-full w-full rounded-lg border border-gray-200 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOpenPhoto(photo.localId)}
+                        aria-label={t('eliminarFotoLabel')}
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white"
+                      >
+                        <CloseIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <select
+                      value={photo.momento ?? ''}
+                      onChange={(e) =>
+                        setOpenPhotoMomento(photo.localId, e.target.value === 'antes' || e.target.value === 'despues' ? e.target.value : null)
+                      }
+                      className="w-14 rounded-lg border border-gray-200 bg-white px-1 py-1 text-[10px] text-gray-600 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                    >
+                      <option value="">{t('momentoSinTag')}</option>
+                      <option value="antes">{t('momentoAntes')}</option>
+                      <option value="despues">{t('momentoDespues')}</option>
+                    </select>
+                  </div>
+                ))}
+                {openPhotos.length < MAX_PHOTOS_PER_NOTE && (
+                  <>
                     <button
                       type="button"
-                      onClick={removeOpenPhoto}
-                      aria-label={t('eliminarFotoLabel')}
-                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white"
+                      onClick={() => draftFileInputRef.current?.click()}
+                      className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-[#6926D2] hover:text-[#6926D2]"
                     >
-                      <CloseIcon className="h-3 w-3" />
+                      <PhotoIcon className="h-4 w-4" />
+                      <span className="text-[9px]">{t('masFoto')}</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={startQrTransfer}
+                      disabled={qrCreating}
+                      title={t('enviarDesdeCelularLabel')}
+                      className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-[#6926D2] hover:text-[#6926D2] disabled:opacity-50"
+                    >
+                      <QrCodeIcon className="h-4 w-4" />
+                      <span className="text-[9px]">{t('qrLabel')}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+              {openPhotos.length >= MAX_PHOTOS_PER_NOTE && (
+                <p className="mt-1.5 text-[11px] text-gray-400">{t('plafondFotosAlcanzado', { max: MAX_PHOTOS_PER_NOTE })}</p>
+              )}
+
+              {qrPanelOpen && (
+                <div className="mt-2 rounded-lg border border-[#6926D2]/30 bg-white p-3">
+                  <div className="mb-2 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-2.5 py-2 text-[11px] text-warning-700">
+                    <WarningIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                    <p>{t('avisoConexionInternet')}</p>
                   </div>
-                  <select
-                    value={openPhotoMomento ?? ''}
-                    onChange={(e) => setOpenPhotoMomento(e.target.value === 'antes' || e.target.value === 'despues' ? e.target.value : null)}
-                    className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-                  >
-                    <option value="">{t('momentoSinTag')}</option>
-                    <option value="antes">{t('momentoAntes')}</option>
-                    <option value="despues">{t('momentoDespues')}</option>
-                  </select>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => draftFileInputRef.current?.click()}
-                  className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-[#6926D2] hover:text-[#6926D2]"
-                >
-                  <PhotoIcon className="h-4 w-4" />
-                  <span className="text-[9px]">{t('masFoto')}</span>
-                </button>
+                  {qrStatus === 'pending' && qrDataUrl && (
+                    <div className="flex flex-col items-center gap-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrDataUrl} alt={t('qrLabel')} className="h-40 w-40" />
+                      <p className="text-center text-[11px] text-gray-500">{t('escaneaQrHint')}</p>
+                      {qrExpiresAt && (
+                        <p className="text-center text-[10px] text-gray-400">
+                          {t('qrValidoHastaLabel', { time: new Date(qrExpiresAt).toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' }) })}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={cancelQrTransfer}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                      >
+                        {t('cancelar')}
+                      </button>
+                    </div>
+                  )}
+                  {qrStatus === 'expired' && (
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-xs text-gray-500">{t('qrExpiradoHint')}</p>
+                      <button
+                        type="button"
+                        onClick={startQrTransfer}
+                        className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
+                      >
+                        {t('qrNuevoLabel')}
+                      </button>
+                    </div>
+                  )}
+                  {qrStatus === 'cancelled' && <p className="text-center text-xs text-gray-500">{t('qrCanceladoHint')}</p>}
+                </div>
               )}
             </div>
           )}

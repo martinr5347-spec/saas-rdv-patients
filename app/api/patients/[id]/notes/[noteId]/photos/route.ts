@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifyCodigo } from '@/lib/security/verifyCodigo'
-
-const MAX_PHOTOS_PER_NOTE = 2
-const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5 Mo
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+import { MAX_PHOTOS_PER_NOTE, MAX_PHOTO_SIZE_BYTES, ALLOWED_PHOTO_TYPES } from '@/lib/patients/notePhotoValidation'
 
 // POST = upload d'une photo pour une note (multipart/form-data : champs "codigo" et "file")
 export async function POST(req: Request, { params }: { params: { id: string; noteId: string } }) {
@@ -27,10 +24,10 @@ export async function POST(req: Request, { params }: { params: { id: string; not
   if (!file) {
     return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 })
   }
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
     return NextResponse.json({ error: 'Formato no soportado (solo JPG, PNG, WEBP)' }, { status: 400 })
   }
-  if (file.size > MAX_SIZE_BYTES) {
+  if (file.size > MAX_PHOTO_SIZE_BYTES) {
     return NextResponse.json({ error: 'Archivo demasiado grande (máx. 5 MB)' }, { status: 400 })
   }
 

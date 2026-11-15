@@ -1114,6 +1114,11 @@ function NotasClinicasCard({
                   el?.focus()
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Backspace' && !pinDigits[i] && i > 0) {
+                  document.getElementById(`pin-${i - 1}`)?.focus()
+                }
+              }}
               id={`pin-${i}`}
               className="h-14 w-12 rounded-xl border border-gray-200 text-center text-xl font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
             />

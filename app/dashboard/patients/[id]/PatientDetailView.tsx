@@ -2082,7 +2082,17 @@ function emptyMedicamento(): MedicamentoForm {
 // borrador" cree/met a jour une ligne modifiable (storage_path null) ; "Generar PDF" la fige
 // (storage_path renseigne, immuable, cf. route generar) -- le telechargement ne fait jamais que
 // servir le fichier deja stocke, cf. prompt prescripciones-borrador.
-function PrescripcionesCard({ patientId }: { patientId: string }) {
+function PrescripcionesCard({
+  patientId,
+  notesSnapshot,
+}: {
+  patientId: string
+  // Jamais un nouvel appel reseau vers /api/patients/[id]/notes (contournerait le PIN) -- meme
+  // etat deja deverrouille en memoire que ResumenTab/FotosTab/HistorialCitasCard, transmis par le
+  // parent (cf. prompt prescripcion-prefill-notas-adicionales). null = notes jamais deverrouillees
+  // cette session, dans ce cas le pre-remplissage ci-dessous reste simplement inactif.
+  notesSnapshot: PatientNote[] | null
+}) {
   const t = useTranslations('dashboard.patientDetail')
   const [loading, setLoading] = useState(true)
   const [historial, setHistorial] = useState<PrescripcionHistorial[]>([])
@@ -2213,7 +2223,21 @@ function PrescripcionesCard({ patientId }: { patientId: string }) {
         {!showForm && (
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              // Pre-remplit avec la derniere note "Tratamiento" uniquement a l'ouverture d'une
+              // TOUTE NOUVELLE prescription, jamais si le champ contient deja quelque chose (brouillon
+              // en cours ou deja tape) -- et jamais de nouvel appel reseau, uniquement notesSnapshot
+              // deja deverrouille cette session (cf. prompt prescripcion-prefill-notas-adicionales).
+              if (!notasAdicionales.trim() && notesSnapshot) {
+                const ultimoTratamiento = notesSnapshot
+                  .filter((n) => n.categoria === 'Tratamiento')
+                  .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
+                if (ultimoTratamiento) {
+                  setNotasAdicionales(ultimoTratamiento.contenido)
+                }
+              }
+              setShowForm(true)
+            }}
             className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
           >
             {t('nuevaPrescripcion')}
@@ -2949,7 +2973,7 @@ export default function PatientDetailView({
         <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
       </div>
       <div className={activeTab === 'prescripciones' ? '' : 'hidden'}>
-        <PrescripcionesCard patientId={patient.id} />
+        <PrescripcionesCard patientId={patient.id} notesSnapshot={notesSnapshot} />
       </div>
     </div>
   )

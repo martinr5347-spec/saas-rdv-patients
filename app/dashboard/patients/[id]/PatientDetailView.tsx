@@ -457,6 +457,10 @@ function NotasClinicasCard({
       closeChip()
       return
     }
+    // Auto-valide l'entrée en cours avant de changer de catégorie -- sinon le texte tapé est perdu
+    // silencieusement (bug réel signalé par Martin). Même effet que cliquer "Agregar" soi-même ;
+    // confirmEntry() ne fait rien si rien n'a été tapé (garde déjà existante).
+    confirmEntry()
     const existing = draftEntries.find((e) => e.categoria === categoria)
     setOpenCategoria(categoria)
     setOpenContenido(existing?.contenido ?? '')
@@ -1429,7 +1433,7 @@ function NotasClinicasCard({
                     ? `ring-2 ${categoryRingColor(cat)}`
                     : dejaUtilisee
                       ? 'opacity-30'
-                      : 'opacity-60 hover:opacity-100'
+                      : ''
               }`}
             >
               {filled && !isOpen ? '✓ ' : ''}
@@ -1446,7 +1450,7 @@ function NotasClinicasCard({
                 ? 'ring-2 ring-[#6926D2]'
                 : draftEntries.some((e) => e.categoria === CATEGORIA_CONTROL)
                   ? 'ring-2 ring-orange-400'
-                  : 'opacity-60 hover:opacity-100'
+                  : ''
             }`}
           >
             {draftEntries.some((e) => e.categoria === CATEGORIA_CONTROL) && openCategoria !== CATEGORIA_CONTROL ? '✓ ' : ''}

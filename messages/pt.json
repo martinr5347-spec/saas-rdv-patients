@@ -552,6 +552,7 @@
       "plantillaPrescripcion_minimalista_desc": "Fundo branco, uma linha violeta no topo, estilo sóbrio.",
       "plantillaPrescripcion_moderno_nombre": "Moderno",
       "plantillaPrescripcion_moderno_desc": "Faixa lateral colorida com os dados do consultório.",
+      "plantillaPrescripcionVerEjemplo": "Ver exemplo",
       "organizacionPais": "País do consultório",
       "organizacionPaisInfo": "Define a moeda padrão ao criar sua conta e o link do painel de desenvolvedores do MercadoPago. Corrija aqui se não estiver correto.",
       "organizacionEspecialidad": "Área de atuação do consultório",

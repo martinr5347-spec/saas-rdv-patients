@@ -14,6 +14,9 @@ const nextConfig = {
       // la cle doit suivre, sinon le crash pdfkit/standard-fonts corrige precedemment reviendrait
       // en production pour cette route.
       '/api/patients/[id]/prescripciones/[prescripcionId]/generar': ['./node_modules/pdfkit/js/standard-fonts/**'],
+      // Nouvelle route d'apercu (cf. prompt prescripcion-plantillas-apercu) : reutilise aussi
+      // renderPrescripcionPdf (pdfkit) -- meme crash potentiel en production si cette cle manque.
+      '/api/prescripciones/preview': ['./node_modules/pdfkit/js/standard-fonts/**'],
       '/api/ingresos/export-pdf': ['./node_modules/pdfkit/js/standard-fonts/**'],
     },
   },

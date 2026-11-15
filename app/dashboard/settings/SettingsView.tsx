@@ -796,6 +796,15 @@ export default function SettingsView({
                     {t(`plantillaPrescripcion_${plantillaId}_nombre`)}
                   </span>
                   <p className="mt-2 text-xs text-gray-500">{t(`plantillaPrescripcion_${plantillaId}_desc`)}</p>
+                  <a
+                    href={`/api/prescripciones/preview?plantilla=${plantillaId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline"
+                  >
+                    {t('plantillaPrescripcionVerEjemplo')}
+                  </a>
                 </label>
               ))}
             </div>

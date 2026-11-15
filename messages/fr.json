@@ -552,6 +552,7 @@
       "plantillaPrescripcion_minimalista_desc": "Fond blanc, un simple filet violet en haut, style sobre.",
       "plantillaPrescripcion_moderno_nombre": "Moderne",
       "plantillaPrescripcion_moderno_desc": "Bande latérale colorée avec les informations du cabinet.",
+      "plantillaPrescripcionVerEjemplo": "Voir un exemple",
       "organizacionPais": "Pays du cabinet",
       "organizacionPaisInfo": "Définit la devise par défaut à la création de votre compte et le lien vers le panel développeur MercadoPago. Corrigez-le ici si besoin.",
       "organizacionEspecialidad": "Domaine d'activité du cabinet",

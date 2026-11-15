@@ -454,6 +454,9 @@ function NotasClinicasCard({
   // Recharge le contenu déjà présent dans le brouillon si cette catégorie y est déjà (édition).
   const openChip = (categoria: string | null) => {
     if (openCategoria === categoria) {
+      // Même perte silencieuse que ci-dessous si on reclique la même chip pour la refermer --
+      // decision de Martin suite au signalement : auto-valider ici aussi.
+      confirmEntry()
       closeChip()
       return
     }
@@ -1465,7 +1468,7 @@ function NotasClinicasCard({
               ? 'bg-[#6926D2] text-white ring-2 ring-[#6926D2]'
               : draftEntries.some((e) => e.categoria === null)
                 ? 'bg-gray-800 text-white'
-                : 'bg-gray-100 text-gray-500 opacity-60 hover:opacity-100'
+                : 'bg-gray-100 text-gray-500'
           }`}
         >
           {draftEntries.some((e) => e.categoria === null) && openCategoria !== null ? '✓ ' : ''}

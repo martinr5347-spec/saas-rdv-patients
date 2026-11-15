@@ -235,6 +235,7 @@ function NotasClinicasCard({
   onNotesChange,
   onProximoControlChange,
   autoOpenRequest,
+  onSessionCreated,
 }: {
   patientId: string
   onNotesChange?: (notes: PatientNote[] | null) => void
@@ -244,6 +245,10 @@ function NotasClinicasCard({
   // "Programar control") ; 'photoCategoria' = première catégorie autorisant une photo, sinon rien
   // (raccourci "Subir fotos", best-effort : l'architecture n'a pas d'upload indépendant d'une note).
   autoOpenRequest?: { type: 'control' | 'photoCategoria'; nonce: number } | null
+  // Déclenché uniquement à la création d'une TOUTE NOUVELLE session (jamais lors d'un ajout via
+  // "Editar") -- bascule le parent vers l'étape guidée "Agregar acto", cf. prompt
+  // notas-una-case-por-visita.
+  onSessionCreated?: (appointmentId: string | null) => void
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const locale = useLocale()
@@ -298,6 +303,12 @@ function NotasClinicasCard({
   const [comentarioFinal, setComentarioFinal] = useState('') // libre, optionnel, couvre toute la session
   const [savingSession, setSavingSession] = useState(false)
   const draftFileInputRef = useRef<HTMLInputElement>(null)
+  // Bouton "Editar" sur une case déjà sauvegardée (même sans RDV ni "même jour") -- le composer
+  // (déjà toujours affiché) sert alors à AJOUTER de nouvelles entrées à cette session existante,
+  // jamais à corriger le texte des notes déjà écrites. null = prochaine sauvegarde crée une
+  // nouvelle session (comportement normal).
+  const [editingSesionId, setEditingSesionId] = useState<string | null>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
 
   // Prefill depuis le raccourci "+ Agregar nota" de la fiche d'un RDV (voir AppointmentDetailView.tsx)
   // -- même mécanisme que ?addActo=1&appointmentId=... déjà existant pour les actes (Partie 3).
@@ -520,6 +531,10 @@ function NotasClinicasCard({
     if (draftEntries.length === 0 || !codigo) return
     setSavingSession(true)
     setLoading(true)
+    // editingSesionId (bouton "Editar" sur une case déjà sauvegardée) a priorité absolue côté
+    // serveur sur tout appointmentId -- envoyé en plus, jamais à sa place, au cas où le serveur en
+    // aurait besoin pour d'autres usages futurs, mais c'est bien sesionId qui tranche.
+    const editandoSesionExistante = editingSesionId !== null
     const res = await fetch(`/api/patients/${patientId}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -528,12 +543,16 @@ function NotasClinicasCard({
         entradas: draftEntries.map((e) => ({ contenido: e.contenido, categoria: e.categoria })),
         comentarioFinal: comentarioFinal.trim() || null,
         appointmentId: appointmentIdPrefill ?? undefined,
+        sesionId: editingSesionId ?? undefined,
       }),
     })
     const data = await res.json()
     if (!res.ok) {
       toast.error(data.error ?? t('toastErrorGuardarNota'))
       if (res.status === 403) lock()
+      // Sesión introuvable (id invalide/perimé) -- revenir au mode "nouvelle session" plutôt que de
+      // rester bloqué à retenter indéfiniment contre un id qui n'existe plus.
+      if (res.status === 404) setEditingSesionId(null)
       setSavingSession(false)
       setLoading(false)
       return
@@ -621,12 +640,30 @@ function NotasClinicasCard({
       toast.error(t('toastErrorSubirAlgunasFotos', { categorias: photoErrorCategorias.join(', ') }))
     }
 
+    // Étape guidée "Agregar acto" (Partie C) -- uniquement à la création d'une TOUTE NOUVELLE
+    // session, jamais lors d'un ajout via "Editar" sur une case déjà traitée.
+    if (!editandoSesionExistante) {
+      onSessionCreated?.(resolvedAppointmentId)
+    }
+
     setDraftEntries([])
     setComentarioFinal('')
     setAppointmentIdPrefill(null)
+    setEditingSesionId(null)
     closeChip()
     setSavingSession(false)
     setLoading(false)
+  }
+
+  // Bouton "Editar" sur une case déjà sauvegardée (même jours après sa création) -- vide le
+  // composer (jamais de préremplissage du texte des notes passées, on ajoute, on ne corrige pas
+  // l'historique) et retient l'id de la session cible pour que saveSession() y fusionne la suite.
+  const startEditSession = (sesionId: string) => {
+    setDraftEntries([])
+    setComentarioFinal('')
+    closeChip()
+    setEditingSesionId(sesionId)
+    composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const startEditNote = (note: PatientNote) => {
@@ -1325,12 +1362,28 @@ function NotasClinicasCard({
         {groupNotesBySesion(filteredNotes).map((group) =>
           group.sesionId ? (
             // Session réelle (sesion_id partagé) : cadre visuellement fort, un seul en-tête de date/heure.
-            <div key={group.key} className="rounded-xl border-2 border-[#6926D2]/40 bg-violet-50/40 p-3">
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#6926D2]">
-                {new Date(group.notes[0].created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
-                {' · '}
-                {t('entradasCount', { count: group.notes.length })}
-              </p>
+            <div
+              key={group.key}
+              className={`rounded-xl border-2 p-3 ${
+                editingSesionId === group.sesionId ? 'border-[#6926D2] bg-violet-100/60' : 'border-[#6926D2]/40 bg-violet-50/40'
+              }`}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#6926D2]">
+                  {new Date(group.notes[0].created_at).toLocaleString(intlLocale, { dateStyle: 'medium', timeStyle: 'short' })}
+                  {' · '}
+                  {t('entradasCount', { count: group.notes.length })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => startEditSession(group.sesionId as string)}
+                  aria-label={t('editarSesionLabel')}
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-[#6926D2] hover:bg-white/60"
+                >
+                  <PencilIcon className="h-3 w-3" />
+                  {t('editarSesionLabel')}
+                </button>
+              </div>
               <div className="space-y-2">{group.notes.map((note) => renderNoteItem(note, { hideDate: true }))}</div>
               {group.notes[0].comentarioFinal && (
                 <p className="mt-3 rounded-lg bg-white/60 p-2.5 text-sm italic text-gray-600">
@@ -1345,8 +1398,18 @@ function NotasClinicasCard({
         )}
       </div>
 
-      {appointmentIdPrefill && <p className="mb-1.5 text-xs text-gray-500">{t('vinculadoCita')}</p>}
-      <p className="mb-1.5 text-xs text-gray-500">{t('composerHint')}</p>
+      <div ref={composerRef}>
+        {editingSesionId && (
+          <p className="mb-1.5 flex items-center justify-between rounded-lg bg-violet-100/60 px-2.5 py-1.5 text-xs text-[#6926D2]">
+            {t('editandoSesionHint')}
+            <button type="button" onClick={() => setEditingSesionId(null)} className="font-medium underline">
+              {t('cancelar')}
+            </button>
+          </p>
+        )}
+        {appointmentIdPrefill && <p className="mb-1.5 text-xs text-gray-500">{t('vinculadoCita')}</p>}
+        <p className="mb-1.5 text-xs text-gray-500">{t('composerHint')}</p>
+      </div>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {categorias.map((cat) => {
           const dejaUtilisee = categoriasUtiliseesAujourdhui.has(cat)
@@ -1614,13 +1677,21 @@ interface ActoHistorial {
 function ActosRealizadosCard({
   patientId,
   onHistorialChange,
-  autoOpenFormNonce,
+  autoOpenRequest,
+  appointments,
+  monnaie,
 }: {
   patientId: string
   onHistorialChange?: (historial: ActoHistorial[]) => void
-  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") -- ouvre le formulaire dès que ce
-  // compteur change, incrémenté à chaque clic côté parent (voir PatientDetailView).
-  autoOpenFormNonce?: number
+  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") ET étape guidée post-validation de
+  // note (Partie C, cf. prompt notas-una-case-por-visita) partagent ce même mécanisme one-shot par
+  // nonce -- `guided` distingue les deux pour n'activer le comportement "quasi-obligatoire avec
+  // avertissement" que dans le second cas, jamais pour le bouton manuel/Acciones rápidas.
+  autoOpenRequest?: { nonce: number; appointmentId: string | null; guided: boolean } | null
+  // Déjà chargés par le parent (page.tsx) -- réutilisés ici pour afficher "ya pagado por
+  // MercadoPago" sans dupliquer une requête déjà faite ailleurs sur la page.
+  appointments: AppointmentRow[]
+  monnaie: string
 }) {
   const t = useTranslations('dashboard.patientDetail')
   // Reutilise les libelles deja traduits de la carte Ingresos (medios de pago + badge
@@ -1639,6 +1710,9 @@ function ActosRealizadosCard({
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'otro'>('efectivo')
   const [saving, setSaving] = useState(false)
+  // Etape guidee post-validation de note (Partie C) : "Cancelar" devient "Omitir esta vez" avec
+  // avertissement -- jamais actif pour le bouton manuel/Acciones rapidas/raccourci RDV.
+  const [guided, setGuided] = useState(false)
 
   const appointmentIdParam = searchParams.get('appointmentId')
   const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
@@ -1674,18 +1748,22 @@ function ActosRealizadosCard({
     if (searchParams.get('addActo') === '1') {
       setShowForm(true)
       setAppointmentIdPrefill(appointmentIdParam)
+      setGuided(false)
     }
   }, [searchParams, appointmentIdParam])
 
-  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") -- même mécanisme one-shot par
-  // nonce que NotasClinicasCard.autoOpenRequest, pas de PIN ici donc pas besoin d'attendre un état.
+  // "Acciones rápidas" (onglet Resumen, bouton "Agregar acto") ET étape guidée post-validation de
+  // note (Partie C) partagent ce même mécanisme one-shot par nonce -- pas de PIN ici donc pas
+  // besoin d'attendre un état.
   const handledAutoOpenFormNonceRef = useRef(0)
   useEffect(() => {
-    if (!autoOpenFormNonce) return
-    if (handledAutoOpenFormNonceRef.current === autoOpenFormNonce) return
-    handledAutoOpenFormNonceRef.current = autoOpenFormNonce
+    if (!autoOpenRequest) return
+    if (handledAutoOpenFormNonceRef.current === autoOpenRequest.nonce) return
+    handledAutoOpenFormNonceRef.current = autoOpenRequest.nonce
     setShowForm(true)
-  }, [autoOpenFormNonce])
+    setAppointmentIdPrefill(autoOpenRequest.appointmentId)
+    setGuided(autoOpenRequest.guided)
+  }, [autoOpenRequest])
 
   const resetForm = () => {
     setMode('catalogo')
@@ -1739,11 +1817,24 @@ function ActosRealizadosCard({
       resetForm()
       setShowForm(false)
       setAppointmentIdPrefill(null)
+      setGuided(false)
     } else {
       toast.error(data.error ?? t('toastErrorGuardarActo'))
     }
     setSaving(false)
   }
+
+  // "Ya pagado por MercadoPago" (Partie C) -- uniquement si un RDV lié a reçu un acompte reel
+  // (jamais 'pendiente'/'anulado', ni un acompte nul). monto_acompte > 0 exclut aussi les RDV
+  // 'confirmado'/'en_curso' sans acompte dû (montant nul, cf. migration 051) qui n'ont donc jamais
+  // rien reçu via MercadoPago malgré un statut postérieur à 'pendiente'.
+  const appointmentVinculado = appointmentIdPrefill ? appointments.find((a) => a.id === appointmentIdPrefill) : null
+  const yaPagadoMonto =
+    appointmentVinculado &&
+    appointmentVinculado.monto_acompte > 0 &&
+    (appointmentVinculado.statut === 'pagado' || appointmentVinculado.statut === 'en_curso')
+      ? appointmentVinculado.monto_acompte
+      : null
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -1757,7 +1848,10 @@ function ActosRealizadosCard({
         {!showForm && (
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setShowForm(true)
+              setGuided(false)
+            }}
             className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
           >
             {t('agregarActo')}
@@ -1769,6 +1863,16 @@ function ActosRealizadosCard({
         <div className="border-b border-gray-100 bg-gray-50 p-5">
           {appointmentIdPrefill && (
             <p className="mb-3 text-xs text-gray-500">{t('vinculadoCita')}</p>
+          )}
+          {yaPagadoMonto !== null && (
+            <div className="mb-3">
+              <label className="mb-1 block text-xs font-medium text-gray-600">{t('yaPagadoMercadopagoLabel')}</label>
+              <input
+                disabled
+                value={`${monnaie} ${yaPagadoMonto.toFixed(2)}`}
+                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500"
+              />
+            </div>
           )}
           <div className="mb-3 flex flex-wrap gap-1.5">
             <button
@@ -1881,17 +1985,24 @@ function ActosRealizadosCard({
             </select>
           </div>
 
+          {guided && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-xs text-warning-700">
+              <WarningIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{t('avisoBalanceIncompleto')}</p>
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => {
                 setShowForm(false)
                 setAppointmentIdPrefill(null)
+                setGuided(false)
                 resetForm()
               }}
               className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
             >
-              {t('cancelar')}
+              {guided ? t('omitirEstaVezLabel') : t('cancelar')}
             </button>
             <button
               type="button"
@@ -2671,12 +2782,14 @@ export default function PatientDetailView({
   presenceRate,
   totalAppointments,
   markedAppointments,
+  monnaie,
 }: {
   patient: { id: string; nom: string; email: string | null; telefono: string | null; created_at: string }
   appointments: AppointmentRow[]
   presenceRate: number | null
   totalAppointments: number
   markedAppointments: number
+  monnaie: string
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const [notesSnapshot, setNotesSnapshot] = useState<PatientNote[] | null>(null)
@@ -2684,16 +2797,21 @@ export default function PatientDetailView({
   const [proximoControlSnapshot, setProximoControlSnapshot] = useState<ProximoControl | null>(null)
   const [activeTab, setActiveTab] = useState<PatientTabId>('resumen')
 
-  // Signaux one-shot (Acciones rápidas, onglet Resumen) consommés respectivement par
-  // ActosRealizadosCard.autoOpenFormNonce et NotasClinicasCard.autoOpenRequest -- jamais de logique
-  // dupliquée, uniquement un changement d'onglet + une demande d'ouverture déjà gérée par ces cartes.
-  const [autoOpenActoFormNonce, setAutoOpenActoFormNonce] = useState(0)
+  // Signaux one-shot (Acciones rápidas, onglet Resumen, ET étape guidée post-validation de note --
+  // Partie C) consommés respectivement par ActosRealizadosCard.autoOpenRequest et
+  // NotasClinicasCard.autoOpenRequest -- jamais de logique dupliquée, uniquement un changement
+  // d'onglet + une demande d'ouverture déjà gérée par ces cartes.
+  const [autoOpenActoRequest, setAutoOpenActoRequest] = useState<{ nonce: number; appointmentId: string | null; guided: boolean } | null>(
+    null
+  )
   const [notasAutoOpenRequest, setNotasAutoOpenRequest] = useState<{ type: 'control' | 'photoCategoria'; nonce: number } | null>(null)
   const notasNonceRef = useRef(0)
+  const actoNonceRef = useRef(0)
 
   const handleAgregarActo = () => {
+    actoNonceRef.current += 1
     setActiveTab('actos')
-    setAutoOpenActoFormNonce((n) => n + 1)
+    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: null, guided: false })
   }
   const handleProgramarControl = () => {
     notasNonceRef.current += 1
@@ -2704,6 +2822,13 @@ export default function PatientDetailView({
     notasNonceRef.current += 1
     setActiveTab('notas')
     setNotasAutoOpenRequest({ type: 'photoCategoria', nonce: notasNonceRef.current })
+  }
+  // Validation d'une nouvelle note clinique (jamais lors d'un ajout via "Editar", cf.
+  // NotasClinicasCard.onSessionCreated) -- bascule vers "Actos realizados" en mode guidé.
+  const handleNotaValidada = (resolvedAppointmentId: string | null) => {
+    actoNonceRef.current += 1
+    setActiveTab('actos')
+    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: resolvedAppointmentId, guided: true })
   }
 
   const TABS: { id: PatientTabId; label: string }[] = [
@@ -2801,10 +2926,17 @@ export default function PatientDetailView({
           onNotesChange={setNotesSnapshot}
           onProximoControlChange={setProximoControlSnapshot}
           autoOpenRequest={notasAutoOpenRequest}
+          onSessionCreated={handleNotaValidada}
         />
       </div>
       <div className={activeTab === 'actos' ? '' : 'hidden'}>
-        <ActosRealizadosCard patientId={patient.id} onHistorialChange={setHistorialActos} autoOpenFormNonce={autoOpenActoFormNonce} />
+        <ActosRealizadosCard
+          patientId={patient.id}
+          onHistorialChange={setHistorialActos}
+          autoOpenRequest={autoOpenActoRequest}
+          appointments={appointments}
+          monnaie={monnaie}
+        />
       </div>
       <div className={activeTab === 'fotos' ? '' : 'hidden'}>
         <FotosTab notesSnapshot={notesSnapshot} onGoToNotas={() => setActiveTab('notas')} />

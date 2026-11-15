@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifyCodigo } from '@/lib/security/verifyCodigo'
-import { ahoraEnFuseau } from '@/lib/utils/timezone'
+import { ahoraEnFuseau, toTenantDate } from '@/lib/utils/timezone'
 
 // POST = déverrouille ET retourne la liste des notes existantes, l'alerte clínica y las categorías disponibles
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -122,6 +122,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const comentarioFinal =
     typeof body.comentarioFinal === 'string' && body.comentarioFinal.trim() ? body.comentarioFinal.trim() : null
   const appointmentIdRaw = typeof body.appointmentId === 'string' && body.appointmentId ? body.appointmentId : null
+  // Bouton "Editar" sur une case déjà sauvegardée (PatientDetailView.tsx) -- priorité absolue sur
+  // toute déduction par appointmentId/jour ci-dessous, cf. prompt notas-una-case-por-visita.
+  const sesionIdRaw = typeof body.sesionId === 'string' && body.sesionId ? body.sesionId : null
 
   if (!codigo) {
     return NextResponse.json({ error: 'Código requerido' }, { status: 400 })
@@ -164,61 +167,133 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
   }
 
-  // appointmentId optionnel (prefill ?addNota=1&appointmentId=... depuis AppointmentDetailView) --
-  // revalidé contre ce patient avant d'être enregistré, jamais fait confiance tel quel.
   let appointmentId: string | null = null
-  if (appointmentIdRaw) {
-    const { data: apptRow } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('id', appointmentIdRaw)
-      .eq('patient_id', params.id)
-      .maybeSingle()
-    appointmentId = apptRow?.id ?? null
-  } else {
-    // Aucun raccourci RDV explicite -- on ne déduit un appointment_id que si ce patient a
-    // EXACTEMENT un RDV le jour même, calculé dans le fuseau de l'organisation (pas le jour UTC
-    // serveur -- en soirée dans un fuseau négatif, le jour UTC peut déjà être passé au lendemain).
-    // Zéro ou plusieurs RDV ce jour-là : aucune déduction, appointment_id reste null (comportement
-    // actuel inchangé), jamais de fusion ambiguë entre plusieurs RDV du même jour.
-    const hoy = ahoraEnFuseau(patientRow.organizations?.fuseau ?? 'America/Lima').fecha
-    const { data: citasHoy } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('patient_id', params.id)
-      .eq('fecha_cita', hoy)
-    if (citasHoy && citasHoy.length === 1) {
-      appointmentId = citasHoy[0].id
-    }
-  }
-
-  // Une session de notes correspond à un RDV, pas à un clic sur "Guardar sesión" : si une session
-  // existe déjà pour ce même appointment_id, on la réutilise (fusion) au lieu d'en créer une
-  // nouvelle -- comentario_final remplace alors l'ancien plutôt que de le dupliquer.
   let sesion: { id: string; comentario_final: string | null } | null = null
   let sesionEsNueva = false
-  if (appointmentId) {
+
+  // Bouton "Editar" sur une case déjà sauvegardée -- priorité absolue : si un sesionId est fourni,
+  // on l'utilise directement comme cible (après validation qu'elle appartient bien à ce patient),
+  // sans passer par aucune déduction appointmentId/jour ci-dessous. "Editar" ajoute de nouvelles
+  // entrées à la session existante, ne modifie jamais les notes déjà écrites.
+  if (sesionIdRaw) {
     const { data: existingSesion } = await supabase
       .from('patient_note_sesiones')
-      .select('id, comentario_final')
-      .eq('appointment_id', appointmentId)
+      .select('id, comentario_final, appointment_id')
+      .eq('id', sesionIdRaw)
       .eq('patient_id', params.id)
       .maybeSingle()
 
-    if (existingSesion) {
-      if (comentarioFinal !== null) {
-        const { data: updatedSesion, error: updateError } = await supabase
-          .from('patient_note_sesiones')
-          .update({ comentario_final: comentarioFinal })
-          .eq('id', existingSesion.id)
-          .select('id, comentario_final')
-          .single()
-        if (updateError) {
-          return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (!existingSesion) {
+      return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+    }
+
+    appointmentId = existingSesion.appointment_id
+    if (comentarioFinal !== null) {
+      const { data: updatedSesion, error: updateError } = await supabase
+        .from('patient_note_sesiones')
+        .update({ comentario_final: comentarioFinal })
+        .eq('id', existingSesion.id)
+        .select('id, comentario_final')
+        .single()
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 })
+      }
+      sesion = updatedSesion
+    } else {
+      sesion = existingSesion
+    }
+  } else {
+    // appointmentId optionnel (prefill ?addNota=1&appointmentId=... depuis AppointmentDetailView) --
+    // revalidé contre ce patient avant d'être enregistré, jamais fait confiance tel quel.
+    // cero_rdv_hoy distingue "aucun RDV ce jour" (0 -> fusion par jour ci-dessous, nouveau) de
+    // "plusieurs RDV ce jour" (2+ -> ambiguïté réelle, jamais de fusion, comportement inchangé).
+    let ceroRdvHoy = false
+    let hoy: string | null = null
+    if (appointmentIdRaw) {
+      const { data: apptRow } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('id', appointmentIdRaw)
+        .eq('patient_id', params.id)
+        .maybeSingle()
+      appointmentId = apptRow?.id ?? null
+    } else {
+      // Aucun raccourci RDV explicite -- on ne déduit un appointment_id que si ce patient a
+      // EXACTEMENT un RDV le jour même, calculé dans le fuseau de l'organisation (pas le jour UTC
+      // serveur -- en soirée dans un fuseau négatif, le jour UTC peut déjà être passé au lendemain).
+      // Zéro ou plusieurs RDV ce jour-là : aucune déduction, appointment_id reste null (comportement
+      // actuel inchangé), jamais de fusion ambiguë entre plusieurs RDV du même jour.
+      hoy = ahoraEnFuseau(patientRow.organizations?.fuseau ?? 'America/Lima').fecha
+      const { data: citasHoy } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('patient_id', params.id)
+        .eq('fecha_cita', hoy)
+      if (citasHoy && citasHoy.length === 1) {
+        appointmentId = citasHoy[0].id
+      } else if (!citasHoy || citasHoy.length === 0) {
+        ceroRdvHoy = true
+      }
+    }
+
+    // Une session de notes correspond à un RDV, pas à un clic sur "Guardar sesión" : si une session
+    // existe déjà pour ce même appointment_id, on la réutilise (fusion) au lieu d'en créer une
+    // nouvelle -- comentario_final remplace alors l'ancien plutôt que de le dupliquer.
+    if (appointmentId) {
+      const { data: existingSesion } = await supabase
+        .from('patient_note_sesiones')
+        .select('id, comentario_final')
+        .eq('appointment_id', appointmentId)
+        .eq('patient_id', params.id)
+        .maybeSingle()
+
+      if (existingSesion) {
+        if (comentarioFinal !== null) {
+          const { data: updatedSesion, error: updateError } = await supabase
+            .from('patient_note_sesiones')
+            .update({ comentario_final: comentarioFinal })
+            .eq('id', existingSesion.id)
+            .select('id, comentario_final')
+            .single()
+          if (updateError) {
+            return NextResponse.json({ error: updateError.message }, { status: 500 })
+          }
+          sesion = updatedSesion
+        } else {
+          sesion = existingSesion
         }
-        sesion = updatedSesion
-      } else {
-        sesion = existingSesion
+      }
+    } else if (ceroRdvHoy) {
+      // Nouveau : 0 RDV ce jour-là -- fusionne quand même si une session sans RDV existe déjà pour
+      // ce patient le même jour calendaire (fuseau de l'organisation), plutôt que de créer une 2e
+      // case pour la même visite. Pas de contrainte unique en base pour ce cas (migration 044 ne
+      // couvre que appointment_id non nul) -- SELECT puis INSERT/UPDATE explicite, comme le fait
+      // déjà le code pour le cas RDV ci-dessus.
+      const { data: sesionesSansRdv } = await supabase
+        .from('patient_note_sesiones')
+        .select('id, comentario_final, created_at')
+        .eq('patient_id', params.id)
+        .is('appointment_id', null)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const fuseau = patientRow.organizations?.fuseau ?? 'America/Lima'
+      const sesionMismoJour = (sesionesSansRdv ?? []).find((s) => toTenantDate(s.created_at, fuseau) === hoy)
+
+      if (sesionMismoJour) {
+        if (comentarioFinal !== null) {
+          const { data: updatedSesion, error: updateError } = await supabase
+            .from('patient_note_sesiones')
+            .update({ comentario_final: comentarioFinal })
+            .eq('id', sesionMismoJour.id)
+            .select('id, comentario_final')
+            .single()
+          if (updateError) {
+            return NextResponse.json({ error: updateError.message }, { status: 500 })
+          }
+          sesion = updatedSesion
+        } else {
+          sesion = { id: sesionMismoJour.id, comentario_final: sesionMismoJour.comentario_final }
+        }
       }
     }
   }

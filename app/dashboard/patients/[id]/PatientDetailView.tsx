@@ -1951,6 +1951,31 @@ interface ActoHistorial {
   origen: 'acto' | 'mercadopago'
 }
 
+// Une ligne du panier de l'etape guidee (cf. prompt fiche-comptable-panier-actos) -- memes champs
+// que l'ancien formulaire a un seul acte, juste dupliques par ligne. Jamais utilise par le bouton
+// manuel "+ Agregar acto" (guided: false), qui garde le formulaire simple inchange.
+interface LineaGuiada {
+  localId: string
+  mode: 'catalogo' | 'nuevo' | 'libre'
+  actoId: string
+  nombreLibre: string
+  monto: string
+  metodoPago: 'efectivo' | 'transferencia' | 'otro'
+  error: string | null
+}
+
+function emptyLineaGuiada(): LineaGuiada {
+  return {
+    localId: `linea-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    mode: 'catalogo',
+    actoId: '',
+    nombreLibre: '',
+    monto: '',
+    metodoPago: 'efectivo',
+    error: null,
+  }
+}
+
 // Donnee de facturation (base du Pareto 80/20 dans Analisis), volontairement separee des Notas
 // clinicas ci-dessus : pas de PIN, pas de confidentialite particuliere.
 function ActosRealizadosCard({
@@ -1992,6 +2017,13 @@ function ActosRealizadosCard({
   // Etape guidee post-validation de note (Partie C) : "Cancelar" devient "Omitir esta vez" avec
   // avertissement -- jamais actif pour le bouton manuel/Acciones rapidas/raccourci RDV.
   const [guided, setGuided] = useState(false)
+  // Panier de l'etape guidee (cf. prompt fiche-comptable-panier-actos) -- remplace le formulaire a
+  // un seul acte UNIQUEMENT quand guided === true ; le bouton manuel garde mode/actoId/etc ci-dessus.
+  const [lineasGuiadas, setLineasGuiadas] = useState<LineaGuiada[]>([])
+  // Nonce en attente d'initialisation du panier -- attend que le catalogue soit charge (loading)
+  // avant de chercher l'acte "Consulta..." par prefixe, pour ne jamais initialiser un panier vide a
+  // tort si le mode guide se declenche avant la fin du chargement initial du catalogue.
+  const [pendingGuidedBasketNonce, setPendingGuidedBasketNonce] = useState<number | null>(null)
 
   const appointmentIdParam = searchParams.get('appointmentId')
   const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
@@ -2042,7 +2074,33 @@ function ActosRealizadosCard({
     setShowForm(true)
     setAppointmentIdPrefill(autoOpenRequest.appointmentId)
     setGuided(autoOpenRequest.guided)
+    if (autoOpenRequest.guided) {
+      setPendingGuidedBasketNonce(autoOpenRequest.nonce)
+    } else {
+      setLineasGuiadas([])
+    }
   }, [autoOpenRequest])
+
+  // Initialise le panier avec une premiere ligne "Consulta..." (recherche explicite par prefixe de
+  // nom, jamais une hypothese sur l'ordre du catalogue qui est trie alphabetiquement) une fois le
+  // catalogue charge -- panier vide si introuvable, le praticien ajoute lui-meme sa premiere ligne.
+  useEffect(() => {
+    if (pendingGuidedBasketNonce === null || loading) return
+    const consulta = catalogo.find((a) => /^consulta/i.test(a.nombre.trim()))
+    setLineasGuiadas(
+      consulta
+        ? [
+            {
+              ...emptyLineaGuiada(),
+              mode: 'catalogo',
+              actoId: consulta.id,
+              monto: consulta.precioDefault !== null ? String(consulta.precioDefault) : '',
+            },
+          ]
+        : []
+    )
+    setPendingGuidedBasketNonce(null)
+  }, [pendingGuidedBasketNonce, loading, catalogo])
 
   const resetForm = () => {
     setMode('catalogo')
@@ -2103,6 +2161,114 @@ function ActosRealizadosCard({
     setSaving(false)
   }
 
+  // Ferme le panier/formulaire (guide ou manuel) sans rien enregistrer -- reutilise par "Omitir esta
+  // vez", par "Cancelar", et a la fin de validarGuiado() (meme partiellement, cf. prompt).
+  const cerrarFormulario = () => {
+    setShowForm(false)
+    setAppointmentIdPrefill(null)
+    setGuided(false)
+    setLineasGuiadas([])
+    resetForm()
+  }
+
+  const addLineaGuiada = () => {
+    setLineasGuiadas((prev) => [...prev, emptyLineaGuiada()])
+  }
+
+  const removeLineaGuiada = (localId: string) => {
+    setLineasGuiadas((prev) => prev.filter((l) => l.localId !== localId))
+  }
+
+  const updateLineaGuiada = (localId: string, patch: Partial<LineaGuiada>) => {
+    setLineasGuiadas((prev) => prev.map((l) => (l.localId === localId ? { ...l, ...patch, error: null } : l)))
+  }
+
+  // Pre-remplit le montant avec le tarif par defaut de l'acte choisi (meme logique que le
+  // formulaire manuel) -- valeur de depart seulement, reste librement modifiable ensuite.
+  const handleLineaActoChange = (localId: string, nextActoId: string) => {
+    const chosen = catalogo.find((a) => a.id === nextActoId)
+    updateLineaGuiada(localId, {
+      actoId: nextActoId,
+      monto: chosen?.precioDefault !== null && chosen?.precioDefault !== undefined ? String(chosen.precioDefault) : '',
+    })
+  }
+
+  const nombreDeLinea = (linea: LineaGuiada): string =>
+    linea.mode === 'catalogo' ? catalogo.find((a) => a.id === linea.actoId)?.nombre ?? t('sinCategoria') : linea.nombreLibre.trim() || t('sinCategoria')
+
+  // Valide chaque ligne du panier (memes regles que submit() ci-dessus), envoie sequentiellement
+  // uniquement les lignes valides vers la meme route POST /actos (un acte par appel, inchangee),
+  // continue malgre un echec individuel, puis ferme le panier dans tous les cas (meme partiellement)
+  // en affichant un resume clair -- jamais une annulation silencieuse de tout le lot.
+  const validarGuiado = async () => {
+    if (lineasGuiadas.length === 0) {
+      // Rien a enregistrer n'est pas une erreur -- meme comportement que "Omitir esta vez".
+      cerrarFormulario()
+      return
+    }
+    if (!fecha) {
+      toast.error(t('toastFechaRequerida'))
+      return
+    }
+
+    setSaving(true)
+    const validadas = lineasGuiadas.map((linea) => {
+      const montoNum = parseFloat(linea.monto)
+      let error: string | null = null
+      if (linea.monto === '' || isNaN(montoNum) || montoNum < 0) error = t('toastMontoInvalido')
+      else if (linea.mode === 'catalogo' && !linea.actoId) error = t('toastSeleccionaActo')
+      else if ((linea.mode === 'nuevo' || linea.mode === 'libre') && !linea.nombreLibre.trim()) error = t('toastNombreActoRequerido')
+      return { ...linea, error }
+    })
+    // Affiche l'erreur de validation a cote de la ligne concernee pendant l'envoi sequentiel des
+    // lignes valides ci-dessous (plusieurs appels reseau, donc plusieurs rendus) -- le panier ferme
+    // ensuite dans tous les cas, mais jamais sans que l'erreur par ligne ait ete reellement rendue.
+    setLineasGuiadas(validadas)
+
+    const nuevosActos: ActoHistorial[] = []
+    const nuevosEnCatalogo: ActoCatalogo[] = []
+    const fallidos: string[] = []
+    for (const linea of validadas) {
+      if (linea.error) {
+        fallidos.push(nombreDeLinea(linea))
+        continue
+      }
+      const res = await fetch(`/api/patients/${patientId}/actos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: linea.mode,
+          actoId: linea.mode === 'catalogo' ? linea.actoId : undefined,
+          nombre: linea.mode !== 'catalogo' ? linea.nombreLibre.trim() : undefined,
+          monto: parseFloat(linea.monto),
+          fecha,
+          metodoPago: linea.metodoPago,
+          appointmentId: appointmentIdPrefill ?? undefined,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        nuevosActos.push(data.acto)
+        if (data.nuevoEnCatalogo) nuevosEnCatalogo.push(data.nuevoEnCatalogo)
+      } else {
+        fallidos.push(nombreDeLinea(linea))
+      }
+    }
+
+    if (nuevosActos.length > 0) setHistorial((prev) => [...nuevosActos, ...prev])
+    if (nuevosEnCatalogo.length > 0) {
+      setCatalogo((prev) => [...prev, ...nuevosEnCatalogo].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    }
+
+    toast.success(t('toastActosGuardados', { ok: nuevosActos.length, total: validadas.length }))
+    if (fallidos.length > 0) {
+      toast.error(t('toastActosFallidos', { nombres: fallidos.join(', ') }))
+    }
+
+    cerrarFormulario()
+    setSaving(false)
+  }
+
   // "Ya pagado por MercadoPago" (Partie C) -- uniquement si un RDV lié a reçu un acompte reel
   // (jamais 'pendiente'/'anulado', ni un acompte nul). monto_acompte > 0 exclut aussi les RDV
   // 'confirmado'/'en_curso' sans acompte dû (montant nul, cf. migration 051) qui n'ont donc jamais
@@ -2114,6 +2280,15 @@ function ActosRealizadosCard({
     (appointmentVinculado.statut === 'pagado' || appointmentVinculado.statut === 'en_curso')
       ? appointmentVinculado.monto_acompte
       : null
+
+  // Total/saldo en direct du panier guide (Partie 2 du prompt) -- une ligne au montant invalide/vide
+  // contribue 0 a ce stade (juste un apercu live, pas encore une validation ; validarGuiado() fera
+  // la vraie verification par ligne). Jamais affiche comme une alerte meme negatif (trop paye).
+  const totalGuiado = lineasGuiadas.reduce((sum, linea) => {
+    const n = parseFloat(linea.monto)
+    return sum + (isNaN(n) ? 0 : n)
+  }, 0)
+  const saldoPendienteGuiado = totalGuiado - (yaPagadoMonto ?? 0)
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -2153,145 +2328,287 @@ function ActosRealizadosCard({
               />
             </div>
           )}
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => setMode('catalogo')}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === 'catalogo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {t('elegirDeLista')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('nuevo')}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === 'nuevo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {t('agregarNuevoActoLista')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('libre')}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === 'libre' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {t('soloEstaVez')}
-            </button>
-          </div>
 
-          {mode === 'catalogo' ? (
-            <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">{t('actoLabel')}</label>
-              <select
-                value={actoId}
-                onChange={(e) => {
-                  const nextActoId = e.target.value
-                  setActoId(nextActoId)
-                  // Pre-remplit le montant avec le tarif par defaut de l'acte choisi (Configuracion)
-                  // -- valeur de depart seulement, jamais une contrainte : reste librement modifiable.
-                  const chosen = catalogo.find((a) => a.id === nextActoId)
-                  if (chosen?.precioDefault !== null && chosen?.precioDefault !== undefined) {
-                    setMonto(String(chosen.precioDefault))
-                  } else {
-                    setMonto('')
-                  }
-                }}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-              >
-                <option value="">{t('seleccionarEllipsis')}</option>
-                {catalogo.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nombre}
-                  </option>
+          {guided ? (
+            <>
+              <div className="mb-3 max-w-[12rem]">
+                <label className="mb-1 block text-xs font-medium text-gray-600">{t('fechaLabel')}</label>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                />
+              </div>
+
+              <div className="mb-3 space-y-3">
+                {lineasGuiadas.map((linea) => (
+                  <div key={linea.localId} className="rounded-lg border border-gray-200 bg-white p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => updateLineaGuiada(linea.localId, { mode: 'catalogo' })}
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                            linea.mode === 'catalogo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {t('elegirDeLista')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateLineaGuiada(linea.localId, { mode: 'nuevo' })}
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                            linea.mode === 'nuevo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {t('agregarNuevoActoLista')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateLineaGuiada(linea.localId, { mode: 'libre' })}
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                            linea.mode === 'libre' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {t('soloEstaVez')}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeLineaGuiada(linea.localId)}
+                        aria-label={t('quitarLineaActoLabel')}
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      >
+                        <CloseIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {linea.mode === 'catalogo' ? (
+                      <div className="mb-2">
+                        <select
+                          value={linea.actoId}
+                          onChange={(e) => handleLineaActoChange(linea.localId, e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                        >
+                          <option value="">{t('seleccionarEllipsis')}</option>
+                          {catalogo.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        {catalogo.length === 0 && <p className="mt-1 text-xs text-gray-400">{t('listaVaciaHint')}</p>}
+                      </div>
+                    ) : (
+                      <div className="mb-2">
+                        <input
+                          value={linea.nombreLibre}
+                          onChange={(e) => updateLineaGuiada(linea.localId, { nombreLibre: e.target.value })}
+                          placeholder={t('nombreActoPlaceholder')}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={linea.monto}
+                        onChange={(e) => updateLineaGuiada(linea.localId, { monto: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                      />
+                      <select
+                        value={linea.metodoPago}
+                        onChange={(e) => updateLineaGuiada(linea.localId, { metodoPago: e.target.value as 'efectivo' | 'transferencia' | 'otro' })}
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                      >
+                        <option value="efectivo">{tIngresos('metodoEfectivo')}</option>
+                        <option value="transferencia">{tIngresos('metodoTransferencia')}</option>
+                        <option value="otro">{tIngresos('metodoOtro')}</option>
+                      </select>
+                    </div>
+                    {linea.error && <p className="mt-1.5 text-xs text-red-600">{linea.error}</p>}
+                  </div>
                 ))}
-              </select>
-              {catalogo.length === 0 && (
-                <p className="mt-1 text-xs text-gray-400">{t('listaVaciaHint')}</p>
-              )}
-            </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={addLineaGuiada}
+                className="mb-3 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+              >
+                + {t('agregarOtroActoLabel')}
+              </button>
+
+              <div className="mb-3 space-y-1 rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">{t('totalLabel')}</span>
+                  <span className="font-medium text-gray-800">{monnaie} {totalGuiado.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">{t('saldoPendienteLabel')}</span>
+                  <span className="text-gray-600">{monnaie} {saldoPendienteGuiado.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-xs text-warning-700">
+                <WarningIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <p>{t('avisoBalanceIncompleto')}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarFormulario}
+                  className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  {t('omitirEstaVezLabel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={validarGuiado}
+                  disabled={saving}
+                  className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+                >
+                  {saving ? '...' : t('validarLabel')}
+                </button>
+              </div>
+            </>
           ) : (
-            <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                {mode === 'nuevo' ? t('nombreNuevoActo') : t('nombreActoSoloEstaVez')}
-              </label>
-              <input
-                value={nombreLibre}
-                onChange={(e) => setNombreLibre(e.target.value)}
-                placeholder={t('nombreActoPlaceholder')}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-              />
-            </div>
+            <>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMode('catalogo')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    mode === 'catalogo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('elegirDeLista')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('nuevo')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    mode === 'nuevo' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('agregarNuevoActoLista')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('libre')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    mode === 'libre' ? 'bg-[#6926D2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('soloEstaVez')}
+                </button>
+              </div>
+
+              {mode === 'catalogo' ? (
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">{t('actoLabel')}</label>
+                  <select
+                    value={actoId}
+                    onChange={(e) => {
+                      const nextActoId = e.target.value
+                      setActoId(nextActoId)
+                      // Pre-remplit le montant avec le tarif par defaut de l'acte choisi (Configuracion)
+                      // -- valeur de depart seulement, jamais une contrainte : reste librement modifiable.
+                      const chosen = catalogo.find((a) => a.id === nextActoId)
+                      if (chosen?.precioDefault !== null && chosen?.precioDefault !== undefined) {
+                        setMonto(String(chosen.precioDefault))
+                      } else {
+                        setMonto('')
+                      }
+                    }}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                  >
+                    <option value="">{t('seleccionarEllipsis')}</option>
+                    {catalogo.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {catalogo.length === 0 && (
+                    <p className="mt-1 text-xs text-gray-400">{t('listaVaciaHint')}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    {mode === 'nuevo' ? t('nombreNuevoActo') : t('nombreActoSoloEstaVez')}
+                  </label>
+                  <input
+                    value={nombreLibre}
+                    onChange={(e) => setNombreLibre(e.target.value)}
+                    placeholder={t('nombreActoPlaceholder')}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                  />
+                </div>
+              )}
+
+              <div className="mb-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">{t('montoLabel')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={monto}
+                    onChange={(e) => setMonto(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">{t('fechaLabel')}</label>
+                  <input
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-medium text-gray-600">{tIngresos('fieldMetodo')}</label>
+                <select
+                  value={metodoPago}
+                  onChange={(e) => setMetodoPago(e.target.value as 'efectivo' | 'transferencia' | 'otro')}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                >
+                  <option value="efectivo">{tIngresos('metodoEfectivo')}</option>
+                  <option value="transferencia">{tIngresos('metodoTransferencia')}</option>
+                  <option value="otro">{tIngresos('metodoOtro')}</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarFormulario}
+                  className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  {t('cancelar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={saving}
+                  className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+                >
+                  {saving ? '...' : t('guardar')}
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">{t('montoLabel')}</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={monto}
-                onChange={(e) => setMonto(e.target.value)}
-                placeholder="0.00"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">{t('fechaLabel')}</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-              />
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">{tIngresos('fieldMetodo')}</label>
-            <select
-              value={metodoPago}
-              onChange={(e) => setMetodoPago(e.target.value as 'efectivo' | 'transferencia' | 'otro')}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-            >
-              <option value="efectivo">{tIngresos('metodoEfectivo')}</option>
-              <option value="transferencia">{tIngresos('metodoTransferencia')}</option>
-              <option value="otro">{tIngresos('metodoOtro')}</option>
-            </select>
-          </div>
-
-          {guided && (
-            <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-xs text-warning-700">
-              <WarningIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <p>{t('avisoBalanceIncompleto')}</p>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false)
-                setAppointmentIdPrefill(null)
-                setGuided(false)
-                resetForm()
-              }}
-              className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
-            >
-              {guided ? t('omitirEstaVezLabel') : t('cancelar')}
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={saving}
-              className="flex-1 rounded-lg bg-[#6926D2] py-2 text-sm font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
-            >
-              {saving ? '...' : t('guardar')}
-            </button>
-          </div>
         </div>
       )}
 

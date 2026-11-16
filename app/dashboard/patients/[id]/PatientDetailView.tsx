@@ -1257,7 +1257,7 @@ function NotasClinicasCard({
 
   if (state === 'locked') {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
+      <div className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-[#6926D2]">
           <LockIcon className="h-6 w-6" />
         </div>
@@ -1276,7 +1276,7 @@ function NotasClinicasCard({
 
   if (state === 'pin') {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
+      <div className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
         <h3 className="mb-1 font-semibold text-gray-800">{t('notasConfidencialesTitle')}</h3>
         <p className="mb-4 text-sm text-gray-600">{t('ingresaCodigoSeguridad')}</p>
         <div className="mb-3 flex justify-center gap-2">
@@ -1330,7 +1330,7 @@ function NotasClinicasCard({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <input
         ref={fileInputRef}
         type="file"
@@ -3121,7 +3121,7 @@ export default function PatientDetailView({
   ]
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

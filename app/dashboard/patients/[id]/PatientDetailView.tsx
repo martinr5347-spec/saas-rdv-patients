@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import Badge from '@/components/ui/Badge'
 import { CashIcon } from '@/components/layout/icons'
 import { MAX_PHOTOS_PER_NOTE } from '@/lib/patients/notePhotoValidation'
+import { ahoraEnFuseau } from '@/lib/utils/timezone'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -252,42 +253,186 @@ function WarningIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+// Écran "verrouillé" réutilisé par NotasClinicasCard et le bloc "Última visita" de Historial de
+// citas (Partie 4) -- même pattern visuel, un seul code source.
+function LockedTeaser({
+  id,
+  title,
+  desc,
+  onUnlock,
+  className,
+}: {
+  id?: string
+  title: string
+  desc: string
+  onUnlock: () => void
+  className?: string
+}) {
+  const t = useTranslations('dashboard.patientDetail')
+  return (
+    <div id={id} className={className ?? 'max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm'}>
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-[#6926D2]">
+        <LockIcon className="h-6 w-6" />
+      </div>
+      <h3 className="font-semibold text-gray-800">{title}</h3>
+      <p className="mb-4 mt-1 text-sm text-gray-500">{desc}</p>
+      <button
+        type="button"
+        onClick={onUnlock}
+        className="w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+      >
+        {t('desbloquear')}
+      </button>
+    </div>
+  )
+}
+
+// Saisie du code à 4 chiffres, réutilisée par NotasClinicasCard et le bloc "Última visita" de
+// Historial de citas (Partie 4) -- un seul point d'entrée de déverrouillage (verifyCodigo, détenu
+// par le parent PatientDetailView), jamais de second mécanisme qui le contournerait. idPrefix évite
+// toute collision d'id entre les deux emplacements possibles (tous deux montés en permanence).
+function PinEntryBlock({
+  idPrefix,
+  title,
+  desc,
+  onCancel,
+  onSubmit,
+  loading,
+  error,
+  className,
+}: {
+  idPrefix: string
+  title: string
+  desc: string
+  onCancel: () => void
+  onSubmit: (pin: string) => Promise<boolean>
+  loading: boolean
+  error: string | null
+  className?: string
+}) {
+  const t = useTranslations('dashboard.patientDetail')
+  const [pinDigits, setPinDigits] = useState(['', '', '', ''])
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  const submit = async () => {
+    const pin = pinDigits.join('')
+    if (pin.length !== 4) {
+      setLocalError(t('toastIngresaDigitos'))
+      return
+    }
+    setLocalError(null)
+    const ok = await onSubmit(pin)
+    if (!ok) setPinDigits(['', '', '', ''])
+  }
+
+  return (
+    <div id={`${idPrefix}-pin-block`} className={className ?? 'max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm'}>
+      <h3 className="mb-1 font-semibold text-gray-800">{title}</h3>
+      <p className="mb-4 text-sm text-gray-600">{desc}</p>
+      <div className="mb-3 flex justify-center gap-2">
+        {pinDigits.map((d, i) => (
+          <input
+            key={i}
+            type="password"
+            inputMode="numeric"
+            maxLength={1}
+            value={d}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, '')
+              const next = [...pinDigits]
+              next[i] = val
+              setPinDigits(next)
+              if (val && i < 3) {
+                document.getElementById(`${idPrefix}-pin-${i + 1}`)?.focus()
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !pinDigits[i] && i > 0) {
+                document.getElementById(`${idPrefix}-pin-${i - 1}`)?.focus()
+              }
+            }}
+            id={`${idPrefix}-pin-${i}`}
+            className="h-14 w-12 rounded-xl border border-gray-200 text-center text-xl font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+          />
+        ))}
+      </div>
+      {(localError || error) && <p className="mb-3 text-xs text-red-600">{localError || error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:border-gray-300"
+        >
+          {t('cancelar')}
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={loading}
+          className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
+        >
+          {loading ? '...' : t('confirmar')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function NotasClinicasCard({
   patientId,
-  onNotesChange,
-  onProximoControlChange,
-  autoOpenRequest,
+  state,
+  setState,
+  codigo,
+  notes,
+  setNotes,
+  categorias,
+  categoriasConFoto,
+  alerta,
+  setAlerta,
+  alertaUpdatedAt,
+  setAlertaUpdatedAt,
+  proximoControl,
+  setProximoControl,
+  pinError,
+  pinLoading,
+  verifyCodigo,
+  onLock,
   onSessionCreated,
 }: {
   patientId: string
-  onNotesChange?: (notes: PatientNote[] | null) => void
-  onProximoControlChange?: (proximoControl: ProximoControl | null) => void
-  // "Acciones rápidas" de l'onglet Resumen -- demande (one-shot, identifiée par nonce) d'ouvrir
-  // directement une chip du composer une fois déverrouillé. 'control' = chip Control (raccourci
-  // "Programar control") ; 'photoCategoria' = première catégorie autorisant une photo, sinon rien
-  // (raccourci "Subir fotos", best-effort : l'architecture n'a pas d'upload indépendant d'une note).
-  autoOpenRequest?: { type: 'control' | 'photoCategoria'; nonce: number } | null
+  // État d'authentification partagé avec le bloc "Última visita" de Historial de citas (Partie 4) --
+  // un seul point d'entrée de déverrouillage (verifyCodigo, détenu par le parent), jamais de second
+  // mécanisme qui le contournerait. Cf. prompt notas-resumen-reorder-historial.
+  state: 'locked' | 'pin' | 'unlocked'
+  setState: (state: 'locked' | 'pin' | 'unlocked') => void
+  codigo: string | null
+  notes: PatientNote[]
+  setNotes: React.Dispatch<React.SetStateAction<PatientNote[]>>
+  categorias: string[]
+  categoriasConFoto: string[]
+  alerta: string | null
+  setAlerta: React.Dispatch<React.SetStateAction<string | null>>
+  alertaUpdatedAt: string | null
+  setAlertaUpdatedAt: React.Dispatch<React.SetStateAction<string | null>>
+  proximoControl: ProximoControl | null
+  setProximoControl: React.Dispatch<React.SetStateAction<ProximoControl | null>>
+  pinError: string | null
+  pinLoading: boolean
+  verifyCodigo: (pin: string) => Promise<boolean>
+  onLock: () => void
   // Déclenché uniquement à la création d'une TOUTE NOUVELLE session (jamais lors d'un ajout via
-  // "Editar") -- bascule le parent vers l'étape guidée "Agregar acto", cf. prompt
-  // notas-una-case-por-visita.
+  // "Editar") -- déclenche désormais l'offre "¿Generar una prescripción?" avant l'étape guidée
+  // "Agregar acto" (cf. prompt notas-resumen-reorder-historial, Partie 5).
   onSessionCreated?: (appointmentId: string | null) => void
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const locale = useLocale()
   const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
   const searchParams = useSearchParams()
-  const [state, setState] = useState<'locked' | 'pin' | 'unlocked'>('locked')
-  const [pinDigits, setPinDigits] = useState(['', '', '', ''])
-  const [codigo, setCodigo] = useState<string | null>(null) // gardé en mémoire uniquement, jamais persisté
-  const [notes, setNotes] = useState<PatientNote[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const [categorias, setCategorias] = useState<string[]>([])
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null)
 
-  const [alerta, setAlerta] = useState<string | null>(null)
-  const [alertaUpdatedAt, setAlertaUpdatedAt] = useState<string | null>(null)
   const [editingAlerta, setEditingAlerta] = useState(false)
   const [alertaDraft, setAlertaDraft] = useState('')
   const [confirmingClearAlerta, setConfirmingClearAlerta] = useState(false)
@@ -307,8 +452,6 @@ function NotasClinicasCard({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>([])
-  const [proximoControl, setProximoControl] = useState<ProximoControl | null>(null)
   const [bannerDismissed, setBannerDismissed] = useState(false) // dismiss purement local, pas persisté
 
   // Brouillon de session (composer multi-catégories) -- rien n'est écrit en base tant que
@@ -351,48 +494,9 @@ function NotasClinicasCard({
     }
   }, [searchParams, appointmentIdParam])
 
-  // Transmet au parent (PatientDetailView) l'état déverrouillé des notes -- consommé par Historial de
-  // citas (Partie 4) pour afficher un résumé par RDV sans jamais contourner le PIN : null tant que ce
-  // n'est pas déverrouillé, y compris après un verrouillage par inactivité.
-  useEffect(() => {
-    onNotesChange?.(state === 'unlocked' ? notes : null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, state])
-
-  // Transmet au parent le próximo control calculé côté serveur (même logique que notesSnapshot
-  // ci-dessus) -- consommé par l'onglet Resumen pour son résumé compact, jamais recalculé ailleurs.
-  useEffect(() => {
-    onProximoControlChange?.(state === 'unlocked' ? proximoControl : null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proximoControl, state])
-
-  // "Acciones rápidas" (onglet Resumen) : ouvre la chip demandée dès que déverrouillé. Si encore
-  // verrouillé au moment de la demande, reste en attente (nonce pas encore marqué traité) et
-  // s'exécute dès le déverrouillage, sans jamais contourner le PIN.
-  const handledAutoOpenNonceRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (!autoOpenRequest || state !== 'unlocked') return
-    if (handledAutoOpenNonceRef.current === autoOpenRequest.nonce) return
-    handledAutoOpenNonceRef.current = autoOpenRequest.nonce
-    if (autoOpenRequest.type === 'control') {
-      openChip(CATEGORIA_CONTROL)
-    } else {
-      const target = categoriasConFoto.find((c) => c !== CATEGORIA_CONTROL)
-      if (target) openChip(target)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenRequest, state, categoriasConFoto])
-
   const lock = useCallback(() => {
-    setState('locked')
-    setCodigo(null)
-    setPinDigits(['', '', '', ''])
-    setNotes([])
-    setError(null)
-    setCategorias([])
+    onLock()
     setFiltroCategoria(null)
-    setAlerta(null)
-    setAlertaUpdatedAt(null)
     setEditingAlerta(false)
     setAlertaDraft('')
     setConfirmingClearAlerta(false)
@@ -409,8 +513,6 @@ function NotasClinicasCard({
       return null
     })
     setPendingPhotoMomento(null)
-    setCategoriasConFoto([])
-    setProximoControl(null)
     setBannerDismissed(false)
     setDraftEntries([])
     setOpenCategoria('none')
@@ -429,7 +531,7 @@ function NotasClinicasCard({
     setQrExpiresAt(null)
     setQrStatus(null)
     qrSinceRef.current = null
-  }, [])
+  }, [onLock])
 
   // Verrouillage par inactivité réelle (pas sur un simple changement d'onglet) : réinitialise un
   // minuteur à chaque mouvement souris/clavier/clic, verrouille après INACTIVITY_LOCK_MS sans
@@ -457,36 +559,6 @@ function NotasClinicasCard({
       events.forEach((evt) => document.removeEventListener(evt, handleActivity))
     }
   }, [state, lock])
-
-  const submitPin = async () => {
-    const pin = pinDigits.join('')
-    if (pin.length !== 4) {
-      setError(t('toastIngresaDigitos'))
-      return
-    }
-    setLoading(true)
-    setError(null)
-    const res = await fetch(`/api/patients/${patientId}/notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigo: pin }),
-    })
-    const data = await res.json()
-    if (res.ok) {
-      setCodigo(pin)
-      setNotes(data.notes)
-      setCategorias(data.categorias ?? [])
-      setAlerta(data.alerta ?? null)
-      setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
-      setCategoriasConFoto(data.categoriasConFoto ?? [])
-      setProximoControl(data.proximoControl ?? null)
-      setState('unlocked')
-    } else {
-      setError(data.error ?? t('toastCodigoIncorrecto'))
-      setPinDigits(['', '', '', ''])
-    }
-    setLoading(false)
-  }
 
   // Ouvre l'éditeur inline d'une chip (catégorie réelle, Control, ou null = "Sin categoría").
   // Recharge le contenu déjà présent dans le brouillon si cette catégorie y est déjà (édition).
@@ -1257,75 +1329,26 @@ function NotasClinicasCard({
 
   if (state === 'locked') {
     return (
-      <div className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-[#6926D2]">
-          <LockIcon className="h-6 w-6" />
-        </div>
-        <h3 className="font-semibold text-gray-800">{t('notasConfidencialesTitle')}</h3>
-        <p className="mb-4 mt-1 text-sm text-gray-500">{t('notasConfidencialesDesc')}</p>
-        <button
-          type="button"
-          onClick={() => setState('pin')}
-          className="w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
-        >
-          {t('desbloquear')}
-        </button>
-      </div>
+      <LockedTeaser
+        id="notas-locked-teaser"
+        title={t('notasConfidencialesTitle')}
+        desc={t('notasConfidencialesDesc')}
+        onUnlock={() => setState('pin')}
+      />
     )
   }
 
   if (state === 'pin') {
     return (
-      <div className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
-        <h3 className="mb-1 font-semibold text-gray-800">{t('notasConfidencialesTitle')}</h3>
-        <p className="mb-4 text-sm text-gray-600">{t('ingresaCodigoSeguridad')}</p>
-        <div className="mb-3 flex justify-center gap-2">
-          {pinDigits.map((d, i) => (
-            <input
-              key={i}
-              type="password"
-              inputMode="numeric"
-              maxLength={1}
-              value={d}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                const next = [...pinDigits]
-                next[i] = val
-                setPinDigits(next)
-                if (val && i < 3) {
-                  const el = document.getElementById(`pin-${i + 1}`)
-                  el?.focus()
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Backspace' && !pinDigits[i] && i > 0) {
-                  document.getElementById(`pin-${i - 1}`)?.focus()
-                }
-              }}
-              id={`pin-${i}`}
-              className="h-14 w-12 rounded-xl border border-gray-200 text-center text-xl font-semibold focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
-            />
-          ))}
-        </div>
-        {error && <p className="mb-3 text-xs text-red-600">{error}</p>}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setState('locked')}
-            className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:border-gray-300"
-          >
-            {t('cancelar')}
-          </button>
-          <button
-            type="button"
-            onClick={submitPin}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? '...' : t('confirmar')}
-          </button>
-        </div>
-      </div>
+      <PinEntryBlock
+        idPrefix="notas"
+        title={t('notasConfidencialesTitle')}
+        desc={t('ingresaCodigoSeguridad')}
+        onCancel={() => setState('locked')}
+        onSubmit={verifyCodigo}
+        loading={pinLoading}
+        error={pinError}
+      />
     )
   }
 
@@ -2337,13 +2360,18 @@ function emptyMedicamento(): MedicamentoForm {
 function PrescripcionesCard({
   patientId,
   notesSnapshot,
+  autoOpenRequest,
 }: {
   patientId: string
   // Jamais un nouvel appel reseau vers /api/patients/[id]/notes (contournerait le PIN) -- meme
-  // etat deja deverrouille en memoire que ResumenTab/FotosTab/HistorialCitasCard, transmis par le
+  // etat deja deverrouille en memoire que FotosTab/HistorialCitasCard, transmis par le
   // parent (cf. prompt prescripcion-prefill-notas-adicionales). null = notes jamais deverrouillees
   // cette session, dans ce cas le pre-remplissage ci-dessous reste simplement inactif.
   notesSnapshot: PatientNote[] | null
+  // Offre "¿Generar una prescripción?" après "Guardar sesión" (cf. prompt
+  // notas-resumen-reorder-historial, Partie 5) -- même mécanisme one-shot par nonce que
+  // ActosRealizadosCard.autoOpenRequest, jamais de logique dupliquée.
+  autoOpenRequest?: { nonce: number } | null
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const [loading, setLoading] = useState(true)
@@ -2372,6 +2400,30 @@ function PrescripcionesCard({
   useEffect(() => {
     load()
   }, [load])
+
+  // Pre-remplit avec la derniere note "Tratamiento" uniquement a l'ouverture d'une TOUTE NOUVELLE
+  // prescription, jamais si le champ contient deja quelque chose (brouillon en cours ou deja tape)
+  // -- et jamais de nouvel appel reseau, uniquement notesSnapshot deja deverrouille cette session
+  // (cf. prompt prescripcion-prefill-notas-adicionales). Partagee entre le bouton manuel et l'offre
+  // automatique post-"Guardar sesión" (Partie 5) pour ne jamais dupliquer cette logique.
+  const openNuevaPrescripcion = useCallback(() => {
+    setNotasAdicionales((prev) => {
+      if (prev.trim() || !notesSnapshot) return prev
+      const ultimoTratamiento = notesSnapshot
+        .filter((n) => n.categoria === 'Tratamiento')
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
+      return ultimoTratamiento ? ultimoTratamiento.contenido : prev
+    })
+    setShowForm(true)
+  }, [notesSnapshot])
+
+  const handledAutoOpenNonceRef = useRef(0)
+  useEffect(() => {
+    if (!autoOpenRequest) return
+    if (handledAutoOpenNonceRef.current === autoOpenRequest.nonce) return
+    handledAutoOpenNonceRef.current = autoOpenRequest.nonce
+    openNuevaPrescripcion()
+  }, [autoOpenRequest, openNuevaPrescripcion])
 
   const resetForm = () => {
     setDraftId(null)
@@ -2475,21 +2527,7 @@ function PrescripcionesCard({
         {!showForm && (
           <button
             type="button"
-            onClick={() => {
-              // Pre-remplit avec la derniere note "Tratamiento" uniquement a l'ouverture d'une
-              // TOUTE NOUVELLE prescription, jamais si le champ contient deja quelque chose (brouillon
-              // en cours ou deja tape) -- et jamais de nouvel appel reseau, uniquement notesSnapshot
-              // deja deverrouille cette session (cf. prompt prescripcion-prefill-notas-adicionales).
-              if (!notasAdicionales.trim() && notesSnapshot) {
-                const ultimoTratamiento = notesSnapshot
-                  .filter((n) => n.categoria === 'Tratamiento')
-                  .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
-                if (ultimoTratamiento) {
-                  setNotasAdicionales(ultimoTratamiento.contenido)
-                }
-              }
-              setShowForm(true)
-            }}
+            onClick={openNuevaPrescripcion}
             className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
           >
             {t('nuevaPrescripcion')}
@@ -2650,23 +2688,47 @@ interface AppointmentRow {
   statut: string
   presente: boolean | null
   monto_acompte: number
+  // Non null si ce RDV a été créé depuis un lien de relance "próximo control" (cf. migration 043) --
+  // seul signal fiable pour distinguer un control d'une consulta normale, cf. prompt
+  // notas-resumen-reorder-historial, Partie 2.
+  origen_control_sesion_id: string | null
 }
 
 // Historial de citas (Partie 1 : descendu en pleine largeur sous Notas clínicas/Actos realizados --
-// c'est de la consultation, pas de la saisie) + résumé par RDV (Partie 4), construit uniquement à
-// partir de notesSnapshot/historialActos transmis par les cartes ci-dessus -- jamais de fetch propre
-// ici, pour ne jamais contourner le PIN de Notas clínicas (notesSnapshot reste null tant qu'elle n'est
-// pas déverrouillée).
+// c'est de la consultation, pas de la saisie) + résumé par RDV (Partie 4) + RDV du jour et dernière
+// visite (Partie 2, cf. prompt notas-resumen-reorder-historial), construit uniquement à partir de
+// notesSnapshot/historialActos transmis par le parent -- jamais de fetch propre ici, pour ne jamais
+// contourner le PIN de Notas clínicas (notesSnapshot reste null tant qu'elle n'est pas déverrouillée).
+// Le déverrouillage ("Última visita" floutée) partage le même état/verifyCodigo que NotasClinicasCard
+// (un seul point d'entrée, jamais de second mécanisme) -- cf. PinEntryBlock/LockedTeaser.
 function HistorialCitasCard({
   appointments,
   notesSnapshot,
   historialActos,
+  todayFecha,
+  authState,
+  onStartUnlock,
+  onCancelUnlock,
+  verifyCodigo,
+  pinLoading,
+  pinError,
 }: {
   appointments: AppointmentRow[]
   notesSnapshot: PatientNote[] | null
   historialActos: ActoHistorial[]
+  // Date du jour dans le fuseau du tenant ('YYYY-MM-DD', cf. ahoraEnFuseau) -- null si le fuseau de
+  // l'organisation n'a pas pu être chargé (aucune carte "RDV du jour" affichée dans ce cas).
+  todayFecha: string | null
+  authState: 'locked' | 'pin' | 'unlocked'
+  onStartUnlock: () => void
+  onCancelUnlock: () => void
+  verifyCodigo: (pin: string) => Promise<boolean>
+  pinLoading: boolean
+  pinError: string | null
 }) {
   const t = useTranslations('dashboard.patientDetail')
+  const locale = useLocale()
+  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
   const [modalAppointmentId, setModalAppointmentId] = useState<string | null>(null)
 
   const notasPorCita = new Map<string, PatientNote[]>()
@@ -2688,8 +2750,108 @@ function HistorialCitasCard({
   const modalNotes = modalAppointmentId ? notasPorCita.get(modalAppointmentId) ?? [] : []
   const modalActos = modalAppointmentId ? historialActos.filter((h) => h.appointmentId === modalAppointmentId) : []
 
+  const todayAppointment = todayFecha ? appointments.find((a) => a.fecha_cita === todayFecha) ?? null : null
+
+  // Session de notes la plus récente (déjà triées plus récent -> plus ancien côté serveur) -- jamais
+  // la galerie complète, seulement cette session précise (cf. prompt, Partie 2).
+  const ultimaSesion = notesSnapshot && notesSnapshot.length > 0 ? groupNotesBySesion(notesSnapshot)[0] : null
+  const ultimaSesionFecha = ultimaSesion?.notes[0]?.created_at ?? null
+  const ultimaSesionTexto = ultimaSesion
+    ? ultimaSesion.notes
+        .map((n) => n.contenido)
+        .join(' · ')
+    : ''
+  const ultimaSesionFotos = ultimaSesion ? ultimaSesion.notes.flatMap((n) => n.photos ?? []) : []
+
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+    <div className="space-y-4">
+      {todayAppointment && (
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-sm">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <CalendarIcon className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-800">{t('citaHoyLabel')}</p>
+            <p className="text-xs text-gray-400">
+              {todayAppointment.fecha_cita} {t('aLas')} {todayAppointment.hora_cita}
+            </p>
+          </div>
+          <Badge color={todayAppointment.origen_control_sesion_id ? 'warning' : 'gray'}>
+            {todayAppointment.origen_control_sesion_id ? t('citaHoyControlBadge') : t('citaHoyNuevaBadge')}
+          </Badge>
+        </div>
+      )}
+
+      {authState === 'unlocked' ? (
+        ultimaSesion ? (
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">{t('ultimaVisitaTitle')}</h3>
+              {ultimaSesionFecha && (
+                <span className="text-xs text-gray-400">
+                  {new Date(ultimaSesionFecha).toLocaleDateString(intlLocale)}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-700">{truncate(ultimaSesionTexto, 220)}</p>
+            {ultimaSesionFotos.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {ultimaSesionFotos.map(
+                  (photo) =>
+                    photo.url && (
+                      <div key={photo.id} className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photo.url} alt={t('fotoClinicaAlt')} className="h-full w-full object-cover" />
+                      </div>
+                    )
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm">
+            <p className="text-sm text-gray-400">{t('sinVisitasRegistradas')}</p>
+          </div>
+        )
+      ) : (
+        <div id="historial-ultima-visita-locked" className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          {/* Jamais de vraie donnée ici tant que non déverrouillé (notesSnapshot reste null) --
+              simple silhouette décorative, le flou CSS seul ne protégerait pas des vraies notes. */}
+          <div aria-hidden className="pointer-events-none select-none blur-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">{t('ultimaVisitaTitle')}</h3>
+              <span className="text-xs text-gray-400">•• ••• ••••</span>
+            </div>
+            <p className="text-sm text-gray-700">
+              ████████ ███████ ████ ███████████ ██████ ████ ████████████ ██ ██████ ████ ████████.
+            </p>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-4">
+            {authState === 'pin' ? (
+              <PinEntryBlock
+                idPrefix="historial"
+                title={t('ultimaVisitaTitle')}
+                desc={t('ingresaCodigoSeguridad')}
+                onCancel={onCancelUnlock}
+                onSubmit={verifyCodigo}
+                loading={pinLoading}
+                error={pinError}
+                className="w-full max-w-xs"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={onStartUnlock}
+                className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
+              >
+                {t('desbloquear')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
           <CalendarIcon className="h-4 w-4" />
@@ -2798,102 +2960,6 @@ function HistorialCitasCard({
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// Onglet Resumen : "Acciones rápidas" (raccourcis vers des actions déjà existantes, jamais de
-// logique dupliquée) + résumé compact construit uniquement à partir de notesSnapshot/proximoControl
-// transmis par NotasClinicasCard -- mêmes règles de confidentialité que Historial de citas (rien
-// n'est montré tant que Notas clínicas n'est pas déverrouillée).
-function ResumenTab({
-  notesSnapshot,
-  proximoControl,
-  onAgregarActo,
-  onProgramarControl,
-  onSubirFotos,
-}: {
-  notesSnapshot: PatientNote[] | null
-  proximoControl: ProximoControl | null
-  onAgregarActo: () => void
-  onProgramarControl: () => void
-  onSubirFotos: () => void
-}) {
-  const t = useTranslations('dashboard.patientDetail')
-  const locale = useLocale()
-  const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
-  const ultimoResumen = findUltimoResumen(notesSnapshot)
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-3 font-semibold text-gray-800">{t('accionesRapidasTitle')}</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button
-            type="button"
-            onClick={onAgregarActo}
-            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
-              <CashIcon className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-medium text-gray-700">{t('agregarActo')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onProgramarControl}
-            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
-              <CalendarIcon className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-medium text-gray-700">{t('programarControlQuickAction')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onSubirFotos}
-            className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center transition-colors hover:border-[#6926D2]/40 hover:bg-violet-50/40"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-[#6926D2]">
-              <PhotoIcon className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-medium text-gray-700">{t('subirFotosQuickAction')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-3 font-semibold text-gray-800">{t('resumenClinicoTitle')}</h2>
-
-        {proximoControl?.fecha && (
-          <div className="mb-3 flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500">
-              <CalendarIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-orange-800">{t('proximoControlLabel')}</p>
-              <p className="text-xs text-orange-600">
-                {new Date(proximoControl.fecha).toLocaleDateString(intlLocale)}
-                {proximoControl.meses ? ` · ${t('proximoControlDentroDe', { months: proximoControl.meses })}` : ''}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {ultimoResumen ? (
-          <div className="rounded-lg bg-gray-50 p-3">
-            {ultimoResumen.categoria && (
-              <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${categoryColor(ultimoResumen.categoria)}`}>
-                {ultimoResumen.categoria}
-              </span>
-            )}
-            <p className="text-sm text-gray-700">{truncate(ultimoResumen.contenido, 160)}</p>
-          </div>
-        ) : notesSnapshot === null ? (
-          <p className="text-sm text-gray-400">{t('resumenBloqueadoHint')}</p>
-        ) : !proximoControl?.fecha ? (
-          <p className="text-sm text-gray-400">{t('sinResumenClinico')}</p>
-        ) : null}
       </div>
     </div>
   )
@@ -3038,7 +3104,7 @@ function FotosTab({ notesSnapshot, onGoToNotas }: { notesSnapshot: PatientNote[]
   )
 }
 
-type PatientTabId = 'resumen' | 'notas' | 'actos' | 'fotos' | 'historial' | 'prescripciones'
+type PatientTabId = 'historial' | 'notas' | 'prescripciones' | 'actos' | 'fotos'
 
 function PercentIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -3063,6 +3129,7 @@ export default function PatientDetailView({
   totalAppointments,
   markedAppointments,
   monnaie,
+  fuseau,
 }: {
   patient: { id: string; nom: string; email: string | null; telefono: string | null; created_at: string }
   appointments: AppointmentRow[]
@@ -3070,54 +3137,118 @@ export default function PatientDetailView({
   totalAppointments: number
   markedAppointments: number
   monnaie: string
+  // Fuseau horaire du tenant (organizations.fuseau) -- sert uniquement à déterminer si un RDV est
+  // "aujourd'hui" pour le nouveau bloc de Historial de citas (Partie 2, cf. prompt
+  // notas-resumen-reorder-historial), même fonction ahoraEnFuseau que le reste du code.
+  fuseau: string
 }) {
   const t = useTranslations('dashboard.patientDetail')
-  const [notesSnapshot, setNotesSnapshot] = useState<PatientNote[] | null>(null)
   const [historialActos, setHistorialActos] = useState<ActoHistorial[]>([])
-  const [proximoControlSnapshot, setProximoControlSnapshot] = useState<ProximoControl | null>(null)
-  const [activeTab, setActiveTab] = useState<PatientTabId>('resumen')
+  const [activeTab, setActiveTab] = useState<PatientTabId>('historial')
 
-  // Signaux one-shot (Acciones rápidas, onglet Resumen, ET étape guidée post-validation de note --
-  // Partie C) consommés respectivement par ActosRealizadosCard.autoOpenRequest et
-  // NotasClinicasCard.autoOpenRequest -- jamais de logique dupliquée, uniquement un changement
-  // d'onglet + une demande d'ouverture déjà gérée par ces cartes.
+  // Authentification des Notas clínicas partagée entre NotasClinicasCard et le bloc "Última visita"
+  // de Historial de citas -- un seul point d'entrée de déverrouillage (verifyCodigo ci-dessous),
+  // jamais de second mécanisme qui le contournerait (cf. prompt notas-resumen-reorder-historial,
+  // Partie 3). notesSnapshot/proximoControlSnapshot dérivés directement de cet état, jamais d'une
+  // copie séparée : les deux emplacements restent donc toujours en phase, dans les deux sens.
+  const [notasState, setNotasState] = useState<'locked' | 'pin' | 'unlocked'>('locked')
+  const [notasCodigo, setNotasCodigo] = useState<string | null>(null)
+  const [notas, setNotas] = useState<PatientNote[]>([])
+  const [categorias, setCategorias] = useState<string[]>([])
+  const [categoriasConFoto, setCategoriasConFoto] = useState<string[]>([])
+  const [alerta, setAlerta] = useState<string | null>(null)
+  const [alertaUpdatedAt, setAlertaUpdatedAt] = useState<string | null>(null)
+  const [proximoControl, setProximoControl] = useState<ProximoControl | null>(null)
+  const [pinError, setPinError] = useState<string | null>(null)
+  const [pinLoading, setPinLoading] = useState(false)
+
+  const verifyCodigo = useCallback(
+    async (pin: string): Promise<boolean> => {
+      setPinLoading(true)
+      setPinError(null)
+      const res = await fetch(`/api/patients/${patient.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: pin }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setNotasCodigo(pin)
+        setNotas(data.notes)
+        setCategorias(data.categorias ?? [])
+        setAlerta(data.alerta ?? null)
+        setAlertaUpdatedAt(data.alertaUpdatedAt ?? null)
+        setCategoriasConFoto(data.categoriasConFoto ?? [])
+        setProximoControl(data.proximoControl ?? null)
+        setNotasState('unlocked')
+        setPinLoading(false)
+        return true
+      }
+      setPinError(data.error ?? t('toastCodigoIncorrecto'))
+      setPinLoading(false)
+      return false
+    },
+    [patient.id, t]
+  )
+
+  const lockNotas = useCallback(() => {
+    setNotasState('locked')
+    setNotasCodigo(null)
+    setNotas([])
+    setCategorias([])
+    setCategoriasConFoto([])
+    setAlerta(null)
+    setAlertaUpdatedAt(null)
+    setProximoControl(null)
+    setPinError(null)
+    setPinLoading(false)
+  }, [])
+
+  const notesSnapshot = notasState === 'unlocked' ? notas : null
+
+  const todayFecha = fuseau ? ahoraEnFuseau(fuseau).fecha : null
+
+  // Signal one-shot (étape guidée post-validation de note, cf. NotasClinicasCard.onSessionCreated)
+  // consommé par ActosRealizadosCard.autoOpenRequest -- jamais de logique dupliquée, uniquement un
+  // changement d'onglet + une demande d'ouverture déjà gérée par cette carte.
   const [autoOpenActoRequest, setAutoOpenActoRequest] = useState<{ nonce: number; appointmentId: string | null; guided: boolean } | null>(
     null
   )
-  const [notasAutoOpenRequest, setNotasAutoOpenRequest] = useState<{ type: 'control' | 'photoCategoria'; nonce: number } | null>(null)
-  const notasNonceRef = useRef(0)
+  // Offre "¿Generar una prescripción?" après "Guardar sesión" (cf. prompt
+  // notas-resumen-reorder-historial, Partie 5) -- jamais un verrou de navigation, uniquement une
+  // suggestion ponctuelle ; "Sí" arme en même temps l'étape guidée Actos realizados pour quand le
+  // praticien y arrivera, "No" y bascule directement comme avant.
+  const [prescripcionOffer, setPrescripcionOffer] = useState<{ appointmentId: string | null } | null>(null)
+  const [prescripcionAutoOpenRequest, setPrescripcionAutoOpenRequest] = useState<{ nonce: number } | null>(null)
   const actoNonceRef = useRef(0)
+  const prescripcionNonceRef = useRef(0)
 
-  const handleAgregarActo = () => {
-    actoNonceRef.current += 1
-    setActiveTab('actos')
-    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: null, guided: false })
-  }
-  const handleProgramarControl = () => {
-    notasNonceRef.current += 1
-    setActiveTab('notas')
-    setNotasAutoOpenRequest({ type: 'control', nonce: notasNonceRef.current })
-  }
-  const handleSubirFotos = () => {
-    notasNonceRef.current += 1
-    setActiveTab('notas')
-    setNotasAutoOpenRequest({ type: 'photoCategoria', nonce: notasNonceRef.current })
-  }
   // Validation d'une nouvelle note clinique (jamais lors d'un ajout via "Editar", cf.
-  // NotasClinicasCard.onSessionCreated) -- bascule vers "Actos realizados" en mode guidé.
+  // NotasClinicasCard.onSessionCreated) -- propose d'abord de générer une prescription.
   const handleNotaValidada = (resolvedAppointmentId: string | null) => {
+    setPrescripcionOffer({ appointmentId: resolvedAppointmentId })
+  }
+  const handlePrescripcionOfferSi = () => {
+    prescripcionNonceRef.current += 1
+    setPrescripcionAutoOpenRequest({ nonce: prescripcionNonceRef.current })
     actoNonceRef.current += 1
+    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: prescripcionOffer?.appointmentId ?? null, guided: true })
+    setActiveTab('prescripciones')
+    setPrescripcionOffer(null)
+  }
+  const handlePrescripcionOfferNo = () => {
+    actoNonceRef.current += 1
+    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: prescripcionOffer?.appointmentId ?? null, guided: true })
     setActiveTab('actos')
-    setAutoOpenActoRequest({ nonce: actoNonceRef.current, appointmentId: resolvedAppointmentId, guided: true })
+    setPrescripcionOffer(null)
   }
 
   const TABS: { id: PatientTabId; label: string }[] = [
-    { id: 'resumen', label: t('tabResumen') },
+    { id: 'historial', label: t('tabHistorialCitas') },
     { id: 'notas', label: t('tabNotasClinicas') },
+    { id: 'prescripciones', label: t('tabPrescripciones') },
     { id: 'actos', label: t('tabActosRealizados') },
     { id: 'fotos', label: t('tabFotos') },
-    { id: 'historial', label: t('tabHistorialCitas') },
-    { id: 'prescripciones', label: t('tabPrescripciones') },
   ]
 
   return (
@@ -3188,26 +3319,72 @@ export default function PatientDetailView({
         ))}
       </div>
 
+      {/* Offre ponctuelle après "Guardar sesión" (Partie 5) -- jamais un verrou de navigation,
+          juste une suggestion ; visible quel que soit l'onglet actif. */}
+      {prescripcionOffer && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-3">
+          <p className="text-sm font-medium text-violet-900">{t('generarPrescripcionPregunta')}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handlePrescripcionOfferNo}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              {t('ahoraNoLabel')}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrescripcionOfferSi}
+              className="rounded-lg bg-[#6926D2] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0]"
+            >
+              {t('siGenerarPrescripcionLabel')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tous les panneaux restent montés en permanence (affichage CSS only, jamais démontés) :
           NotasClinicasCard doit garder son minuteur d'inactivité, son brouillon de session et son
           état déverrouillé intacts quel que soit l'onglet affiché. */}
-      <div className={activeTab === 'resumen' ? '' : 'hidden'}>
-        <ResumenTab
+      <div className={activeTab === 'historial' ? '' : 'hidden'}>
+        <HistorialCitasCard
+          appointments={appointments}
           notesSnapshot={notesSnapshot}
-          proximoControl={proximoControlSnapshot}
-          onAgregarActo={handleAgregarActo}
-          onProgramarControl={handleProgramarControl}
-          onSubirFotos={handleSubirFotos}
+          historialActos={historialActos}
+          todayFecha={todayFecha}
+          authState={notasState}
+          onStartUnlock={() => setNotasState('pin')}
+          onCancelUnlock={() => setNotasState('locked')}
+          verifyCodigo={verifyCodigo}
+          pinLoading={pinLoading}
+          pinError={pinError}
         />
       </div>
       <div className={activeTab === 'notas' ? '' : 'hidden'}>
         <NotasClinicasCard
           patientId={patient.id}
-          onNotesChange={setNotesSnapshot}
-          onProximoControlChange={setProximoControlSnapshot}
-          autoOpenRequest={notasAutoOpenRequest}
+          state={notasState}
+          setState={setNotasState}
+          codigo={notasCodigo}
+          notes={notas}
+          setNotes={setNotas}
+          categorias={categorias}
+          categoriasConFoto={categoriasConFoto}
+          alerta={alerta}
+          setAlerta={setAlerta}
+          alertaUpdatedAt={alertaUpdatedAt}
+          setAlertaUpdatedAt={setAlertaUpdatedAt}
+          proximoControl={proximoControl}
+          setProximoControl={setProximoControl}
+          pinError={pinError}
+          pinLoading={pinLoading}
+          verifyCodigo={verifyCodigo}
+          onLock={lockNotas}
           onSessionCreated={handleNotaValidada}
         />
+      </div>
+      <div className={activeTab === 'prescripciones' ? '' : 'hidden'}>
+        <PrescripcionesCard patientId={patient.id} notesSnapshot={notesSnapshot} autoOpenRequest={prescripcionAutoOpenRequest} />
       </div>
       <div className={activeTab === 'actos' ? '' : 'hidden'}>
         <ActosRealizadosCard
@@ -3220,12 +3397,6 @@ export default function PatientDetailView({
       </div>
       <div className={activeTab === 'fotos' ? '' : 'hidden'}>
         <FotosTab notesSnapshot={notesSnapshot} onGoToNotas={() => setActiveTab('notas')} />
-      </div>
-      <div className={activeTab === 'historial' ? '' : 'hidden'}>
-        <HistorialCitasCard appointments={appointments} notesSnapshot={notesSnapshot} historialActos={historialActos} />
-      </div>
-      <div className={activeTab === 'prescripciones' ? '' : 'hidden'}>
-        <PrescripcionesCard patientId={patient.id} notesSnapshot={notesSnapshot} />
       </div>
     </div>
   )

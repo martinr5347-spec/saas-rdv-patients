@@ -18,7 +18,7 @@ export default async function PatientDetailPage({
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('id, fecha_cita, hora_cita, statut, presente, monto_acompte')
+    .select('id, fecha_cita, hora_cita, statut, presente, monto_acompte, origen_control_sesion_id')
     .eq('patient_id', params.id)
     .order('fecha_cita', { ascending: false })
 
@@ -37,6 +37,14 @@ export default async function PatientDetailPage({
     .eq('organization_id', patient.organization_id)
     .maybeSingle()
 
+  // Fuseau du tenant -- sert uniquement à déterminer si un RDV est "aujourd'hui" (bloc "Cita de
+  // hoy" de Historial de citas, cf. prompt notas-resumen-reorder-historial).
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('fuseau')
+    .eq('id', patient.organization_id)
+    .maybeSingle()
+
   return (
     <PatientDetailView
       patient={patient}
@@ -45,6 +53,7 @@ export default async function PatientDetailPage({
       totalAppointments={appts.length}
       markedAppointments={marked.length}
       monnaie={orgSettings?.monnaie ?? 'PEN'}
+      fuseau={org?.fuseau ?? 'America/Lima'}
     />
   )
 }

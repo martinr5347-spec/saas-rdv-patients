@@ -3131,7 +3131,7 @@ function HistorialCitasCard({
           </div>
         )
       ) : (
-        <div id="historial-ultima-visita-locked" className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div id="historial-ultima-visita-locked" className="relative min-h-[230px] rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           {/* Jamais de vraie donnée ici tant que non déverrouillé (notesSnapshot reste null) --
               simple silhouette décorative, le flou CSS seul ne protégerait pas des vraies notes. */}
           <div aria-hidden className="pointer-events-none select-none blur-sm">

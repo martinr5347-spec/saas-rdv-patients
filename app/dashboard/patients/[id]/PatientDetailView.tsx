@@ -2042,6 +2042,15 @@ function ActosRealizadosCard({
   // tort si le mode guide se declenche avant la fin du chargement initial du catalogue.
   const [pendingGuidedBasketNonce, setPendingGuidedBasketNonce] = useState<number | null>(null)
 
+  // Edition inline d'une ligne deja enregistree (origen 'acto' uniquement) -- montant/fecha/metodo
+  // seulement, jamais l'acte/nom lui-meme (cf. prompt editar-eliminar-acto-historial : trop
+  // structurel, passer par supprimer + recreer si besoin).
+  const [editingHistorialId, setEditingHistorialId] = useState<string | null>(null)
+  const [editMonto, setEditMonto] = useState('')
+  const [editFecha, setEditFecha] = useState('')
+  const [editMetodoPago, setEditMetodoPago] = useState<'efectivo' | 'transferencia' | 'otro'>('efectivo')
+  const [editSaving, setEditSaving] = useState(false)
+
   const appointmentIdParam = searchParams.get('appointmentId')
   const [appointmentIdPrefill, setAppointmentIdPrefill] = useState<string | null>(null)
 
@@ -2227,6 +2236,57 @@ function ActosRealizadosCard({
 
     cerrarFormulario()
     setSaving(false)
+  }
+
+  const startEditActoHistorial = (h: ActoHistorial) => {
+    setEditingHistorialId(h.id)
+    setEditMonto(String(h.monto))
+    setEditFecha(h.fecha)
+    setEditMetodoPago(h.metodoPago ?? 'efectivo')
+  }
+
+  const cancelarEditActoHistorial = () => {
+    setEditingHistorialId(null)
+  }
+
+  const guardarEditActoHistorial = async (id: string) => {
+    const montoNum = parseFloat(editMonto)
+    if (editMonto === '' || isNaN(montoNum) || montoNum < 0) {
+      toast.error(t('toastMontoInvalido'))
+      return
+    }
+    if (!editFecha) {
+      toast.error(t('toastFechaRequerida'))
+      return
+    }
+    setEditSaving(true)
+    const res = await fetch(`/api/patients/${patientId}/actos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monto: montoNum, fecha: editFecha, metodoPago: editMetodoPago }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setHistorial((prev) => prev.map((h) => (h.id === id ? data.acto : h)))
+      setEditingHistorialId(null)
+      toast.success(t('toastActoActualizado'))
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? t('toastErrorActualizarActo'))
+    }
+    setEditSaving(false)
+  }
+
+  const eliminarActoHistorial = async (id: string) => {
+    if (!confirm(t('eliminarActoConfirm'))) return
+    const res = await fetch(`/api/patients/${patientId}/actos/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setHistorial((prev) => prev.filter((h) => h.id !== id))
+      toast.success(t('toastActoEliminado'))
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? t('toastErrorEliminarActo'))
+    }
   }
 
   // "Ya pagado por MercadoPago" (Partie C) -- uniquement si un RDV lié a reçu un acompte reel
@@ -2466,13 +2526,84 @@ function ActosRealizadosCard({
                       : h.metodoPago === 'transferencia'
                         ? tIngresos('metodoTransferencia')
                         : tIngresos('metodoOtro')
+                if (editingHistorialId === h.id) {
+                  return (
+                    <div key={`${h.origen}-${h.id}`} className="py-2">
+                      <p className="mb-2 text-sm font-medium text-gray-800">{h.nombre || '-'}</p>
+                      <div className="mb-2 grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editMonto}
+                          onChange={(e) => setEditMonto(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                        />
+                        <input
+                          type="date"
+                          value={editFecha}
+                          onChange={(e) => setEditFecha(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                        />
+                        <select
+                          value={editMetodoPago}
+                          onChange={(e) => setEditMetodoPago(e.target.value as 'efectivo' | 'transferencia' | 'otro')}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
+                        >
+                          <option value="efectivo">{tIngresos('metodoEfectivo')}</option>
+                          <option value="transferencia">{tIngresos('metodoTransferencia')}</option>
+                          <option value="otro">{tIngresos('metodoOtro')}</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={cancelarEditActoHistorial}
+                          className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                        >
+                          {t('cancelar')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => guardarEditActoHistorial(h.id)}
+                          disabled={editSaving}
+                          className="flex-1 rounded-lg bg-[#6926D2] py-1.5 text-xs font-medium text-white hover:bg-[#5a1fb0] disabled:opacity-50"
+                        >
+                          {editSaving ? '...' : t('guardar')}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
                 return (
-                  <div key={`${h.origen}-${h.id}`} className="flex items-center justify-between py-1.5">
+                  <div key={`${h.origen}-${h.id}`} className="group flex items-center justify-between py-1.5">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-800">{h.nombre || '-'}</p>
                       <Badge color={h.origen === 'mercadopago' ? 'success' : 'brand'}>{metodoLabel}</Badge>
                     </div>
-                    <p className="text-sm font-semibold text-gray-800">{h.monto.toFixed(2)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-800">{h.monto.toFixed(2)}</p>
+                      {h.origen === 'acto' && (
+                        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => startEditActoHistorial(h)}
+                            aria-label={t('editarActoLabel')}
+                            className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                          >
+                            <PencilIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => eliminarActoHistorial(h.id)}
+                            aria-label={t('eliminarActoLabel')}
+                            className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                          >
+                            <TrashIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}

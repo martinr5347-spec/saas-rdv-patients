@@ -115,6 +115,7 @@
         "nextWithProgress": "Suivant ({current} sur {total})",
         "skip": "Passer",
         "helpButtonLabel": "Voir les visites guidées",
+        "contextualHelpButtonLabel": "Voir la visite de cette page",
         "menuSidebarEntry": "Voir la visite de la barre latérale",
         "menuPageEntryPrefix": "Voir la visite :",
         "menuDisableAutoTours": "Ne plus afficher les visites automatiques",

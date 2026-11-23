@@ -8,7 +8,9 @@ import type { Step } from 'react-joyride'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import { HelpIcon } from '@/components/layout/icons'
 import PageTour from '@/components/onboarding/PageTour'
+import { useOnboardingTour } from '@/context/OnboardingTourContext'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -452,6 +454,8 @@ export default function AppointmentDetailView({
 }) {
   const t = useTranslations('dashboard.appointmentDetail')
   const tTour = useTranslations('dashboard.onboardingTour.citaDetalle')
+  const tTourCommon = useTranslations('dashboard.onboardingTour.common')
+  const { requestTour } = useOnboardingTour()
   const locale = useLocale()
   const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
 
@@ -467,7 +471,17 @@ export default function AppointmentDetailView({
     <div className="space-y-6">
       <PageTour target="cita_detalle" steps={tourSteps} />
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
+          <button
+            type="button"
+            onClick={() => requestTour('cita_detalle')}
+            aria-label={tTourCommon('contextualHelpButtonLabel')}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+          >
+            <HelpIcon className="h-4 w-4" />
+          </button>
+        </div>
         <Link href="/dashboard/appointments" className="text-sm text-brand-600 hover:underline">
           {t('backToList')}
         </Link>

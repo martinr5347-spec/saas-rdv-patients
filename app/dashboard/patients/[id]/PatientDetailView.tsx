@@ -7,10 +7,11 @@ import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
 import type { Step } from 'react-joyride'
 import Badge from '@/components/ui/Badge'
-import { CashIcon } from '@/components/layout/icons'
+import { CashIcon, HelpIcon } from '@/components/layout/icons'
 import { MAX_PHOTOS_PER_NOTE } from '@/lib/patients/notePhotoValidation'
 import { ahoraEnFuseau } from '@/lib/utils/timezone'
 import PageTour from '@/components/onboarding/PageTour'
+import { useOnboardingTour } from '@/context/OnboardingTourContext'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -3431,6 +3432,8 @@ export default function PatientDetailView({
 }) {
   const t = useTranslations('dashboard.patientDetail')
   const tTour = useTranslations('dashboard.onboardingTour.pacienteDetalle')
+  const tTourCommon = useTranslations('dashboard.onboardingTour.common')
+  const { requestTour } = useOnboardingTour()
   const [historialActos, setHistorialActos] = useState<ActoHistorial[]>([])
   const [activeTab, setActiveTab] = useState<PatientTabId>('historial')
 
@@ -3570,7 +3573,17 @@ export default function PatientDetailView({
             {patient.nom.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{patient.nom}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-gray-900">{patient.nom}</h1>
+              <button
+                type="button"
+                onClick={() => requestTour('paciente_detalle')}
+                aria-label={tTourCommon('contextualHelpButtonLabel')}
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+              >
+                <HelpIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <p className="text-sm text-gray-500">
               {patient.email ?? t('noEmail')} · {patient.telefono ?? t('noTelefono')}
             </p>

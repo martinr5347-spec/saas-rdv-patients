@@ -115,6 +115,7 @@
         "nextWithProgress": "Siguiente ({current} de {total})",
         "skip": "Saltar",
         "helpButtonLabel": "Ver tours de ayuda",
+        "contextualHelpButtonLabel": "Ver tour de esta página",
         "menuSidebarEntry": "Ver tour de la barra lateral",
         "menuPageEntryPrefix": "Ver tour:",
         "menuDisableAutoTours": "No mostrar los tours automáticos",

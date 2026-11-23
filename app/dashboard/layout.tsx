@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardChrome from '@/components/layout/DashboardChrome'
+import type { OnboardingPageId } from '@/context/OnboardingTourContext'
 import { signOut } from './actions'
 
 export default async function DashboardLayout({
@@ -14,7 +15,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nom, role, organization_id, nombre_completo, foto_url')
+    .select('nom, role, organization_id, nombre_completo, foto_url, onboarding_sidebar_seen, onboarding_pages_seen, onboarding_disabled')
     .eq('id', user?.id ?? '')
     .maybeSingle()
 
@@ -36,6 +37,11 @@ export default async function DashboardLayout({
       isAdmin={profile?.role === 'admin'}
       trialDaysLeft={trialDaysLeft}
       signOutAction={signOut}
+      onboardingInitialState={{
+        sidebarSeen: profile?.onboarding_sidebar_seen ?? false,
+        pagesSeen: Array.isArray(profile?.onboarding_pages_seen) ? (profile.onboarding_pages_seen as OnboardingPageId[]) : [],
+        disabled: profile?.onboarding_disabled ?? false,
+      }}
     >
       {children}
     </DashboardChrome>

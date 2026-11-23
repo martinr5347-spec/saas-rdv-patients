@@ -106,6 +106,43 @@
       "banner": "Teste gratuito: {days, plural, one {# dia restante} other {# dias restantes}}",
       "upgrade": "Mudar para o plano pago"
     },
+    "onboardingTour": {
+      "common": {
+        "back": "Voltar",
+        "close": "Fechar",
+        "last": "Finalizar",
+        "next": "Próximo",
+        "nextWithProgress": "Próximo ({current} de {total})",
+        "skip": "Pular",
+        "helpButtonLabel": "Ver tours de ajuda",
+        "menuSidebarEntry": "Ver tour da barra lateral",
+        "menuPageEntryPrefix": "Ver tour:",
+        "menuDisableAutoTours": "Não mostrar os tours automáticos",
+        "menuEnableAutoTours": "Voltar a mostrar os tours automáticos"
+      },
+      "sidebar": {
+        "welcome": "Bem-vindo ao Núcleo! Vamos te mostrar rapidamente onde está cada coisa.",
+        "navInicio": "Seu resumo do dia: consultas de hoje, atalhos e os números da semana.",
+        "navPacientes": "Sua lista de pacientes. Você pode buscar, adicionar um novo ou importar vários de um Excel.",
+        "navCitas": "Gerencie suas consultas em lista ou calendário, e veja quais procedimentos geram mais receita.",
+        "navIngresos": "Todo o dinheiro que entra: pagamentos por MercadoPago, procedimentos realizados e registros manuais.",
+        "navAnalisis": "Comparativos da sua receita, consultas e taxa de comparecimento, mês a mês e ano a ano.",
+        "navDisponibilidad": "Seus horários de atendimento, seu link público de agendamento e seus dias bloqueados.",
+        "navConfiguracion": "Seu perfil, seus modelos de mensagens automáticas, seu código de segurança e suas tarifas."
+      },
+      "inicio": {
+        "banner": "Daqui você cria uma nova consulta ou vai direto para sua agenda completa.",
+        "citasHoy": "Aqui você vê rapidamente as consultas de hoje, com seu status (pendente, confirmado, pago...).",
+        "statsSemana": "Um resumo rápido da sua semana. 'Receita do mês' chegará em breve.",
+        "accionesRapidas": "Atalhos para as ações que você usará com mais frequência."
+      },
+      "pacientes": {
+        "busqueda": "Busque um paciente pelo nome -- funciona mesmo sem acentos.",
+        "nuevo": "Adicione um paciente manualmente, um por um.",
+        "importar": "Já tem sua lista em Excel? Importe tudo de uma vez por aqui.",
+        "tabla": "Clique em qualquer paciente para ver sua ficha completa: histórico, notas, receitas e pagamentos."
+      }
+    },
     "home": {
       "title": "Painel de controle",
       "greetingMorning": "Bom dia, {name}",

@@ -9,6 +9,9 @@ export interface NavItem {
   href: string
   label: string
   icon: React.ReactNode
+  // Cible du tour d'onboarding niveau 1 (cf. components/onboarding/PageTour.tsx) -- absent pour
+  // l'item "Admin", jamais montre au tour puisque reserve aux comptes plateforme.
+  tourId?: string
 }
 
 export default function Sidebar({ navItems, brand = 'Núcleo' }: { navItems: NavItem[]; brand?: string }) {
@@ -38,6 +41,7 @@ export default function Sidebar({ navItems, brand = 'Núcleo' }: { navItems: Nav
                   <Link
                     href={item.href}
                     onClick={closeMobileSidebar}
+                    data-tour={item.tourId}
                     className={`menu-item group ${active ? 'menu-item-active' : 'menu-item-inactive'}`}
                   >
                     <span className={`h-5 w-5 ${active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>{item.icon}</span>

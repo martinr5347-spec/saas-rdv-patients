@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import type { Step } from 'react-joyride'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import PageTour from '@/components/onboarding/PageTour'
 import ImportPatientsModal from './ImportPatientsModal'
 import NewPatientModal from './NewPatientModal'
 
@@ -54,6 +56,7 @@ function compareValues(a: PatientRow, b: PatientRow, column: SortColumn): number
 
 export default function PatientsView({ patients, monnaie }: { patients: PatientRow[]; monnaie: string }) {
   const t = useTranslations('dashboard.patients')
+  const tTour = useTranslations('dashboard.onboardingTour.pacientes')
   const router = useRouter()
   const [importOpen, setImportOpen] = useState(false)
   const [newPatientOpen, setNewPatientOpen] = useState(false)
@@ -97,13 +100,22 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
     </TableCell>
   )
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="pacientes-busqueda"]', content: tTour('busqueda') },
+    { target: '[data-tour="pacientes-nuevo"]', content: tTour('nuevo') },
+    { target: '[data-tour="pacientes-importar"]', content: tTour('importar') },
+    { target: '[data-tour="pacientes-tabla"]', content: tTour('tabla') },
+  ]
+
   return (
     <div className="space-y-4">
+      <PageTour target="pacientes" steps={tourSteps} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
         <div className="flex gap-2">
           <button
             type="button"
+            data-tour="pacientes-nuevo"
             onClick={() => setNewPatientOpen(true)}
             className="rounded-xl bg-[#6926D2] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98]"
           >
@@ -111,6 +123,7 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
           </button>
           <button
             type="button"
+            data-tour="pacientes-importar"
             onClick={() => setImportOpen(true)}
             className="rounded-xl border border-[#6926D2] px-4 py-2 text-sm font-medium text-[#6926D2] transition-all hover:bg-[#6926D2]/5 active:scale-[0.98]"
           >
@@ -124,10 +137,12 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder={t('searchPlaceholder')}
+        data-tour="pacientes-busqueda"
         className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
       />
 
       <TableContainer>
+        <div data-tour="pacientes-tabla">
         <Table>
           <TableHeader>
             <TableRow>
@@ -163,6 +178,7 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
             ))}
           </TableBody>
         </Table>
+        </div>
       </TableContainer>
       {importOpen && (
         <ImportPatientsModal

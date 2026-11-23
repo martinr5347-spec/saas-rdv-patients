@@ -3,10 +3,19 @@
 import Link from 'next/link'
 import { Toaster } from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
+import type { Step } from 'react-joyride'
 import { SidebarProvider } from '@/context/SidebarContext'
+import { OnboardingTourProvider, type OnboardingPageId } from '@/context/OnboardingTourContext'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import PageTour from '@/components/onboarding/PageTour'
 import { HomeIcon, CalendarIcon, UsersIcon, CashIcon, SettingsIcon, ShieldIcon, TrendingUpIcon, ClockIcon } from '@/components/layout/icons'
+
+export interface OnboardingInitialState {
+  sidebarSeen: boolean
+  pagesSeen: OnboardingPageId[]
+  disabled: boolean
+}
 
 // Ne pose plus son propre NextIntlClientProvider local (ancien comportement : locale deduite
 // uniquement de users.idioma, es/pt). Le provider global de app/layout.tsx (i18n/request.ts) est
@@ -18,6 +27,7 @@ export default function DashboardChrome({
   isAdmin,
   trialDaysLeft,
   signOutAction,
+  onboardingInitialState,
   children,
 }: {
   userName: string
@@ -25,12 +35,15 @@ export default function DashboardChrome({
   isAdmin: boolean
   trialDaysLeft: number | null
   signOutAction: () => void
+  onboardingInitialState: OnboardingInitialState
   children: React.ReactNode
 }) {
   return (
-    <DashboardChromeContent userName={userName} photoUrl={photoUrl} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
-      {children}
-    </DashboardChromeContent>
+    <OnboardingTourProvider initialState={onboardingInitialState}>
+      <DashboardChromeContent userName={userName} photoUrl={photoUrl} isAdmin={isAdmin} trialDaysLeft={trialDaysLeft} signOutAction={signOutAction}>
+        {children}
+      </DashboardChromeContent>
+    </OnboardingTourProvider>
   )
 }
 
@@ -50,20 +63,35 @@ function DashboardChromeContent({
   children: React.ReactNode
 }) {
   const t = useTranslations('dashboard')
+  const tTour = useTranslations('dashboard.onboardingTour.sidebar')
 
   const navItems = [
-    { href: '/dashboard', label: t('nav.home'), icon: <HomeIcon /> },
-    { href: '/dashboard/patients', label: t('nav.patients'), icon: <UsersIcon /> },
-    { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon /> },
-    { href: '/dashboard/ingresos', label: t('nav.ingresos'), icon: <CashIcon /> },
-    { href: '/dashboard/analisis', label: t('nav.analisis'), icon: <TrendingUpIcon /> },
-    { href: '/dashboard/disponibilidad', label: t('nav.disponibilidad'), icon: <ClockIcon /> },
-    { href: '/dashboard/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
+    { href: '/dashboard', label: t('nav.home'), icon: <HomeIcon />, tourId: 'nav-inicio' },
+    { href: '/dashboard/patients', label: t('nav.patients'), icon: <UsersIcon />, tourId: 'nav-pacientes' },
+    { href: '/dashboard/appointments', label: t('nav.appointments'), icon: <CalendarIcon />, tourId: 'nav-citas' },
+    { href: '/dashboard/ingresos', label: t('nav.ingresos'), icon: <CashIcon />, tourId: 'nav-ingresos' },
+    { href: '/dashboard/analisis', label: t('nav.analisis'), icon: <TrendingUpIcon />, tourId: 'nav-analisis' },
+    { href: '/dashboard/disponibilidad', label: t('nav.disponibilidad'), icon: <ClockIcon />, tourId: 'nav-disponibilidad' },
+    { href: '/dashboard/settings', label: t('nav.settings'), icon: <SettingsIcon />, tourId: 'nav-configuracion' },
     ...(isAdmin ? [{ href: '/admin', label: t('nav.admin'), icon: <ShieldIcon /> }] : []),
+  ]
+
+  // Tour niveau 1 (cf. prompt onboarding-tour-guide) -- se joue entierement depuis la sidebar sans
+  // navigation reelle, d'ou son montage ici (seul endroit ou la sidebar est montee en permanence).
+  const sidebarTourSteps: Step[] = [
+    { target: 'body', placement: 'center', content: tTour('welcome') },
+    { target: '[data-tour="nav-inicio"]', content: tTour('navInicio') },
+    { target: '[data-tour="nav-pacientes"]', content: tTour('navPacientes') },
+    { target: '[data-tour="nav-citas"]', content: tTour('navCitas') },
+    { target: '[data-tour="nav-ingresos"]', content: tTour('navIngresos') },
+    { target: '[data-tour="nav-analisis"]', content: tTour('navAnalisis') },
+    { target: '[data-tour="nav-disponibilidad"]', content: tTour('navDisponibilidad') },
+    { target: '[data-tour="nav-configuracion"]', content: tTour('navConfiguracion') },
   ]
 
   return (
     <SidebarProvider>
+      <PageTour target="sidebar" steps={sidebarTourSteps} />
       <Toaster
         position="bottom-right"
         toastOptions={{

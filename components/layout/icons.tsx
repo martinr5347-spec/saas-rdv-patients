@@ -97,3 +97,13 @@ export function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function HelpIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.29c-.72.33-1 .78-1 1.46v.35" />
+      <path strokeLinecap="round" d="M12 16.75h.01" />
+    </svg>
+  )
+}

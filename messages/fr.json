@@ -106,6 +106,43 @@
       "banner": "Essai gratuit : {days, plural, one {# jour restant} other {# jours restants}}",
       "upgrade": "Passer à l'offre payante"
     },
+    "onboardingTour": {
+      "common": {
+        "back": "Précédent",
+        "close": "Fermer",
+        "last": "Terminer",
+        "next": "Suivant",
+        "nextWithProgress": "Suivant ({current} sur {total})",
+        "skip": "Passer",
+        "helpButtonLabel": "Voir les visites guidées",
+        "menuSidebarEntry": "Voir la visite de la barre latérale",
+        "menuPageEntryPrefix": "Voir la visite :",
+        "menuDisableAutoTours": "Ne plus afficher les visites automatiques",
+        "menuEnableAutoTours": "Réafficher les visites automatiques"
+      },
+      "sidebar": {
+        "welcome": "Bienvenue sur Núcleo ! On vous montre rapidement où se trouve chaque chose.",
+        "navInicio": "Votre résumé du jour : rendez-vous du jour, raccourcis et chiffres de la semaine.",
+        "navPacientes": "Votre liste de patients. Vous pouvez chercher, en ajouter un nouveau ou en importer plusieurs depuis un Excel.",
+        "navCitas": "Gérez vos rendez-vous en liste ou en calendrier, et voyez quels actes génèrent le plus de revenus.",
+        "navIngresos": "Tout l'argent qui entre : paiements par MercadoPago, actes réalisés et saisies manuelles.",
+        "navAnalisis": "Comparatifs de vos revenus, rendez-vous et taux de présence, mois par mois et année par année.",
+        "navDisponibilidad": "Vos horaires d'ouverture, votre lien public de réservation et vos jours bloqués.",
+        "navConfiguracion": "Votre profil, vos modèles de messages automatiques, votre code de sécurité et vos tarifs."
+      },
+      "inicio": {
+        "banner": "D'ici, vous créez un nouveau rendez-vous ou accédez directement à votre agenda complet.",
+        "citasHoy": "Vous voyez ici en un coup d'œil les rendez-vous du jour, avec leur statut (en attente, confirmé, payé...).",
+        "statsSemana": "Un résumé rapide de votre semaine. 'Revenus du mois' arrivera prochainement.",
+        "accionesRapidas": "Des raccourcis vers les actions que vous utiliserez le plus souvent."
+      },
+      "pacientes": {
+        "busqueda": "Cherchez un patient par son nom -- ça fonctionne même sans accents.",
+        "nuevo": "Ajoutez un patient à la main, un par un.",
+        "importar": "Vous avez déjà votre liste dans un Excel ? Importez-la en une seule fois depuis ici.",
+        "tabla": "Cliquez sur n'importe quel patient pour voir sa fiche complète : historique, notes, ordonnances et paiements."
+      }
+    },
     "home": {
       "title": "Tableau de bord",
       "greetingMorning": "Bonjour, {name}",

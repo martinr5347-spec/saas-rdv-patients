@@ -1,8 +1,20 @@
 'use client'
 
+import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { useRouter, usePathname } from 'next/navigation'
 import { useSidebar } from '@/context/SidebarContext'
+import { useOnboardingTour, type OnboardingPageId } from '@/context/OnboardingTourContext'
 import Avatar from '@/components/ui/Avatar'
-import { MenuIcon, CloseIcon } from './icons'
+import { MenuIcon, CloseIcon, HelpIcon } from './icons'
+
+// Pages dont le tour niveau 2 est deja implemente -- cf. prompt onboarding-tour-guide, Partie
+// "contenu niveau 2 -- pages restantes" : copy soumise a Martin avant commit, donc pas encore
+// toutes presentes ici. A completer au fur et a mesure (ne jamais lister une page sans tour reel).
+const AVAILABLE_PAGE_TOURS: { id: OnboardingPageId; href: string; navKey: string }[] = [
+  { id: 'inicio', href: '/dashboard', navKey: 'home' },
+  { id: 'pacientes', href: '/dashboard/patients', navKey: 'patients' },
+]
 
 export default function Header({
   userName,
@@ -16,6 +28,21 @@ export default function Header({
   logoutLabel?: string
 }) {
   const { isMobileOpen, toggleMobileSidebar } = useSidebar()
+  const { state, requestTour, setDisabled } = useOnboardingTour()
+  const t = useTranslations('dashboard.onboardingTour.common')
+  const tPages = useTranslations('dashboard.nav')
+  const router = useRouter()
+  const pathname = usePathname()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const launchTour = (target: 'sidebar' | OnboardingPageId, href?: string) => {
+    setMenuOpen(false)
+    requestTour(target)
+    // Rejeu depuis une autre page que celle du tour demande -- navigue d'abord, le <PageTour> de
+    // la page cible lit tourRequest des son montage (le contexte, lui, survit a la navigation,
+    // porte par le layout partage app/dashboard/layout.tsx).
+    if (href && href !== pathname) router.push(href)
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 lg:px-6">
@@ -29,6 +56,51 @@ export default function Header({
       </button>
       <div className="hidden lg:block" />
       <div className="flex items-center gap-4">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={t('helpButtonLabel')}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50"
+          >
+            <HelpIcon className="h-[18px] w-[18px]" />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white py-1.5 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => launchTour('sidebar')}
+                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {t('menuSidebarEntry')}
+                </button>
+                {AVAILABLE_PAGE_TOURS.map((page) => (
+                  <button
+                    key={page.id}
+                    type="button"
+                    onClick={() => launchTour(page.id, page.href)}
+                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    {t('menuPageEntryPrefix')} {tPages(page.navKey)}
+                  </button>
+                ))}
+                <div className="my-1.5 border-t border-gray-100" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setDisabled(!state.disabled)
+                  }}
+                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {state.disabled ? t('menuEnableAutoTours') : t('menuDisableAutoTours')}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2.5">
           <Avatar name={userName} photoUrl={photoUrl} size={32} />
           <span className="hidden text-sm text-gray-700 sm:inline">{userName}</span>

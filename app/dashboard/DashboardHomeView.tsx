@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import type { Step } from 'react-joyride'
 import { CalendarIcon, UsersIcon, ShieldIcon, CashIcon } from '@/components/layout/icons'
+import PageTour from '@/components/onboarding/PageTour'
 
 function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -325,15 +327,27 @@ function OperationalView({
   patientCount: number
 }) {
   const t = useTranslations('dashboard.home')
+  const tTour = useTranslations('dashboard.onboardingTour.inicio')
   const pendientesWeek = Math.max(
     weekStats.appointments - Math.round((weekStats.confirmedPct / 100) * weekStats.appointments),
     0
   )
 
+  // Tour niveau 2 "Inicio" -- uniquement ici (OperationalView), jamais pendant la checklist
+  // "Primeros pasos" (OnboardingView) qui fait deja office d'accompagnement (cf. prompt
+  // onboarding-tour-guide).
+  const inicioTourSteps: Step[] = [
+    { target: '[data-tour="inicio-banner"]', content: tTour('banner') },
+    { target: '[data-tour="inicio-citas-hoy"]', content: tTour('citasHoy') },
+    { target: '[data-tour="inicio-stats-semana"]', content: tTour('statsSemana') },
+    { target: '[data-tour="inicio-acciones-rapidas"]', content: tTour('accionesRapidas') },
+  ]
+
   return (
     <div className="space-y-6">
+      <PageTour target="inicio" steps={inicioTourSteps} />
       {/* Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#6926D2] to-[#3c008a] px-6 py-8 text-white sm:px-10 sm:py-10">
+      <div data-tour="inicio-banner" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#6926D2] to-[#3c008a] px-6 py-8 text-white sm:px-10 sm:py-10">
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-violet-300/25 blur-3xl" />
 
@@ -365,7 +379,7 @@ function OperationalView({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Citas de hoy */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 lg:col-span-2">
+        <div data-tour="inicio-citas-hoy" className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 lg:col-span-2">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">{t('citasDeHoyTitle')}</h2>
@@ -433,7 +447,7 @@ function OperationalView({
 
         {/* Colonne droite */}
         <div className="space-y-4 lg:col-span-1">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div data-tour="inicio-stats-semana" className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">{t('estaSemanaTitle')}</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
@@ -463,7 +477,7 @@ function OperationalView({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div data-tour="inicio-acciones-rapidas" className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">{t('accionesRapidasTitle')}</h2>
             <div className="space-y-2">
               <Link

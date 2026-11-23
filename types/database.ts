@@ -56,6 +56,9 @@ export interface Database {
           codigo_bloqueado_hasta: string | null
           numero_colegiatura: string | null
           instagram: string | null
+          onboarding_sidebar_seen: boolean
+          onboarding_pages_seen: Json
+          onboarding_disabled: boolean
           created_at: string
         }
         Insert: {
@@ -74,6 +77,9 @@ export interface Database {
           codigo_bloqueado_hasta?: string | null
           numero_colegiatura?: string | null
           instagram?: string | null
+          onboarding_sidebar_seen?: boolean
+          onboarding_pages_seen?: Json
+          onboarding_disabled?: boolean
           created_at?: string
         }
         Update: {
@@ -92,6 +98,9 @@ export interface Database {
           codigo_bloqueado_hasta?: string | null
           numero_colegiatura?: string | null
           instagram?: string | null
+          onboarding_sidebar_seen?: boolean
+          onboarding_pages_seen?: Json
+          onboarding_disabled?: boolean
           created_at?: string
         }
         Relationships: [

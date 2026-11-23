@@ -141,8 +141,7 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
         className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#6926D2] focus:outline-none focus:ring-1 focus:ring-[#6926D2]"
       />
 
-      <TableContainer>
-        <div data-tour="pacientes-tabla">
+      <TableContainer data-tour="pacientes-tabla">
         <Table>
           <TableHeader>
             <TableRow>
@@ -178,7 +177,6 @@ export default function PatientsView({ patients, monnaie }: { patients: PatientR
             ))}
           </TableBody>
         </Table>
-        </div>
       </TableContainer>
       {importOpen && (
         <ImportPatientsModal

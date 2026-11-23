@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
+import type { Step } from 'react-joyride'
 import Badge from '@/components/ui/Badge'
 import { CashIcon } from '@/components/layout/icons'
 import { MAX_PHOTOS_PER_NOTE } from '@/lib/patients/notePhotoValidation'
 import { ahoraEnFuseau } from '@/lib/utils/timezone'
+import PageTour from '@/components/onboarding/PageTour'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -2827,7 +2829,7 @@ function PrescripcionesCard({
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
           </div>
 
-          <div className="mb-3 space-y-3">
+          <div data-tour="paciente-prescripcion-form" className="mb-3 space-y-3">
             {medicamentos.map((m, i) => (
               <div key={i} className="rounded-lg border border-gray-200 bg-white p-3">
                 <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -2890,7 +2892,7 @@ function PrescripcionesCard({
             />
           </div>
 
-          <div className="flex gap-2">
+          <div data-tour="paciente-prescripcion-acciones" className="flex gap-2">
             <button
               type="button"
               onClick={() => {
@@ -3051,7 +3053,7 @@ function HistorialCitasCard({
   return (
     <div className="space-y-4">
       {todayAppointment && (
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-sm">
+        <div data-tour="paciente-cita-hoy" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-sm">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
             <CalendarIcon className="h-5 w-5" />
           </div>
@@ -3069,7 +3071,7 @@ function HistorialCitasCard({
 
       {authState === 'unlocked' ? (
         ultimaSesion ? (
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div data-tour="paciente-ultima-visita" className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-800">{t('ultimaVisitaTitle')}</h3>
               {ultimaSesionFecha && (
@@ -3094,12 +3096,12 @@ function HistorialCitasCard({
             )}
           </div>
         ) : (
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm">
+          <div data-tour="paciente-ultima-visita" className="rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm">
             <p className="text-sm text-gray-400">{t('sinVisitasRegistradas')}</p>
           </div>
         )
       ) : (
-        <div id="historial-ultima-visita-locked" className="relative min-h-[230px] rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div id="historial-ultima-visita-locked" data-tour="paciente-ultima-visita" className="relative min-h-[230px] rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           {/* Jamais de vraie donnée ici tant que non déverrouillé (notesSnapshot reste null) --
               simple silhouette décorative, le flou CSS seul ne protégerait pas des vraies notes. */}
           <div aria-hidden className="pointer-events-none select-none blur-sm">
@@ -3136,7 +3138,7 @@ function HistorialCitasCard({
         </div>
       )}
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div data-tour="paciente-historial-citas" className="rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
           <CalendarIcon className="h-4 w-4" />
@@ -3428,6 +3430,7 @@ export default function PatientDetailView({
   fuseau: string
 }) {
   const t = useTranslations('dashboard.patientDetail')
+  const tTour = useTranslations('dashboard.onboardingTour.pacienteDetalle')
   const [historialActos, setHistorialActos] = useState<ActoHistorial[]>([])
   const [activeTab, setActiveTab] = useState<PatientTabId>('historial')
 
@@ -3536,8 +3539,30 @@ export default function PatientDetailView({
     { id: 'fotos', label: t('tabFotos') },
   ]
 
+  // Tour niveau 2 "paciente_detalle" -- un seul id pour toute la fiche (cf. prompt
+  // onboarding-tour-guide), mais un contenu qui s'adapte a l'onglet actif : tous les panneaux
+  // restent montes en permanence (CSS hidden, jamais demontes, voir plus bas), donc seul l'onglet
+  // courant a des cibles data-tour reellement visibles -- `key={activeTab}` force un nouveau
+  // <PageTour> a chaque changement d'onglet pour ne jamais garder une instance Joyride pointant
+  // vers des cibles cachees.
+  const tourStepsByTab: Record<PatientTabId, Step[]> = {
+    historial: [
+      { target: '[data-tour="paciente-cita-hoy"]', content: tTour('citaHoy') },
+      { target: '[data-tour="paciente-ultima-visita"]', content: tTour('ultimaVisita') },
+      { target: '[data-tour="paciente-historial-citas"]', content: tTour('historialCitas') },
+    ],
+    notas: [{ target: '[data-tour="paciente-notas-clinicas"]', content: tTour('notasClinicas') }],
+    prescripciones: [
+      { target: '[data-tour="paciente-prescripcion-form"]', content: tTour('prescripcionForm') },
+      { target: '[data-tour="paciente-prescripcion-acciones"]', content: tTour('prescripcionAcciones') },
+    ],
+    actos: [{ target: '[data-tour="paciente-actos-realizados"]', content: tTour('actosRealizados') }],
+    fotos: [{ target: '[data-tour="paciente-fotos"]', content: tTour('fotos') }],
+  }
+
   return (
     <div className="space-y-6">
+      <PageTour key={activeTab} target="paciente_detalle" steps={tourStepsByTab[activeTab]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -3645,7 +3670,7 @@ export default function PatientDetailView({
           pinError={pinError}
         />
       </div>
-      <div className={activeTab === 'notas' ? '' : 'hidden'}>
+      <div data-tour="paciente-notas-clinicas" className={activeTab === 'notas' ? '' : 'hidden'}>
         <NotasClinicasCard
           patientId={patient.id}
           state={notasState}
@@ -3671,7 +3696,7 @@ export default function PatientDetailView({
       <div className={activeTab === 'prescripciones' ? '' : 'hidden'}>
         <PrescripcionesCard patientId={patient.id} notesSnapshot={notesSnapshot} autoOpenRequest={prescripcionAutoOpenRequest} />
       </div>
-      <div className={activeTab === 'actos' ? '' : 'hidden'}>
+      <div data-tour="paciente-actos-realizados" className={activeTab === 'actos' ? '' : 'hidden'}>
         <ActosRealizadosCard
           patientId={patient.id}
           onHistorialChange={setHistorialActos}
@@ -3680,7 +3705,7 @@ export default function PatientDetailView({
           monnaie={monnaie}
         />
       </div>
-      <div className={activeTab === 'fotos' ? '' : 'hidden'}>
+      <div data-tour="paciente-fotos" className={activeTab === 'fotos' ? '' : 'hidden'}>
         <FotosTab notesSnapshot={notesSnapshot} onGoToNotas={() => setActiveTab('notas')} />
       </div>
     </div>

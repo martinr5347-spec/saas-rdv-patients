@@ -141,6 +141,57 @@
         "nuevo": "Agrega un paciente a mano, uno por uno.",
         "importar": "¿Ya tienes tu lista en Excel? Impórtala de una sola vez desde aquí.",
         "tabla": "Haz clic en cualquier paciente para ver su ficha completa: historial, notas, recetas y pagos."
+      },
+      "citas": {
+        "toggleVista": "Cambia entre ver tus citas en lista o en un calendario visual.",
+        "filtros": "Filtra las citas por estado o por un rango de fechas.",
+        "topTratamientos": "El podio de tus 3 tratamientos que más ingresos generaron, según el período que elijas.",
+        "tabla": "Cada fila es una cita: paciente, fecha, hora, estado y depósito. Haz clic en 'Detalles' para abrir su ficha completa."
+      },
+      "citaDetalle": {
+        "presencia": "Marca si el paciente se presentó o no — esto alimenta tu tasa de asistencia en Análisis.",
+        "consultaMonto": "El monto de la consulta ya no se registra aquí: usa 'Agregar acto' en la ficha del paciente.",
+        "proximoControl": "Programa un recordatorio de control entre 1 y 12 meses — Núcleo avisará al paciente cuando se acerque la fecha.",
+        "historialClinico": "El historial clínico está protegido por tu código de seguridad. Solo tú puedes desbloquearlo desde la ficha del paciente.",
+        "notificaciones": "El registro de cada mensaje enviado para esta cita: canal, tipo, estado y el error si algo falló."
+      },
+      "ingresos": {
+        "stats": "Un vistazo a lo que entró este mes: total, MercadoPago, consultas, actos y registros manuales.",
+        "periodo": "Elige el mes o usa un atajo rápido para ver otro período.",
+        "export": "Descarga este período en CSV o PDF para tu contador.",
+        "creacionMovida": "Para registrar un nuevo ingreso, hazlo desde la ficha del paciente con 'Agregar acto' — así el dinero siempre queda vinculado a alguien."
+      },
+      "analisis": {
+        "kpis": "Cuánto crecieron tus ingresos y citas, y tu tasa de presencia promedio, comparado con el mismo período del año pasado.",
+        "graficos": "Ingresos, citas y tasa de asistencia mes a mes — este año contra el anterior.",
+        "pareto": "Los tratamientos que generan el 80% de tus ingresos — útil para saber en qué enfocarte."
+      },
+      "disponibilidad": {
+        "enlace": "Tu link para que los pacientes reserven solos — compártelo donde quieras.",
+        "horarios": "Marca tus días de atención y, si quieres, varios horarios por día (por ejemplo, con una pausa al mediodía).",
+        "parametros": "La duración de cada cita, el tiempo libre entre una y otra, y con cuánta anticipación mínima y máxima se puede reservar.",
+        "bloqueadas": "Bloquea días puntuales en los que no atiendes (vacaciones, feriados...).",
+        "personalizados": "Para un día específico con un horario distinto al habitual, sin cambiar tu configuración de siempre."
+      },
+      "configuracion": {
+        "perfil": "Tu foto, nombre, especialidad, Instagram y la plantilla de tus recetas.",
+        "facturacion": "Tus plazos de pago, el depósito y costo total por defecto, y tu moneda.",
+        "integraciones": "Tu dirección, tu token de MercadoPago, tu webhook y el enlace de reseñas de Google.",
+        "canales": "Activa o desactiva el envío de mensajes automáticos por email y WhatsApp.",
+        "plantillas": "Elige el tono (estándar o cálido) de cada mensaje automático, según el tipo de notificación.",
+        "seguridadNotas": "El código de 4 dígitos que protege las notas clínicas de tus pacientes.",
+        "categoriasNotas": "Crea y personaliza las categorías con las que organizas tus notas clínicas.",
+        "tarifasActos": "Tu catálogo de actos y sus tarifas por defecto."
+      },
+      "pacienteDetalle": {
+        "citaHoy": "Si el paciente tiene una cita hoy, aparece aquí con una etiqueta: 'Control' si viene de un recordatorio, o 'Nueva consulta' si no.",
+        "ultimaVisita": "Un resumen de la última sesión, protegido por tu código de seguridad — el mismo que usas en Notas clínicas.",
+        "historialCitas": "Haz clic en cualquier cita pasada para ver su detalle completo.",
+        "notasClinicas": "Cada sesión puede tener varias categorías de notas. Todo está protegido por tu código de seguridad de 4 dígitos.",
+        "prescripcionForm": "Agrega los medicamentos de la receta, con dosis, frecuencia y duración.",
+        "prescripcionAcciones": "'Guardar borrador' te deja seguir editando. 'Generar PDF' la deja lista para el paciente — y ya no se puede modificar.",
+        "actosRealizados": "Registra uno o varios actos de la sesión: elige del catálogo o escribe uno libre, con su método de pago.",
+        "fotos": "La galería antes/después de este paciente, alimentada automáticamente desde Notas clínicas — de solo lectura aquí."
       }
     },
     "home": {

@@ -4,9 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
+import type { Step } from 'react-joyride'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import PageTour from '@/components/onboarding/PageTour'
 
 const INTL_LOCALE: Record<string, string> = { es: 'es-PE', pt: 'pt-BR', fr: 'fr-FR' }
 
@@ -69,7 +71,7 @@ function PresenceToggle({ appointmentId, presente }: { appointmentId: string; pr
   }
 
   return (
-    <div className="mt-4">
+    <div data-tour="cita-presencia" className="mt-4">
       <span className="mb-2 block text-sm text-gray-500">{t('asistenciaLabel')}</span>
       <div className="flex gap-2">
         <button
@@ -128,7 +130,7 @@ function ConsultaMontoBlock({
 
   if (initial !== null) {
     return (
-      <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3">
+      <div data-tour="cita-consulta-monto" className="mt-4 rounded-xl bg-gray-50 px-4 py-3">
         <p className="text-xs uppercase tracking-wide text-gray-400">{t('montoConsultaHistoricoLabel')}</p>
         <p className="mt-1 text-base font-semibold text-gray-800">{initial.toFixed(2)}</p>
         {initialConcepto && <p className="mt-0.5 text-sm text-gray-500">{initialConcepto}</p>}
@@ -139,7 +141,7 @@ function ConsultaMontoBlock({
   if (!patientId) return null
 
   return (
-    <div className="mt-4">
+    <div data-tour="cita-consulta-monto" className="mt-4">
       <span className="mb-2 block text-sm text-gray-500">{t('montoConsultaLabel')}</span>
       <Link
         href={`/dashboard/patients/${patientId}?addActo=1&appointmentId=${appointmentId}`}
@@ -260,7 +262,7 @@ function ProximoControlInput({
   }
 
   return (
-    <div className="mt-4">
+    <div data-tour="cita-proximo-control" className="mt-4">
       <span className="mb-2 block text-sm text-gray-500">{t('proximoControlLabel')}</span>
       {fecha ? (
         <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
@@ -352,7 +354,7 @@ function HistorialClinicoBlock({
 
   if (state === 'locked') {
     return (
-      <div className="mt-4 rounded-xl border border-gray-200 p-3">
+      <div data-tour="cita-historial-clinico" className="mt-4 rounded-xl border border-gray-200 p-3">
         <p className="text-sm text-gray-500">{t('historialClinicoTitle')}</p>
         <p className="mt-1 text-xs text-gray-400">{t('historialClinicoCollapsedHint')}</p>
         <div className="mt-2 flex items-center gap-2">
@@ -395,7 +397,7 @@ function HistorialClinicoBlock({
   if (sesionOrigen.length === 0 && ultimas.length === 0) return null
 
   return (
-    <div className="mt-4 rounded-xl border border-gray-200 p-3">
+    <div data-tour="cita-historial-clinico" className="mt-4 rounded-xl border border-gray-200 p-3">
       <p className="mb-2 text-sm font-medium text-gray-700">{t('historialClinicoTitle')}</p>
       {sesionOrigen.length > 0 && (
         <div className="mb-3 rounded-lg border border-orange-200 bg-orange-50 p-2.5">
@@ -449,11 +451,21 @@ export default function AppointmentDetailView({
   notifications: NotificationRow[]
 }) {
   const t = useTranslations('dashboard.appointmentDetail')
+  const tTour = useTranslations('dashboard.onboardingTour.citaDetalle')
   const locale = useLocale()
   const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="cita-presencia"]', content: tTour('presencia') },
+    { target: '[data-tour="cita-consulta-monto"]', content: tTour('consultaMonto') },
+    { target: '[data-tour="cita-proximo-control"]', content: tTour('proximoControl') },
+    { target: '[data-tour="cita-historial-clinico"]', content: tTour('historialClinico') },
+    { target: '[data-tour="cita-notificaciones"]', content: tTour('notificaciones') },
+  ]
+
   return (
     <div className="space-y-6">
+      <PageTour target="cita_detalle" steps={tourSteps} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
         <Link href="/dashboard/appointments" className="text-sm text-brand-600 hover:underline">
@@ -547,7 +559,7 @@ export default function AppointmentDetailView({
         )}
       </Card>
 
-      <TableContainer>
+      <TableContainer data-tour="cita-notificaciones">
         <Table>
           <TableHeader>
             <TableRow>

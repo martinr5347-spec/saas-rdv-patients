@@ -141,6 +141,57 @@
         "nuevo": "Ajoutez un patient à la main, un par un.",
         "importar": "Vous avez déjà votre liste dans un Excel ? Importez-la en une seule fois depuis ici.",
         "tabla": "Cliquez sur n'importe quel patient pour voir sa fiche complète : historique, notes, ordonnances et paiements."
+      },
+      "citas": {
+        "toggleVista": "Basculez entre la liste de vos rendez-vous et un calendrier visuel.",
+        "filtros": "Filtrez les rendez-vous par statut ou par plage de dates.",
+        "topTratamientos": "Le podium de vos 3 actes qui génèrent le plus de revenus, selon la période choisie.",
+        "tabla": "Chaque ligne est un rendez-vous : patient, date, heure, statut et acompte. Cliquez sur 'Détails' pour ouvrir sa fiche complète."
+      },
+      "citaDetalle": {
+        "presencia": "Indiquez si le patient s'est présenté ou non — cela alimente votre taux de présence dans Analyse.",
+        "consultaMonto": "Le montant de la consultation ne se saisit plus ici : utilisez 'Ajouter un acte' depuis la fiche du patient.",
+        "proximoControl": "Programmez un rappel de contrôle entre 1 et 12 mois — Núcleo préviendra le patient quand la date approchera.",
+        "historialClinico": "L'historique clinique est protégé par votre code de sécurité. Vous seul pouvez le déverrouiller depuis la fiche du patient.",
+        "notificaciones": "L'historique de chaque message envoyé pour ce rendez-vous : canal, type, statut et l'erreur si quelque chose a échoué."
+      },
+      "ingresos": {
+        "stats": "Un coup d'œil sur ce qui est entré ce mois-ci : total, MercadoPago, consultations, actes et saisies manuelles.",
+        "periodo": "Choisissez le mois ou utilisez un raccourci pour voir une autre période.",
+        "export": "Téléchargez cette période en CSV ou PDF pour votre comptable.",
+        "creacionMovida": "Pour enregistrer un nouveau revenu, faites-le depuis la fiche du patient avec 'Ajouter un acte' — l'argent reste ainsi toujours rattaché à quelqu'un."
+      },
+      "analisis": {
+        "kpis": "De combien vos revenus et vos rendez-vous ont augmenté, et votre taux de présence moyen, comparé à la même période l'an dernier.",
+        "graficos": "Revenus, rendez-vous et taux de présence mois par mois — cette année contre l'année précédente.",
+        "pareto": "Les actes qui génèrent 80 % de vos revenus — utile pour savoir où concentrer vos efforts."
+      },
+      "disponibilidad": {
+        "enlace": "Votre lien pour que les patients réservent seuls — partagez-le où vous voulez.",
+        "horarios": "Indiquez vos jours d'ouverture et, si besoin, plusieurs créneaux par jour (par exemple avec une pause déjeuner).",
+        "parametros": "La durée de chaque rendez-vous, le temps libre entre deux, et le délai minimum et maximum pour réserver.",
+        "bloqueadas": "Bloquez des jours précis où vous ne recevez pas (vacances, jours fériés...).",
+        "personalizados": "Pour un jour précis avec un horaire différent de d'habitude, sans changer votre configuration habituelle."
+      },
+      "configuracion": {
+        "perfil": "Votre photo, nom, spécialité, Instagram et le modèle de vos ordonnances.",
+        "facturacion": "Vos délais de paiement, l'acompte et le coût total par défaut, et votre devise.",
+        "integraciones": "Votre adresse, votre token MercadoPago, votre webhook et le lien des avis Google.",
+        "canales": "Activez ou désactivez l'envoi de messages automatiques par email et WhatsApp.",
+        "plantillas": "Choisissez le ton (standard ou chaleureux) de chaque message automatique, selon le type de notification.",
+        "seguridadNotas": "Le code à 4 chiffres qui protège les notes cliniques de vos patients.",
+        "categoriasNotas": "Créez et personnalisez les catégories avec lesquelles vous organisez vos notes cliniques.",
+        "tarifasActos": "Votre catalogue d'actes et leurs tarifs par défaut."
+      },
+      "pacienteDetalle": {
+        "citaHoy": "Si le patient a un rendez-vous aujourd'hui, il apparaît ici avec une étiquette : 'Contrôle' s'il vient d'un rappel, ou 'Nouvelle consultation' sinon.",
+        "ultimaVisita": "Un résumé de la dernière séance, protégé par votre code de sécurité — le même que celui utilisé dans Notes cliniques.",
+        "historialCitas": "Cliquez sur n'importe quel rendez-vous passé pour voir son détail complet.",
+        "notasClinicas": "Chaque séance peut avoir plusieurs catégories de notes. Tout est protégé par votre code de sécurité à 4 chiffres.",
+        "prescripcionForm": "Ajoutez les médicaments de l'ordonnance, avec dose, fréquence et durée.",
+        "prescripcionAcciones": "'Enregistrer le brouillon' vous permet de continuer à modifier. 'Générer le PDF' la rend prête pour le patient — et elle ne peut plus être modifiée.",
+        "actosRealizados": "Enregistrez un ou plusieurs actes de la séance : choisissez dans le catalogue ou écrivez-en un libre, avec son mode de paiement.",
+        "fotos": "La galerie avant/après de ce patient, alimentée automatiquement depuis Notes cliniques — en lecture seule ici."
       }
     },
     "home": {

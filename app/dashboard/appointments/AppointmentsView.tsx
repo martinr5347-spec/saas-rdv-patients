@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import type { Step } from 'react-joyride'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import PageTour from '@/components/onboarding/PageTour'
 import AppointmentsCalendarView, { type PaidAppointment } from './AppointmentsCalendarView'
 import { computeParetoInsight, type ActoRealizadoRow } from '@/lib/analytics/pareto'
 
@@ -93,7 +95,7 @@ function TopTratamientosCard({
   }
 
   return (
-    <Card>
+    <Card data-tour="citas-top-tratamientos">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-sm font-semibold text-gray-800">{t('topTratamientosTitle')}</h2>
@@ -161,13 +163,25 @@ export default function AppointmentsView({
   jusquau: string
 }) {
   const t = useTranslations('dashboard.appointments')
+  const tTour = useTranslations('dashboard.onboardingTour.citas')
   const [view, setView] = useState<'list' | 'calendar'>('list')
+
+  // Tour niveau 2 -- uniquement en vue liste : filtres/TopTratamientos/tabla n'existent pas en vue
+  // calendrier (cf. prompt onboarding-tour-guide, "mention breve du calendrier" repliee dans le
+  // step du toggle lui-meme, jamais de deep-dive sur la poignee de redimensionnement).
+  const tourSteps: Step[] = [
+    { target: '[data-tour="citas-toggle-vista"]', content: tTour('toggleVista') },
+    { target: '[data-tour="citas-filtros"]', content: tTour('filtros') },
+    { target: '[data-tour="citas-top-tratamientos"]', content: tTour('topTratamientos') },
+    { target: '[data-tour="citas-tabla"]', content: tTour('tabla') },
+  ]
 
   return (
     <div className="space-y-4">
+      <PageTour target="citas" steps={tourSteps} enabled={view === 'list'} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
-        <div className="flex gap-1 rounded-lg border border-gray-200 bg-white p-1">
+        <div data-tour="citas-toggle-vista" className="flex gap-1 rounded-lg border border-gray-200 bg-white p-1">
           <button
             type="button"
             onClick={() => setView('list')}
@@ -195,7 +209,7 @@ export default function AppointmentsView({
         </Card>
       ) : (
         <>
-          <Card>
+          <Card data-tour="citas-filtros">
             <form method="get" className="flex flex-wrap gap-4">
               <select name="statut" defaultValue={statut} className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400">
                 <option value="">{t('allStatuses')}</option>
@@ -216,7 +230,7 @@ export default function AppointmentsView({
 
           {error && <p className="text-error-600 text-sm">{error}</p>}
 
-          <TableContainer>
+          <TableContainer data-tour="citas-tabla">
             <Table>
               <TableHeader>
                 <TableRow>

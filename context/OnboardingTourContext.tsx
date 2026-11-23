@@ -9,6 +9,10 @@ export type OnboardingPageId =
   | 'inicio'
   | 'pacientes'
   | 'citas'
+  // Non listee dans le prompt d'origine (qui ne decrivait que 8 ids alors que la fiche d'un RDV a
+  // son propre contenu de tour distinct de "citas") -- ajoutee pour que cette page ait, comme les
+  // autres, son propre etat "vu" independant.
+  | 'cita_detalle'
   | 'ingresos'
   | 'analisis'
   | 'disponibilidad'

@@ -11,9 +11,11 @@ interface CellProps extends Omit<WrapperProps, 'children'> {
   colSpan?: number
 }
 
-export function TableContainer({ children }: WrapperProps) {
+// 'data-tour' (cf. components/onboarding/PageTour.tsx) transmis tel quel a la div racine -- jamais
+// consomme ici.
+export function TableContainer({ children, 'data-tour': dataTour }: WrapperProps & { 'data-tour'?: string }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+    <div data-tour={dataTour} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
       <div className="max-w-full overflow-x-auto">{children}</div>
     </div>
   )

@@ -2,9 +2,11 @@
 
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
+import type { Step } from 'react-joyride'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 import Card from '@/components/ui/Card'
 import { computeParetoInsight } from '@/lib/analytics/pareto'
+import PageTour from '@/components/onboarding/PageTour'
 
 interface AppointmentRow {
   fecha_cita: string
@@ -35,7 +37,7 @@ function ParetoInsightCard({ actosRealizados }: { actosRealizados: ActoRealizado
 
   if (actosRealizados.length === 0) {
     return (
-      <Card>
+      <Card data-tour="analisis-pareto">
         <h2 className="text-sm font-semibold text-gray-800 mb-1">{t('paretoTitle')}</h2>
         <p className="text-xs text-gray-500 mb-6">{t('paretoIntro')}</p>
         <div className="py-8 text-center">
@@ -49,7 +51,7 @@ function ParetoInsightCard({ actosRealizados }: { actosRealizados: ActoRealizado
   let acumulado = 0
 
   return (
-    <Card>
+    <Card data-tour="analisis-pareto">
       <h2 className="text-sm font-semibold text-gray-800 mb-1">{t('paretoTitle')}</h2>
       <p className="text-xs text-gray-500 mb-5">{t('paretoIntro')}</p>
 
@@ -109,6 +111,7 @@ export default function AnalisisView({
   actosRealizados: ActoRealizadoRow[]
 }) {
   const t = useTranslations('dashboard.analisis')
+  const tTour = useTranslations('dashboard.onboardingTour.analisis')
   const MESES = t.raw('monthsShort') as string[]
   const growthNewLabel = t('growthNew')
   const now = new Date()
@@ -214,12 +217,19 @@ export default function AnalisisView({
     )
   }
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="analisis-kpis"]', content: tTour('kpis') },
+    { target: '[data-tour="analisis-graficos"]', content: tTour('graficos') },
+    { target: '[data-tour="analisis-pareto"]', content: tTour('pareto') },
+  ]
+
   return (
     <div className="space-y-6">
+      <PageTour target="analisis" steps={tourSteps} />
       <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
       <p className="text-sm text-gray-500 -mt-4">{t('comparisonSubtitle', { currentYear, previousYear })}</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="analisis-kpis" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <p className="text-xs text-gray-500 uppercase tracking-wide">{t('kpiRevenueGrowth')}</p>
           <p className="text-2xl font-semibold text-gray-800 mt-1">{kpis.revenueGrowth}</p>
@@ -237,6 +247,7 @@ export default function AnalisisView({
         </Card>
       </div>
 
+      <div data-tour="analisis-graficos" className="space-y-6">
       <Card>
         <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('chartRevenueTitle')}</h2>
         <ResponsiveContainer width="100%" height={280}>
@@ -284,6 +295,7 @@ export default function AnalisisView({
         </ResponsiveContainer>
         <p className="text-xs text-gray-400 mt-2">{t('chartFootnote')}</p>
       </Card>
+      </div>
 
       <ParetoInsightCard actosRealizados={actosRealizados} />
     </div>

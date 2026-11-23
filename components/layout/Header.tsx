@@ -8,12 +8,19 @@ import { useOnboardingTour, type OnboardingPageId } from '@/context/OnboardingTo
 import Avatar from '@/components/ui/Avatar'
 import { MenuIcon, CloseIcon, HelpIcon } from './icons'
 
-// Pages dont le tour niveau 2 est deja implemente -- cf. prompt onboarding-tour-guide, Partie
-// "contenu niveau 2 -- pages restantes" : copy soumise a Martin avant commit, donc pas encore
-// toutes presentes ici. A completer au fur et a mesure (ne jamais lister une page sans tour reel).
+// Pages dont le tour niveau 2 est deja implemente, avec une URL fixe (donc rejouable depuis
+// n'importe quelle autre page du menu "?") -- 'cita_detalle' et 'paciente_detalle' en sont
+// volontairement exclues : ce sont des fiches d'un enregistrement precis (pas d'URL generique vers
+// laquelle naviguer), leur tour se redeclenche automatiquement a chaque premiere visite mais ne
+// peut pas etre rejoue "a distance" depuis ce menu.
 const AVAILABLE_PAGE_TOURS: { id: OnboardingPageId; href: string; navKey: string }[] = [
   { id: 'inicio', href: '/dashboard', navKey: 'home' },
   { id: 'pacientes', href: '/dashboard/patients', navKey: 'patients' },
+  { id: 'citas', href: '/dashboard/appointments', navKey: 'appointments' },
+  { id: 'ingresos', href: '/dashboard/ingresos', navKey: 'ingresos' },
+  { id: 'analisis', href: '/dashboard/analisis', navKey: 'analisis' },
+  { id: 'disponibilidad', href: '/dashboard/disponibilidad', navKey: 'disponibilidad' },
+  { id: 'configuracion', href: '/dashboard/settings', navKey: 'settings' },
 ]
 
 export default function Header({

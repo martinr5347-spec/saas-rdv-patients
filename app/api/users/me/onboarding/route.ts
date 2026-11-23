@@ -12,6 +12,7 @@ const VALID_PAGE_IDS = [
   'inicio',
   'pacientes',
   'citas',
+  'cita_detalle',
   'ingresos',
   'analisis',
   'disponibilidad',

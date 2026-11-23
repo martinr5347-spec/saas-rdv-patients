@@ -2,11 +2,13 @@
 
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import type { Step } from 'react-joyride'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import StatCard from '@/components/ui/StatCard'
 import { CashIcon } from '@/components/layout/icons'
 import { TableContainer, Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/Table'
+import PageTour from '@/components/onboarding/PageTour'
 
 export interface ManualEntry {
   id: string
@@ -126,6 +128,7 @@ export default function IngresosView({
   deleteAction: (formData: FormData) => void
 }) {
   const t = useTranslations('dashboard.ingresos')
+  const tTour = useTranslations('dashboard.onboardingTour.ingresos')
   const months = t.raw('months') as string[]
   const [desdeAno] = desde.split('-').map(Number)
   const [hastaAno] = hasta.split('-').map(Number)
@@ -212,11 +215,19 @@ export default function IngresosView({
   const maxAno = Math.max(desdeAno, hastaAno) + 1
   const yearOptions = Array.from({ length: maxAno - minAno + 1 }, (_, i) => minAno + i)
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="ingresos-stats"]', content: tTour('stats') },
+    { target: '[data-tour="ingresos-periodo"]', content: tTour('periodo') },
+    { target: '[data-tour="ingresos-export"]', content: tTour('export') },
+    { target: '[data-tour="ingresos-creacion-movida"]', content: tTour('creacionMovida') },
+  ]
+
   return (
     <div className="space-y-6">
+      <PageTour target="ingresos" steps={tourSteps} />
       <h1 className="text-2xl font-semibold text-gray-800">{rangeTitle}</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div data-tour="ingresos-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label={`${t('totalMonth')} (${monnaie})`} value={totalMonth.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalMp')} (${monnaie})`} value={totalMp.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
         <StatCard label={`${t('totalConsulta')} (${monnaie})`} value={totalConsulta.toFixed(2)} icon={<CashIcon className="h-5 w-5" />} />
@@ -301,7 +312,7 @@ export default function IngresosView({
         // l'argent soit toujours rattache a un vrai patient_id (cf. prompt fusion ingresos/fiche
         // patient). updateAction/deleteAction restent plus bas : l'historique existant reste
         // modifiable/supprimable ici.
-        <Card>
+        <Card data-tour="ingresos-creacion-movida">
           <p className="text-sm text-gray-600">
             {t('createMovedMessage')}{' '}
             <Link href="/dashboard/patients" className="font-medium text-brand-600 hover:underline">
@@ -312,7 +323,7 @@ export default function IngresosView({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div data-tour="ingresos-periodo" className="flex flex-wrap items-center gap-3">
           <form method="get" className="flex flex-wrap items-center gap-2">
             <label className="text-sm font-medium text-gray-700">{t('rangeDesde')}</label>
             <select
@@ -360,7 +371,7 @@ export default function IngresosView({
             })}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div data-tour="ingresos-export" className="flex gap-2">
           <a
             href={`/api/ingresos/export?desde=${desde}&hasta=${hasta}`}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
+import type { Step } from 'react-joyride'
+import PageTour from '@/components/onboarding/PageTour'
 
 function InfoTooltip({ text }: { text: string }) {
   return (
@@ -158,6 +160,7 @@ export default function DisponibilidadView({
   removeAvailabilityOverrideAction: typeof import('./actions').removeAvailabilityOverride
 }) {
   const t = useTranslations('dashboard.disponibilidad')
+  const tTour = useTranslations('dashboard.onboardingTour.disponibilidad')
   const locale = useLocale()
   const intlLocale = INTL_LOCALE[locale] ?? 'es-PE'
 
@@ -339,14 +342,23 @@ export default function DisponibilidadView({
     }
   }
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="disponibilidad-enlace"]', content: tTour('enlace') },
+    { target: '[data-tour="disponibilidad-horarios"]', content: tTour('horarios') },
+    { target: '[data-tour="disponibilidad-parametros"]', content: tTour('parametros') },
+    { target: '[data-tour="disponibilidad-bloqueadas"]', content: tTour('bloqueadas') },
+    { target: '[data-tour="disponibilidad-personalizados"]', content: tTour('personalizados') },
+  ]
+
   return (
     <div className="space-y-4">
+      <PageTour target="disponibilidad" steps={tourSteps} />
       <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <p className="mb-4 text-xs text-gray-500">{t('comingSoonNote')}</p>
 
       {/* Enlace público */}
-      <div className="mb-5">
+      <div data-tour="disponibilidad-enlace" className="mb-5">
         <label className="mb-1 block text-xs font-medium text-gray-600">{t('bookingLinkLabel')}</label>
         <div className="flex gap-2">
           <span className="flex items-center rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 text-sm text-gray-400">
@@ -370,7 +382,7 @@ export default function DisponibilidadView({
       </div>
 
       {/* Horaires par jour -- une ou plusieurs plages (ex. pause déjeuner) */}
-      <div className="mb-5 space-y-3">
+      <div data-tour="disponibilidad-horarios" className="mb-5 space-y-3">
         {DIAS_SEMANA.map((d, i) => (
           <div key={d.valor} className="flex items-start gap-3">
             <label className="flex w-28 shrink-0 items-center gap-2 pt-1.5 text-sm text-gray-700">
@@ -422,7 +434,7 @@ export default function DisponibilidadView({
       </div>
 
       {/* Paramètres */}
-      <div className="mb-5 grid grid-cols-2 gap-4">
+      <div data-tour="disponibilidad-parametros" className="mb-5 grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
             {t('duracionLabel')}
@@ -463,7 +475,7 @@ export default function DisponibilidadView({
       </button>
 
       {/* Fechas bloqueadas */}
-      <div>
+      <div data-tour="disponibilidad-bloqueadas">
         <h3 className="mb-2 text-xs font-semibold text-gray-700">{t('blockedDatesTitle')}</h3>
         <div className="mb-2 space-y-1">
           {blocked.map((b) => (
@@ -497,7 +509,7 @@ export default function DisponibilidadView({
       {/* Horarios personalizados -- surcharges par date precise, "mode personnalise" pour un
           emploi du temps irregulier. Reutilise le meme pattern multi-plages que le modele
           recurrent ci-dessus, et le meme input type="date" que les fechas bloqueadas. */}
-      <div className="mt-6 border-t border-gray-100 pt-5">
+      <div data-tour="disponibilidad-personalizados" className="mt-6 border-t border-gray-100 pt-5">
         <div className="mb-1 flex items-center gap-1.5">
           <h3 className="text-xs font-semibold text-gray-700">{t('overridesTitle')}</h3>
           <InfoTooltip text={t('overridesInfo')} />

@@ -141,6 +141,57 @@
         "nuevo": "Adicione um paciente manualmente, um por um.",
         "importar": "Já tem sua lista em Excel? Importe tudo de uma vez por aqui.",
         "tabla": "Clique em qualquer paciente para ver sua ficha completa: histórico, notas, receitas e pagamentos."
+      },
+      "citas": {
+        "toggleVista": "Alterne entre ver suas consultas em lista ou em um calendário visual.",
+        "filtros": "Filtre as consultas por status ou por um período de datas.",
+        "topTratamientos": "O pódio dos seus 3 procedimentos que mais geraram receita, conforme o período escolhido.",
+        "tabla": "Cada linha é uma consulta: paciente, data, hora, status e depósito. Clique em 'Detalhes' para abrir a ficha completa."
+      },
+      "citaDetalle": {
+        "presencia": "Marque se o paciente compareceu ou não — isso alimenta sua taxa de comparecimento em Análise.",
+        "consultaMonto": "O valor da consulta não é mais registrado aqui: use 'Adicionar procedimento' na ficha do paciente.",
+        "proximoControl": "Programe um lembrete de retorno entre 1 e 12 meses — o Núcleo avisará o paciente quando a data se aproximar.",
+        "historialClinico": "O histórico clínico é protegido pelo seu código de segurança. Só você pode desbloqueá-lo pela ficha do paciente.",
+        "notificaciones": "O registro de cada mensagem enviada para esta consulta: canal, tipo, status e o erro, se algo falhou."
+      },
+      "ingresos": {
+        "stats": "Um resumo do que entrou este mês: total, MercadoPago, consultas, procedimentos e registros manuais.",
+        "periodo": "Escolha o mês ou use um atalho rápido para ver outro período.",
+        "export": "Baixe este período em CSV ou PDF para seu contador.",
+        "creacionMovida": "Para registrar uma nova receita, faça isso pela ficha do paciente com 'Adicionar procedimento' — assim o dinheiro sempre fica vinculado a alguém."
+      },
+      "analisis": {
+        "kpis": "Quanto cresceram sua receita e suas consultas, e sua taxa média de comparecimento, comparado com o mesmo período do ano passado.",
+        "graficos": "Receita, consultas e taxa de comparecimento mês a mês — este ano contra o anterior.",
+        "pareto": "Os procedimentos que geram 80% da sua receita — útil para saber onde focar."
+      },
+      "disponibilidad": {
+        "enlace": "Seu link para os pacientes agendarem sozinhos — compartilhe onde quiser.",
+        "horarios": "Marque seus dias de atendimento e, se quiser, vários horários por dia (por exemplo, com uma pausa para almoço).",
+        "parametros": "A duração de cada consulta, o tempo livre entre uma e outra, e com quanta antecedência mínima e máxima dá para agendar.",
+        "bloqueadas": "Bloqueie dias específicos em que você não atende (férias, feriados...).",
+        "personalizados": "Para um dia específico com um horário diferente do habitual, sem mudar sua configuração de sempre."
+      },
+      "configuracion": {
+        "perfil": "Sua foto, nome, especialidade, Instagram e o modelo das suas receitas.",
+        "facturacion": "Seus prazos de pagamento, o depósito e custo total padrão, e sua moeda.",
+        "integraciones": "Seu endereço, seu token do MercadoPago, seu webhook e o link de avaliações do Google.",
+        "canales": "Ative ou desative o envio de mensagens automáticas por email e WhatsApp.",
+        "plantillas": "Escolha o tom (padrão ou caloroso) de cada mensagem automática, conforme o tipo de notificação.",
+        "seguridadNotas": "O código de 4 dígitos que protege as notas clínicas dos seus pacientes.",
+        "categoriasNotas": "Crie e personalize as categorias com que você organiza suas notas clínicas.",
+        "tarifasActos": "Seu catálogo de procedimentos e suas tarifas padrão."
+      },
+      "pacienteDetalle": {
+        "citaHoy": "Se o paciente tem uma consulta hoje, ela aparece aqui com uma etiqueta: 'Retorno' se veio de um lembrete, ou 'Nova consulta' se não.",
+        "ultimaVisita": "Um resumo da última sessão, protegido pelo seu código de segurança — o mesmo que você usa em Notas clínicas.",
+        "historialCitas": "Clique em qualquer consulta passada para ver seu detalhe completo.",
+        "notasClinicas": "Cada sessão pode ter várias categorias de notas. Tudo é protegido pelo seu código de segurança de 4 dígitos.",
+        "prescripcionForm": "Adicione os medicamentos da receita, com dose, frequência e duração.",
+        "prescripcionAcciones": "'Salvar rascunho' permite continuar editando depois. 'Gerar PDF' a deixa pronta para o paciente — e ela não pode mais ser modificada.",
+        "actosRealizados": "Registre um ou mais procedimentos da sessão: escolha do catálogo ou digite um livre, com a forma de pagamento.",
+        "fotos": "A galeria antes/depois deste paciente, alimentada automaticamente a partir de Notas clínicas — somente leitura aqui."
       }
     },
     "home": {

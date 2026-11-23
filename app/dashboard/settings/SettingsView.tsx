@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import toast from 'react-hot-toast'
+import type { Step } from 'react-joyride'
 import Card from '@/components/ui/Card'
 import Avatar from '@/components/ui/Avatar'
+import PageTour from '@/components/onboarding/PageTour'
 import {
   NotificationType,
   VariantId,
@@ -98,7 +100,7 @@ function SeguridadNotasCard({ lastUpdated }: { lastUpdated: string | null }) {
   }
 
   return (
-    <Card>
+    <Card data-tour="config-seguridad-notas">
       <div className="mb-1 flex items-center gap-1.5">
         <h2 className="text-sm font-semibold text-gray-800">{t('seguridadTitle')}</h2>
         <div className="group relative inline-flex">
@@ -363,7 +365,7 @@ function TarifasActosCard({
   }
 
   return (
-    <Card>
+    <Card data-tour="config-tarifas-actos">
       <h2 className="text-sm font-semibold text-gray-800">{t('tarifasTitle')}</h2>
       <p className="mb-3 mt-1 text-xs text-gray-500">{t('tarifasDesc')}</p>
       <div className="mb-3 space-y-1.5">
@@ -495,7 +497,7 @@ function CategoriasNotasCard({
   }
 
   return (
-    <Card>
+    <Card data-tour="config-categorias-notas">
       <h2 className="text-sm font-semibold text-gray-800">{t('categoriasTitle')}</h2>
       <p className="mb-3 mt-1 text-xs text-gray-500">{t('categoriasDesc')}</p>
       <div className="mb-3 space-y-1.5">
@@ -621,6 +623,7 @@ export default function SettingsView({
   ) => Promise<{ ok: boolean; error?: string }>
 }) {
   const t = useTranslations('dashboard.settings')
+  const tTour = useTranslations('dashboard.onboardingTour.configuracion')
   const searchParams = useSearchParams()
   const router = useRouter()
   // Les 5 server actions (updateProfile, updateFacturacion, updateIntegraciones, updateCanales,
@@ -657,8 +660,20 @@ export default function SettingsView({
   const inputClass =
     'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400'
 
+  const tourSteps: Step[] = [
+    { target: '[data-tour="config-perfil"]', content: tTour('perfil') },
+    { target: '[data-tour="config-facturacion"]', content: tTour('facturacion') },
+    { target: '[data-tour="config-integraciones"]', content: tTour('integraciones') },
+    { target: '[data-tour="config-canales"]', content: tTour('canales') },
+    { target: '[data-tour="config-plantillas"]', content: tTour('plantillas') },
+    { target: '[data-tour="config-seguridad-notas"]', content: tTour('seguridadNotas') },
+    { target: '[data-tour="config-categorias-notas"]', content: tTour('categoriasNotas') },
+    { target: '[data-tour="config-tarifas-actos"]', content: tTour('tarifasActos') },
+  ]
+
   return (
     <div className="max-w-6xl space-y-6">
+      <PageTour target="configuracion" steps={tourSteps} />
       <h1 className="text-2xl font-semibold text-gray-800">{t('title')}</h1>
       <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700">
         <WarningIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -680,7 +695,7 @@ export default function SettingsView({
         </Card>
       )}
       <form action={updateProfileAction}>
-        <Card>
+        <Card data-tour="config-perfil">
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupProfile')}</h2>
           <div className="flex items-center gap-4 mb-4">
             <Avatar name={previewName || '?'} photoUrl={fotoPreview} size={56} />
@@ -820,7 +835,7 @@ export default function SettingsView({
       </form>
 
       <form action={updateFacturacionAction}>
-        <Card>
+        <Card data-tour="config-facturacion">
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupBilling')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -898,7 +913,7 @@ export default function SettingsView({
       </form>
 
       <form action={updateIntegracionesAction}>
-        <Card>
+        <Card data-tour="config-integraciones">
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupIntegrations')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -976,7 +991,7 @@ export default function SettingsView({
       </form>
 
       <form action={updateCanalesAction}>
-        <Card>
+        <Card data-tour="config-canales">
           <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('groupChannels')}</h2>
           <div className="flex gap-6">
             <label className="flex items-center gap-2">
@@ -998,7 +1013,7 @@ export default function SettingsView({
       </form>
 
       <form action={updatePlantillasAction}>
-        <Card>
+        <Card data-tour="config-plantillas">
           <h2 className="text-sm font-semibold text-gray-800">{t('messageTemplate')}</h2>
           <p className="text-xs text-gray-500 mt-0.5 mb-4">{t('messageTemplateDesc')}</p>
           <div className="space-y-4">

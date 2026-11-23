@@ -750,9 +750,7 @@ export const TWILIO_CONTENT_SIDS: TwilioContentSidCatalog = {
   pago: { standard: { es: 'HX56033981b221a1ddffc39e32e647ca46', pt: null }, calido: { es: 'HXa5982e5a758b8feb1565eeaaeb0aacca', pt: null } },
   anulacion: { standard: { es: 'HX640a974c881d5c6aa55dbd675df0b614', pt: null }, calido: { es: 'HXf276641d15e5fbcacdba743e9ebc9720', pt: null } },
   recordatorio: { standard: { es: 'HXc44d8b02c4c39e4920f28bacbba00504', pt: null }, calido: { es: 'HX0bb176f794899c240119f5a39802d4d1', pt: null } },
-  // calido pas encore soumis a Meta (texte pret, cf. prompt/doc templates WhatsApp) -- laisser null
-  // jusqu'a ce que Martin le crée sur la Console Twilio et redonne le SID.
-  reprogramacion: { standard: { es: 'HX7922c690ce1902d329c1f51206d2ba19', pt: null }, calido: nullPerLangue() },
+  reprogramacion: { standard: { es: 'HX7922c690ce1902d329c1f51206d2ba19', pt: null }, calido: { es: 'HX65a7e9f5b639f76554c2bd28ba196f11', pt: null } },
   solicitud_resena: { standard: { es: 'HXf14bd8d8e706b981ce319311d64bea23', pt: null }, calido: { es: 'HXdbfaafe4f44fa8e261a0493f16c75acc', pt: null } },
 }
 

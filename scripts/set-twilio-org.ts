@@ -1,10 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { createInterface } from 'node:readline/promises'
 
 // Script one-off lance a la main par Martin (jamais d'interface web/route API) pour configurer
 // le compte Twilio d'une organisation -- cf. prompt "Retirer les champs Twilio de la page Settings
 // du praticien" : ce compte est gere et paye entierement par Martin, jamais par le praticien.
-// Usage : npx tsx scripts/set-twilio-org.ts <organization_id> <subaccount_sid> <whatsapp_number> <auth_token_en_clair>
+//
+// Mode interactif par defaut (npx tsx scripts/set-twilio-org.ts) : pose les 4 questions une par
+// une -- evite d'avoir a construire/editer une longue ligne de commande dans PowerShell (source
+// recurrente d'erreurs : chevrons <...> laisses tels quels, valeurs mal collees, etc.).
+// Les arguments en ligne de commande restent acceptes pour compatibilite :
+// npx tsx scripts/set-twilio-org.ts <organization_id> <subaccount_sid> <whatsapp_number> <auth_token_en_clair>
 
 // Ce script tourne hors Next.js (npx tsx), qui est le seul a charger .env.local automatiquement.
 // lib/crypto/settingsEncryption lit process.env.SETTINGS_ENCRYPTION_KEY au chargement du module --
@@ -26,14 +32,50 @@ function loadEnvLocal(): void {
   }
 }
 
+async function promptMissingValues(
+  argOrganizationId?: string,
+  argSubaccountSid?: string,
+  argWhatsappNumber?: string,
+  argAuthToken?: string
+): Promise<{ organizationId: string; subaccountSid: string; whatsappNumber: string; authTokenEnClair: string }> {
+  // Si les 4 arguments sont deja fournis en ligne de commande, on les utilise tels quels (mode
+  // non interactif, compatibilite avec l'usage historique). Sinon, on bascule entierement en mode
+  // questions -- jamais un melange des deux (source de confusion sur ce qui a deja ete saisi).
+  if (argOrganizationId && argSubaccountSid && argWhatsappNumber && argAuthToken) {
+    return {
+      organizationId: argOrganizationId,
+      subaccountSid: argSubaccountSid,
+      whatsappNumber: argWhatsappNumber,
+      authTokenEnClair: argAuthToken,
+    }
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    console.log('Configuration Twilio pour une organisation -- reponds aux 4 questions ci-dessous.\n')
+    const organizationId = (await rl.question('organization_id : ')).trim()
+    const subaccountSid = (await rl.question('subaccount_sid (Twilio Account SID, commence par AC) : ')).trim()
+    const whatsappNumber = (await rl.question('whatsapp_number (format +XXXXXXXXXXX) : ')).trim()
+    const authTokenEnClair = (await rl.question('auth_token (Twilio Auth Token, en clair) : ')).trim()
+    return { organizationId, subaccountSid, whatsappNumber, authTokenEnClair }
+  } finally {
+    rl.close()
+  }
+}
+
 async function main() {
   loadEnvLocal()
 
-  const [organizationId, subaccountSid, whatsappNumber, authTokenEnClair] = process.argv.slice(2)
+  const [argOrganizationId, argSubaccountSid, argWhatsappNumber, argAuthToken] = process.argv.slice(2)
+  const { organizationId, subaccountSid, whatsappNumber, authTokenEnClair } = await promptMissingValues(
+    argOrganizationId,
+    argSubaccountSid,
+    argWhatsappNumber,
+    argAuthToken
+  )
+
   if (!organizationId || !subaccountSid || !whatsappNumber || !authTokenEnClair) {
-    console.error(
-      'Usage: npx tsx scripts/set-twilio-org.ts <organization_id> <subaccount_sid> <whatsapp_number> <auth_token_en_clair>'
-    )
+    console.error('Toutes les valeurs sont requises -- rien n\'a ete ecrit.')
     process.exit(1)
   }
 

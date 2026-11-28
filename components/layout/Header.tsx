@@ -66,6 +66,7 @@ export default function Header({
         <div className="relative">
           <button
             type="button"
+            data-tour="header-help-button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label={t('helpButtonLabel')}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50"

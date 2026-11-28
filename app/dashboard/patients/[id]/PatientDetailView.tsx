@@ -1890,6 +1890,7 @@ function NotasClinicasCard({
 
       <button
         type="button"
+        data-tour="paciente-notas-guardar-sesion"
         onClick={saveSession}
         disabled={loading || draftEntries.length === 0}
         className="mt-1 w-full rounded-xl bg-[#6926D2] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5a1fb0] active:scale-[0.98] disabled:opacity-50"
@@ -3554,7 +3555,10 @@ export default function PatientDetailView({
       { target: '[data-tour="paciente-ultima-visita"]', content: tTour('ultimaVisita') },
       { target: '[data-tour="paciente-historial-citas"]', content: tTour('historialCitas') },
     ],
-    notas: [{ target: '[data-tour="paciente-notas-clinicas"]', content: tTour('notasClinicas') }],
+    notas: [
+      { target: '[data-tour="paciente-notas-clinicas"]', content: tTour('notasClinicas') },
+      { target: '[data-tour="paciente-notas-guardar-sesion"]', content: tTour('notasGuardarSesion') },
+    ],
     prescripciones: [
       { target: '[data-tour="paciente-prescripcion-form"]', content: tTour('prescripcionForm') },
       { target: '[data-tour="paciente-prescripcion-acciones"]', content: tTour('prescripcionAcciones') },

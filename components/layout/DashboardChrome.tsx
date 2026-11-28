@@ -87,6 +87,7 @@ function DashboardChromeContent({
     { target: '[data-tour="nav-analisis"]', content: tTour('navAnalisis') },
     { target: '[data-tour="nav-disponibilidad"]', content: tTour('navDisponibilidad') },
     { target: '[data-tour="nav-configuracion"]', content: tTour('navConfiguracion') },
+    { target: '[data-tour="header-help-button"]', content: tTour('helpButton') },
   ]
 
   return (

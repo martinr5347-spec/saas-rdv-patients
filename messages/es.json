@@ -129,7 +129,8 @@
         "navIngresos": "Todo el dinero que entra: pagos por MercadoPago, actos realizados y registros manuales.",
         "navAnalisis": "Comparativas de tus ingresos, citas y tasa de asistencia, mes a mes y año a año.",
         "navDisponibilidad": "Tus horarios de atención, tu enlace público de reserva y tus días bloqueados.",
-        "navConfiguracion": "Tu perfil, tus plantillas de mensajes automáticos, tu código de seguridad y tus tarifas."
+        "navConfiguracion": "Tu perfil, tus plantillas de mensajes automáticos, tu código de seguridad y tus tarifas.",
+        "helpButton": "Si más adelante quieres volver a ver estos tours, haz clic aquí cuando quieras."
       },
       "inicio": {
         "banner": "Desde aquí creas una cita nueva o vas directo a tu agenda completa.",
@@ -189,6 +190,7 @@
         "ultimaVisita": "Un resumen de la última sesión, protegido por tu código de seguridad — el mismo que usas en Notas clínicas.",
         "historialCitas": "Haz clic en cualquier cita pasada para ver su detalle completo.",
         "notasClinicas": "Cada sesión puede tener varias categorías de notas. Todo está protegido por tu código de seguridad de 4 dígitos.",
+        "notasGuardarSesion": "'Agregar' solo guarda el borrador en pantalla. Nada queda registrado hasta que hagas clic en 'Guardar sesión'.",
         "prescripcionForm": "Agrega los medicamentos de la receta, con dosis, frecuencia y duración.",
         "prescripcionAcciones": "'Guardar borrador' te deja seguir editando. 'Generar PDF' la deja lista para el paciente — y ya no se puede modificar.",
         "actosRealizados": "Registra uno o varios actos de la sesión: elige del catálogo o escribe uno libre, con su método de pago.",

@@ -129,7 +129,8 @@
         "navIngresos": "Todo o dinheiro que entra: pagamentos por MercadoPago, procedimentos realizados e registros manuais.",
         "navAnalisis": "Comparativos da sua receita, consultas e taxa de comparecimento, mês a mês e ano a ano.",
         "navDisponibilidad": "Seus horários de atendimento, seu link público de agendamento e seus dias bloqueados.",
-        "navConfiguracion": "Seu perfil, seus modelos de mensagens automáticas, seu código de segurança e suas tarifas."
+        "navConfiguracion": "Seu perfil, seus modelos de mensagens automáticas, seu código de segurança e suas tarifas.",
+        "helpButton": "Se mais adiante quiser ver esses tours de novo, clique aqui quando quiser."
       },
       "inicio": {
         "banner": "Daqui você cria uma nova consulta ou vai direto para sua agenda completa.",
@@ -189,6 +190,7 @@
         "ultimaVisita": "Um resumo da última sessão, protegido pelo seu código de segurança — o mesmo que você usa em Notas clínicas.",
         "historialCitas": "Clique em qualquer consulta passada para ver seu detalhe completo.",
         "notasClinicas": "Cada sessão pode ter várias categorias de notas. Tudo é protegido pelo seu código de segurança de 4 dígitos.",
+        "notasGuardarSesion": "'Adicionar' apenas salva o rascunho na tela. Nada fica registrado até você clicar em 'Salvar sessão'.",
         "prescripcionForm": "Adicione os medicamentos da receita, com dose, frequência e duração.",
         "prescripcionAcciones": "'Salvar rascunho' permite continuar editando depois. 'Gerar PDF' a deixa pronta para o paciente — e ela não pode mais ser modificada.",
         "actosRealizados": "Registre um ou mais procedimentos da sessão: escolha do catálogo ou digite um livre, com a forma de pagamento.",
